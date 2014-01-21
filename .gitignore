@@ -29,4 +29,8 @@ local.properties
 
 # TeXlipse plugin
 .texlipse
+
+# Default build folder ignore
 /Default
+/Debug
+/Release
