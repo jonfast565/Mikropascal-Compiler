@@ -6,12 +6,13 @@
  */
 
 #include "Standard.hpp"
-#include "Input.hpp"
+#include "Tests.hpp"
 
 // prototypes
 int main(int, char*[]);
 
 int main(int argc, char* argv[]) {
+	automata_keyword_test_cases();
 	return EXIT_SUCCESS;
 }
 

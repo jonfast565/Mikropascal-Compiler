@@ -9,6 +9,32 @@
 #define tests
 
 #include "Standard.hpp"
+#include "FiniteAutomata.hpp"
+#include "Input.hpp"
+//#include "Scanner.hpp"
+
+int automata_keyword_test_cases() {
+	cout << "--- Automata Keyword Tests ---" << endl;
+	shared_ptr<FiniteAutomataContainer> while_dfa = shared_ptr<
+				FiniteAutomataContainer>(
+				new FiniteAutomataContainer("MP_WHILE", true));
+	while_dfa->build_keyword("while");
+	while_dfa->print();
+
+	// accepts or rejects?
+	vector<string> test_strings = { "while", "xxxxxwhile", "whilethewavescrash",
+			"somewhile" };
+	string accept_string;
+	for (vector<string>::iterator i = test_strings.begin();
+			i != test_strings.end(); i++) {
+		while_dfa->run(*i);
+		accept_string = while_dfa->accepted() ? "Accepted." : "Rejected.";
+		cout << accept_string << endl;
+		while_dfa->reset();
+	}
+	cout << "--- End ---" << endl;
+	return 0;
+}
 
 int automata_test_cases() {
 	cout << "--- Automata Tests ---" << endl;

@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
+#include <cctype>
 
 // use the standard namespace
 using namespace std;
