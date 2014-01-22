@@ -2,11 +2,14 @@
  * Automata.hpp
  *
  *  Created on: Jan 19, 2014
- *      Author: Jon
+ *  Author: Jon
+ *  NOTE: If you value your life,
+ *  this file will remain untouched by project
+ *  partners. Thanks!
  */
 
-#ifndef automata
-#define automata
+#ifndef automata_h
+#define automata_h
 
 #include "Standard.hpp"
 #define RUN_DEBUG 0
@@ -23,9 +26,9 @@ private:
 public:
 	FiniteAutomataState(bool is_initial,
 			bool is_final, string name) :
-			is_final(is_final), is_initial(is_initial), name(name) {
+	is_final(is_final), is_initial(is_initial), name(name) {
 		this->to_state =
-shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>>
+		shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>>
 		(new map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>);
 	}
 	virtual ~FiniteAutomataState() {
@@ -73,28 +76,28 @@ shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>>
 	}
 	bool transition_exists(char through) {
 		if (this->to_state->find(through) != this->to_state->end())
-			return true;
+		return true;
 		else
-			return false;
+		return false;
 	}
 	inline bool operator==(const FiniteAutomataState& rhs) {
 		// object comparison is by name alone, not by pointed type
 		if (this->name.compare(rhs.name) == 0)
-			return true;
+		return true;
 		else
-			return false;
+		return false;
 	}
 	inline bool operator==(const FiniteAutomataState* rhs) {
 		if (this->name.compare(rhs->name) == 0)
-			return true;
+		return true;
 		else
-			return false;
+		return false;
 	}
 	inline bool operator==(const shared_ptr<FiniteAutomataState> rhs) {
 		if (this->name.compare(rhs->name) == 0)
-			return true;
+		return true;
 		else
-			return false;
+		return false;
 	}
 };
 
@@ -113,8 +116,14 @@ private:
 		return this->states->end();
 	}
 public:
+	FiniteAutomataContainer(string name) : dead_state(true), name(name) {
+		this->states = shared_ptr<vector<shared_ptr<FiniteAutomataState>>>(new vector<shared_ptr<FiniteAutomataState>>);
+		this->states->push_back(
+				shared_ptr<FiniteAutomataState>(new FiniteAutomataState(false, false, "DEAD")));
+		this->run_iter = this->states->end();
+	}
 	FiniteAutomataContainer(string name, bool dead_states_enabled) :
-			dead_state(dead_states_enabled), name(name) {
+	dead_state(dead_states_enabled), name(name) {
 		this->states = shared_ptr<vector<shared_ptr<FiniteAutomataState>>>(new vector<shared_ptr<FiniteAutomataState>>);
 		if (dead_state) {
 			this->states->push_back(
@@ -130,13 +139,13 @@ public:
 			vector<shared_ptr<FiniteAutomataState>>::iterator old_state = this->get_state(
 					state_name);
 			if (old_state != states->end())
-				throw string("COPY STATE");
+			throw string("COPY STATE");
 			else {
 				this->states->push_back(
 						shared_ptr<FiniteAutomataState>(new FiniteAutomataState(is_initial, is_final,
-								state_name)));
+										state_name)));
 				vector<shared_ptr<FiniteAutomataState>>::iterator new_state_iter =
-						this->get_state(state_name);
+				this->get_state(state_name);
 				// set new initial and final states if this node has
 				// been constructed as initial/final
 				if ((*new_state_iter)->get_is_initial() == true) {
@@ -157,13 +166,13 @@ public:
 			// get the exact item for removal
 			for (vector<shared_ptr<FiniteAutomataState>>::iterator i =
 					this->get_begin_iter(); i != this->get_end_iter(); ++i)
-				// item with the same state name is the object
-				if ((*i)->get_name().compare(state_name) == 0) {
-					rem_target = i;
-					break;
-				}
+			// item with the same state name is the object
+			if ((*i)->get_name().compare(state_name) == 0) {
+				rem_target = i;
+				break;
+			}
 			if (rem_target == states->end())
-				throw string("NO SUCH STATE");
+			throw string("NO SUCH STATE");
 			// remove all transitions
 			for (vector<shared_ptr<FiniteAutomataState>>::iterator i =
 					this->get_begin_iter(); i != this->get_end_iter(); ++i) {
@@ -193,8 +202,8 @@ public:
 	shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> get_states_not(
 			string opposite_state_name) {
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> opposite_states =
-				shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>>
-				(new vector<vector<shared_ptr<FiniteAutomataState>>::iterator>);
+		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>>
+		(new vector<vector<shared_ptr<FiniteAutomataState>>::iterator>);
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
 				i != this->get_end_iter(); ++i) {
 			if ((*i)->get_name().compare(opposite_state_name) != 0) {
@@ -212,7 +221,7 @@ public:
 				state_name);
 		(*new_initial)->set_is_initial(true);
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> new_non_initial =
-				this->get_states_not(state_name);
+		this->get_states_not(state_name);
 
 		// if the first element isn't invalid
 		if ((*new_non_initial)[0] != states->end()) {
@@ -234,7 +243,7 @@ public:
 				state_name);
 		(*new_final)->set_is_final(true);
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> new_non_final =
-				this->get_states_not(state_name);
+		this->get_states_not(state_name);
 		for (vector<vector<shared_ptr<FiniteAutomataState>>::iterator>::iterator i =
 				new_non_final->begin(); i != new_non_final->end(); ++i) {
 			(*(*i))->set_is_final(false);
@@ -245,7 +254,7 @@ public:
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
 				i != this->get_end_iter(); ++i) {
 			if ((*i)->get_is_final() == true)
-				return i;
+			return i;
 		}
 		return states->end();
 	}
@@ -253,7 +262,7 @@ public:
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
 				i != this->get_end_iter(); ++i) {
 			if ((*i)->get_is_initial() == true)
-				return i;
+			return i;
 		}
 		return states->end();
 	}
@@ -261,15 +270,15 @@ public:
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
 				i != this->get_end_iter(); ++i) {
 			if ((*i)->get_name().compare("DEAD") == 0)
-				return i;
+			return i;
 		}
 		return states->end();
 	}
 	void add_transition(string first_state, char through, string second_state) {
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
-				this->get_state(first_state);
+		this->get_state(first_state);
 		vector<shared_ptr<FiniteAutomataState>>::iterator second_state_iter =
-				this->get_state(second_state);
+		this->get_state(second_state);
 		if (*first_state_iter != nullptr && *second_state_iter != nullptr) {
 			// check to see if there is already a transition through that same character
 			if (!(*first_state_iter)->transition_exists(through)) {
@@ -281,37 +290,37 @@ public:
 	}
 	void remove_transition(string first_state, char through) {
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
-				this->get_state(first_state);
+		this->get_state(first_state);
 		if (*first_state_iter != nullptr) {
 			// check to see if the through state is in the map
 			if ((*first_state_iter)->transition_exists(through)) {
 				(*first_state_iter)->remove_transition(through);
 			} else
-				return;
+			return;
 		}
 	}
 	void add_alphabet(string first_state, string second_state) {
 		// assumes ascii
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
-				this->get_state(first_state);
+		this->get_state(first_state);
 		vector<shared_ptr<FiniteAutomataState>>::iterator second_state_iter =
-				this->get_state(second_state);
+		this->get_state(second_state);
 		if (*first_state_iter != nullptr && *second_state_iter != nullptr) {
 			for (int i = 65; i <= 90; i++)
-				this->add_transition(first_state, (char) i, second_state);
+			this->add_transition(first_state, (char) i, second_state);
 			for (int i = 97; i <= 122; i++)
-				this->add_transition(first_state, (char) i, second_state);
+			this->add_transition(first_state, (char) i, second_state);
 		}
 	}
 	void add_digits(string first_state, string second_state) {
 		// assumes ascii
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
-				this->get_state(first_state);
+		this->get_state(first_state);
 		vector<shared_ptr<FiniteAutomataState>>::iterator second_state_iter =
-				this->get_state(second_state);
+		this->get_state(second_state);
 		if (*first_state_iter != nullptr && *second_state_iter != nullptr) {
 			for (int i = 48; i <= 57; i++)
-				this->add_transition(first_state, (char) i, second_state);
+			this->add_transition(first_state, (char) i, second_state);
 		}
 	}
 	void print() {
@@ -322,9 +331,9 @@ public:
 				i != this->get_end_iter(); ++i) {
 			cout << (*i)->get_name();
 			if ((*i)->get_is_initial())
-				cout << ": Initial ";
+			cout << ": Initial ";
 			if ((*i)->get_is_final())
-				cout << ": Final ";
+			cout << ": Final ";
 			cout << endl;
 		}
 		cout << "-" << endl;
@@ -335,29 +344,29 @@ public:
 					(*i)->get_transitions()->begin();
 					t != (*i)->get_transitions()->end(); ++t) {
 				cout << (*i)->get_name() << " -> " << (*(t->second))->get_name()
-						<< ": '" << t->first << "'" << endl;
+				<< ": '" << t->first << "'" << endl;
 			}
 		}
 		cout << "-" << endl;
 	}
-	bool in_accepting_state() {
+	bool accepted() {
 		// invalid state of the iterator
 		if (this->run_iter == this->states->end())
-			return false;
+		return false;
 		else {
 			//else we need to determine if the iterator is on a final state
 			if ((*this->run_iter)->get_is_final() == true)
-				return true;
+			return true;
 			else
-				return false;
+			return false;
 		}
 	}
 	void run(string input_str) {
 		if (input_str.compare("") != 0)
-			// go through each char in the string and step
-			for (string::iterator i = input_str.begin(); i != input_str.end();
-					++i)
-				this->step(*i);
+		// go through each char in the string and step
+		for (string::iterator i = input_str.begin(); i != input_str.end();
+				++i)
+		this->step(*i);
 	}
 	void reset() {
 		// reset the run iterator to the initial state
@@ -368,7 +377,7 @@ public:
 		if ((*this->run_iter)->transition_exists(input_char)) {
 			this->run_iter = (*this->run_iter)->get_transition(input_char);
 			if (RUN_DEBUG)
-				cout << "In: " << (*this->run_iter)->get_name() << endl;
+			cout << "In: " << (*this->run_iter)->get_name() << endl;
 		} else {
 			// dead state
 			if (RUN_DEBUG) {

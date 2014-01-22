@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef structures
-#define structures
+#ifndef structures_h
+#define structures_h
 
 // standard includes
 #include "Standard.hpp"

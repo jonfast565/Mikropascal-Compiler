@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 JonFast. All rights reserved.
 //
 
-#ifndef input
-#define input
+#ifndef input_h
+#define input_h
 
 // use standard includes
 #include "Standard.hpp"

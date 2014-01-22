@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 JonFast. All rights reserved.
 //
 
-#ifndef standard
-#define standard
+#ifndef standard_h
+#define standard_h
 
 // all C++ includes here
 #include <iostream>
