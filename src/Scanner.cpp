@@ -29,6 +29,10 @@ string::iterator Scanner::get_end_fp() {
 	return this->string_ptr->end();
 }
 
+void Scanner::set_fp_begin() {
+	this->file_ptr = this->string_ptr->begin();
+}
+
 void Scanner::reset() {
 	// reset all FSAs, delete all tokens, move file pointer to beginning
 }
