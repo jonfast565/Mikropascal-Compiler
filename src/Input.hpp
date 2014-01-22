@@ -18,11 +18,12 @@ class Input {
 private:
     // input in lines and string
 	shared_ptr<vector<string>> lines;
-	shared_ptr<string> resolved;
+	shared_ptr<string> entire_input;
     Input(string filename, int line_alloc);
 public:
     virtual ~Input();
-    static Input* try_get_input(string filename);
+    static shared_ptr<Input> try_get_input(string filename);
+    shared_ptr<string> detach_input();
     void print_input();
 };
 

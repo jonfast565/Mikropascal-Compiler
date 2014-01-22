@@ -10,6 +10,7 @@
 
 #include "Standard.hpp"
 #include "Input.hpp"
+#include "FiniteAutomata.hpp"
 
 class Token {
 private:
@@ -20,7 +21,7 @@ private:
 public:
 	Token(int line, int column, string token, string lexeme) :
 		line(line), column(column), token(token), lexeme(lexeme){};
-	~Token() = default;
+	virtual ~Token() = default;
 	void set_line(int line) {
 		this->line = line;
 	}
@@ -46,14 +47,24 @@ public:
 		return this->lexeme;
 	}
 	string to_string() {
-		return string(this->get_token() + " " + this->get_line() + " " +
-				this->get_column() + " " + this->get_lexeme());
+		stringstream ss;
+		ss << this->get_token() << " " << this->get_line() << " " <<
+				this->get_column() << " " << this->get_lexeme();
+		return ss.str();
 	}
 };
 
 class Scanner {
 private:
 	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> token_automata;
+	shared_ptr<Input> input_ptr;
+	shared_ptr<string> string_ptr;
+	string::iterator file_ptr;
+	string::iterator get_begin_fp();
+	string::iterator get_end_fp();
+public:
+	Scanner(shared_ptr<Input> input_ptr);
+	virtual ~Scanner();
 
 };
 

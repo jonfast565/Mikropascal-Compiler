@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 
 int input_test_cases(string path) {
 	cout << "--- Input Tests ---" << endl;
-	Input* test_input = Input::try_get_input(path);
+	shared_ptr<Input> test_input = Input::try_get_input(path);
 	test_input->print_input();
 	cout << "--- End ---" << endl;
 	return 0;

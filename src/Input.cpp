@@ -10,7 +10,8 @@
 #include "Input.hpp"
 
 Input::Input(string filename, int line_alloc) {
-	// create input structure
+	// input constructor
+
     // reopen file
     FILE* f = fopen(filename.c_str(), "r");
     
@@ -26,17 +27,24 @@ Input::Input(string filename, int line_alloc) {
     }
 
     // line concat
-    this->resolved = shared_ptr<string>(new string(""));
+    this->entire_input = shared_ptr<string>(new string(""));
     for (vector<string>::iterator i = lines->begin(); i != lines->end(); ++i) {
     	for (string::iterator j = i->begin(); j != i->end(); ++j) {
-    		this->resolved->push_back(*j);
+    		this->entire_input->push_back(*j);
     	}
     }
 
     // no more file stuff
     fclose(f);
 }
-Input* Input::try_get_input(string filename) {
+
+Input::~Input() {
+	// destructor
+    lines.reset();
+    entire_input.reset();
+}
+
+shared_ptr<Input> Input::try_get_input(string filename) {
 	// factory pattern, try to get the input
     // do this the good ol' C way
     FILE* f = nullptr;
@@ -46,19 +54,20 @@ Input* Input::try_get_input(string filename) {
             throw string("INVALID FILE");
         else {
             fclose(f);
-            return new Input(filename, DEFAULT_LINE_ALLOC);
+            return shared_ptr<Input>(new Input(filename, DEFAULT_LINE_ALLOC));
         }
     } catch(std::string& exception) {
         fclose(f);
         return nullptr;
     }
 }
-Input::~Input() {
-	// destructor
-    lines.reset();
-    resolved.reset();
+
+shared_ptr<string> Input::detach_input() {
+	// copy and return detached input
+	return shared_ptr<string>(new string(*this->entire_input));
 }
+
 void Input::print_input() {
 	// test print input
-	cout << (*this->resolved) << endl;
+	cout << (*this->entire_input) << endl;
 }
