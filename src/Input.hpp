@@ -26,12 +26,4 @@ public:
     void print_input();
 };
 
-class Token {
-private:
-	int line_number;
-	int column;
-	string name;
-	char value;
-};
-
 #endif

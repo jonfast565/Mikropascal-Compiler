@@ -17,7 +17,7 @@ int main(int, char*[]);
 int main(int argc, char* argv[]) {
 	// test cases
 	automata_test_cases();
-	input_test_cases("C:/Users/Jon/Desktop/program.pas");
+	input_test_cases("/Users/jonfast/Desktop/program.pas");
 	getchar();
 	return EXIT_SUCCESS;
 }

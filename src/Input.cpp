@@ -9,9 +9,8 @@
 // includes
 #include "Input.hpp"
 
-// input structures
 Input::Input(string filename, int line_alloc) {
-    
+	// create input structure
     // reopen file
     FILE* f = fopen(filename.c_str(), "r");
     
@@ -37,9 +36,8 @@ Input::Input(string filename, int line_alloc) {
     // no more file stuff
     fclose(f);
 }
-
-// factory pattern, try to get the input
 Input* Input::try_get_input(string filename) {
+	// factory pattern, try to get the input
     // do this the good ol' C way
     FILE* f = nullptr;
     try {
@@ -55,13 +53,12 @@ Input* Input::try_get_input(string filename) {
         return nullptr;
     }
 }
-
-// destructor
 Input::~Input() {
+	// destructor
     lines.reset();
     resolved.reset();
 }
-
 void Input::print_input() {
-	cout << this->resolved << endl;
+	// test print input
+	cout << (*this->resolved) << endl;
 }
