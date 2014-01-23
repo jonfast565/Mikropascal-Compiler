@@ -1,0 +1,30 @@
+
+--- A Mikropascal Compiler ---
+
+Authors: AJ Shinde, Risaad Barucha, Jon Fast
+Class: CSCI 481
+Language: C++11
+
+Desription: A compiler for the Mikropascal
+language using C++.
+
+Updates:
+--------
+4/23/2014 - Scanner is almost working.
+	Details: Missing string literals, int literals, float literals, and identifiers.
+			 Error checking also not implemented.
+	Note: If the scanner scans something it cannot get a token for, it will get stuck in an
+		  infinite loop. This will be resolved with some added failover later.
+4/22/2014 - Work on scanning class methods has begun.
+4/21/2014 - Updates made to the scanner, FSAs now playing nice.
+4/18/2014 - 4/20/2014 - FSA header only library devised.
+
+Descriptions:
+-------------
+Standard.hpp - A header file containing most standard includes needed for compilation.
+FiniteAutomata.hpp - A header only library containing FSA constructs.
+Input.hpp/Input.cpp - A general purpose class for getting input into the program.
+Scanner.hpp/Scanner.cpp - A class for scanning Mikropascal tokens from an Input class stream.
+Structures.hpp - Miscellaneous data structures (if necessary, can be removed).
+Tests.hpp - Tests of each class.
+Driver.hpp - The file that includes the main() function used to initialize the compiler.
