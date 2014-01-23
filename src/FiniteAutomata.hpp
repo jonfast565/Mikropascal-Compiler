@@ -134,6 +134,12 @@ public:
 	virtual ~FiniteAutomataContainer() {
 		this->states->clear();
 	}
+	string get_name() {
+		return this->name;
+	}
+	void set_name(string name) {
+		this->name = name;
+	}
 	void add_state(string state_name, bool is_initial, bool is_final) {
 		try {
 			vector<shared_ptr<FiniteAutomataState>>::iterator old_state = this->get_state(

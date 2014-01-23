@@ -22,6 +22,7 @@ enum TokType {
 	MP_ASSIGNMENT,
 	MP_LEFT_PAREN,
 	MP_RIGHT_PAREN,
+    MP_PERIOD,
 
 	// program info tokens
 	MP_PROGRAM,
@@ -88,14 +89,24 @@ enum TokType {
 	MP_DECIMAL_DIGITS,
 
 	// identifier
-	MP_ID
+	MP_ID,
+
+	// comment brackets
+	MP_BRACKET_LEFT,
+	MP_BRACKET_RIGHT,
+
+	// end of file
+	MP_NULLCHAR,
+
+	//ignorable
+	MP_COMMENT
 };
 
 // token mapper (except digits, decimal digits, or ids)
-static pair<string, string> get_names(TokType token) {
+static pair<string, string> get_token_info(TokType token) {
 	switch (token) {
-	// primitive tokens
-
+	
+    // primitive tokens
 	case MP_SEMI_COLON:
 		return pair<string, string>("MP_SEMI_COLON", string(";"));
 	case MP_COLON:
@@ -108,8 +119,10 @@ static pair<string, string> get_names(TokType token) {
 		return pair<string, string>("MP_LEFT_PAREN", string("("));
 	case MP_RIGHT_PAREN:
 		return pair<string, string>("MP_RIGHT_PAREN", string(")"));
+    case MP_PERIOD:
+        return pair<string, string>("MP_PERIOD", string("."));
 
-		// program info tokens
+    // program info tokens
 	case MP_PROGRAM:
 		return pair<string, string>("MP_PROGRAM", string("program"));
 	case MP_PROCEDURE:
@@ -208,11 +221,33 @@ static pair<string, string> get_names(TokType token) {
 		return pair<string, string>("MP_STRING", string("string"));
 	case MP_BOOLEAN:
 		return pair<string, string>("MP_BOOLEAN", string("boolean"));
+	case MP_BRACKET_LEFT:
+		return pair<string, string>("MP_BRACKET_LEFT", string("{"));
+	case MP_BRACKET_RIGHT:
+		return pair<string, string>("MP_BRACKET_RIGHT", string("}"));
+	case MP_NULLCHAR:
+		return pair<string, string>("MP_NULLCHAR", string("\0"));
+    case MP_COMMENT:
+        return pair<string, string>("MP_COMMENT", string(""));
+    case MP_ID:
+        return pair<string, string>("MP_ID", string(""));
 	default:
 		return pair<string, string>(string(), string());
 	}
 }
 
+// inverse token mapper, get token from a string
+static TokType get_token_by_name(string name) {
+	for (auto i = TokType::MP_SEMI_COLON; i <= TokType::MP_BOOLEAN; i++) {
+		if (get_token_info(i).first.compare(name) == 0) {
+			return (TokType) i;
+		}
+	}
+	// error
+	return (TokType) 0;
+}
+
+// Token class
 class Token {
 private:
 	int line;
@@ -250,16 +285,22 @@ public:
 	}
 	shared_ptr<string> to_string() {
 		stringstream ss;
-		ss << this->get_token() << " " << this->get_line() << " "
-				<< this->get_column() << " " << this->get_lexeme();
+		ss << setw(15) << left << get_token_info(this->get_token()).first
+        << setw(4) << left << this->get_line()
+		<< setw(4) << left << this->get_column()
+        << setw(20) << left << string("'" + this->get_lexeme() + "'");
 		return shared_ptr<string>(new string(ss.str()));
 	}
 };
 
 class Scanner {
 private:
-	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> token_automata;
+	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> keyword_automata;
 	shared_ptr<FiniteAutomataContainer> id_automata;
+	shared_ptr<FiniteAutomataContainer> int_literal_automata;
+	shared_ptr<FiniteAutomataContainer> float_literal_automata;
+	shared_ptr<FiniteAutomataContainer> is_letter;
+	shared_ptr<FiniteAutomataContainer> is_digit;
 	shared_ptr<vector<shared_ptr<Token>>> found_tokens;
 	shared_ptr<Input> input_ptr;
 	shared_ptr<string> string_ptr;
@@ -273,16 +314,27 @@ public:
 	Scanner(shared_ptr<Input> input_ptr);
 	virtual ~Scanner();
 	void reset();
-	void scan();
+	void reset_all_kword_automata();
+	void step_all_kword(char next);
+	bool check_any_kword_accepted();
+	TokType get_first_accepted_token();
+	shared_ptr<Token> scan_one();
+	void scan_all();
 	char peek();
 	char next();
 	bool right();
+	bool right_two();
 	bool left();
 	int get_line_number();
 	int get_col_number();
+	void load_keyword_automata();
+	void load_id_automata();
+	void load_ld_automata();
+	void load_numerical_automata();
 	void set_line_number(int new_line_number);
 	void set_col_number(int new_col_number);
-	void write_tof(string filename);
+	void write_tokens_tof(string filename);
+	void display_tokens();
 };
 
 #endif

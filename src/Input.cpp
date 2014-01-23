@@ -11,21 +11,17 @@
 
 Input::Input(string filename, int line_alloc) {
 	// input constructor
-
     // reopen file
     FILE* f = fopen(filename.c_str(), "r");
-    
     // set up line capture (for getting file lines)
     this->lines = unique_ptr<vector<string>>(new vector<string>());
     char input_str[line_alloc];
     memset(&input_str, '\0', line_alloc * sizeof(char));
-
     // line capture
     while(fgets(input_str, line_alloc, f) != nullptr) {
     	this->lines->push_back(string(input_str));
     	memset(&input_str, '\0', line_alloc * sizeof(char));
     }
-
     // line concat
     this->entire_input = shared_ptr<string>(new string(""));
     for (vector<string>::iterator i = lines->begin(); i != lines->end(); ++i) {
@@ -33,7 +29,6 @@ Input::Input(string filename, int line_alloc) {
     		this->entire_input->push_back(*j);
     	}
     }
-
     // no more file stuff
     fclose(f);
 }

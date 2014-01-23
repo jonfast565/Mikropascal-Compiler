@@ -11,7 +11,7 @@
 #include "Standard.hpp"
 #include "FiniteAutomata.hpp"
 #include "Input.hpp"
-//#include "Scanner.hpp"
+#include "Scanner.hpp"
 
 int automata_keyword_test_cases() {
 	cout << "--- Automata Keyword Tests ---" << endl;
@@ -78,6 +78,21 @@ int input_test_cases(string path) {
 	cout << "--- Input Tests ---" << endl;
 	shared_ptr<Input> test_input = Input::try_get_input(path);
 	test_input->print_input();
+	cout << "--- End ---" << endl;
+	return 0;
+}
+
+int scanner_test() {
+	cout << "--- Scanner Test ---" << endl;
+	string path = "/Users/jonfast/Desktop/token_test.txt";
+	shared_ptr<Input> test_input = Input::try_get_input(path);
+	cout << "--- Input ---" << endl;
+	test_input->print_input();
+    cout << "--- End ---" << endl << endl;
+    cout << "--- Tokens ---" << endl;
+	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
+    scanner->scan_all();
+    scanner->display_tokens();
 	cout << "--- End ---" << endl;
 	return 0;
 }
