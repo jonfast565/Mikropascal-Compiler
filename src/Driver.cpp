@@ -13,7 +13,18 @@ int main(int, char*[]);
 
 int main(int argc, char* argv[]) {
 	cout << "--- Mikropascal Compiler ---" << endl;
-	scanner_test();
+	if (argc >= 2) {
+		// try open file
+		FILE* fp = fopen(argv[1], "r");
+		if (fp == NULL)
+			cout << "Failure: Could not open specified file." << endl;
+		else {
+			fclose(fp);
+			scanner_test(string(argv[1]));
+		}
+	} else {
+		scanner_test(string("/Users/jonfast/Desktop/program.pas"));
+	}
 	return EXIT_SUCCESS;
 }
 

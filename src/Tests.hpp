@@ -82,18 +82,14 @@ int input_test_cases(string path) {
 	return 0;
 }
 
-int scanner_test() {
-	cout << "--- Scanner Test ---" << endl;
-	string path = "/Users/jonfast/Desktop/token_test.txt";
-	shared_ptr<Input> test_input = Input::try_get_input(path);
-	cout << "--- Input ---" << endl;
-	test_input->print_input();
-    cout << "--- End ---" << endl << endl;
-    cout << "--- Tokens ---" << endl;
+int scanner_test(string filename) {
+	//cout << "--- Scanner Test ---" << endl;
+	shared_ptr<Input> test_input = Input::try_get_input(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
     scanner->scan_all();
     scanner->display_tokens();
-	cout << "--- End ---" << endl;
+    scanner->write_tokens_tof(string(filename + "_tokens.txt"));
+	// cout << "--- End ---" << endl;
 	return 0;
 }
 

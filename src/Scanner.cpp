@@ -16,8 +16,8 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
 	this->found_tokens = shared_ptr<vector<shared_ptr<Token>>>(new vector<shared_ptr<Token>>);
 	this->keyword_automata = shared_ptr<
 			vector<shared_ptr<FiniteAutomataContainer>>>(new vector<shared_ptr<FiniteAutomataContainer>>);
+	this->scan_buf = shared_ptr<vector<char>>(new vector<char>);
 	this->load_keyword_automata();
-	this->load_ld_automata();
 	this->load_id_automata();
 	this->load_numerical_automata();
 	this->col_number = 0;
@@ -32,8 +32,7 @@ Scanner::~Scanner() {
 	this->string_ptr.reset();
 	this->found_tokens.reset();
 	this->keyword_automata.reset();
-	this->is_digit.reset();
-	this->is_letter.reset();
+	this->id_automata.reset();
 }
 
 // get an iterator that returns the beginning of the input stream
@@ -120,12 +119,9 @@ void Scanner::scan_all() {
 	}
 }
 
-// scan over one token (this is the driver method!!!... crickey critical mate)
+// scan over one token (this is the dispatcher method!!!... crickey critical mate)
 shared_ptr<Token> Scanner::scan_one() {
 	// tokenize the input until done
-	// initialize a vector to hold all token characters
-	vector<char> scan_buf;
-
 	// debug printer for the scanner
 	if (PRINT_DEBUG) {
 		static int iteration = 0;
@@ -151,182 +147,244 @@ shared_ptr<Token> Scanner::scan_one() {
 		this->found_tokens->push_back(null_tok);
 		return *(this->found_tokens->end() - 1);
 	}
-	if (this->peek() == ' ') {
+	// check for space or newline
+	if (this->peek() == ' ' || this->peek() == '\n') {
 		// ignore whitespace
-		// move the file pointer ahead 1 (as per contract)
-		this->right();
-	}
-	// check for a new line
-	else if (this->peek() == '\n') {
-		// ignore, (line number managed in right() and left())
+		// ignore newline, (line number managed in right() and left())
 		// move the file pointer ahead 1 (as per contract)
 		this->right();
 	}
 	// remove double dash comments
 	else if (this->peek() == get_token_info(TokType::MP_DIV).second[0]
-			&& (this->next() == get_token_info(TokType::MP_DIV).second[0]
-					&& this->next() != '\0')) {
-		// new line comment, so ends at the next line
-		while (this->peek() != '\n') {
-			// push the current char on to the scan buffer
-			scan_buf.push_back(this->peek());
-			// move the file pointer to the right a tad
-			this->right();
-		}
-		// convert input stream to a string
-		string buf_lexeme = string(scan_buf.begin(), scan_buf.end());
-		// create the token
-		shared_ptr<Token> comment_tok = shared_ptr<Token>(
-				new Token(this->get_line_number(), this->get_col_number(),
-						TokType::MP_COMMENT, buf_lexeme));
-		// push token onto the list of found tokens
-		found_tokens->push_back(comment_tok);
-		// move the file pointer ahead 1 (as per contract)
-		this->right();
-		// return the comment
-		return comment_tok;
+			&& (this->next() == get_token_info(TokType::MP_DIV).second[0])) {
+		return this->scan_line_comment();
 	}
 	// remove bracket comments
 	else if (this->peek()
 			== get_token_info(TokType::MP_BRACKET_LEFT).second[0]) {
-		// push back the left bracket (lexeme) and
-		// wait for the second bracket to appear under the file pointer
-		while (this->peek()
-				!= get_token_info(TokType::MP_BRACKET_RIGHT).second[0]) {
-			// push back the current bracket
-			scan_buf.push_back(this->peek());
-			// move the file pointer ahead 1 (as per contract)
-			this->right();
-		}
-		// once done push back a right bracket (lexeme)
-		scan_buf.push_back(get_token_info(TokType::MP_BRACKET_RIGHT).second[0]);
-		// convert input stream to a string
-		string buf_lexeme = string(scan_buf.begin(), scan_buf.end());
-		// create the token
-		shared_ptr<Token> comment_tok = shared_ptr<Token>(
-				new Token(this->get_line_number(), this->get_col_number(),
-						TokType::MP_COMMENT, buf_lexeme));
-		// save the token
-		this->found_tokens->push_back(comment_tok);
-		// clear the scan buffer
-		scan_buf.clear();
-		// move the file pointer ahead 1 (as per contract)
-		this->right();
-		// return the last token
-		return *(this->found_tokens->end() - 1);
+		return this->scan_bracket_comment();
 	}
-
+	// scan string literals
+	else if (this->peek() == '\'') {
+		return this->scan_string_literal();
+	}
 	// now look for other tokens that are actually important
+	// find numeric tokens, literal, etc.
+	else if (this->isnum(this->peek())) {
+		return this->scan_num();
+	}
+	// scan a keyword, id, or malformed item?
 	else {
-		// keyword tokens
-		this->reset_all_kword_automata();
-		// until the end of the token has been reached
+		return this->scan_keyword_or_id();
+	}
+	// should not happen
+	return shared_ptr<Token>(
+			new Token(this->get_line_number(), this->get_col_number(),
+					TokType::MP_MALFORMED, "INVALID"));
+}
+
+shared_ptr<Token> Scanner::scan_keyword_or_id() {
+	// reset the id automata
+	this->reset_id();
+	this->reset_all_kword_automata();
+	// continuously parse
+	if (this->isalnum(this->peek()) || this->peek() == '_') {
 		while (true) {
-			// get the first character
-			char look = this->peek();
-			// step all FSAs by this character
-			this->step_all_kword(look);
-			this->step_id(look);
-			// push the character onto the temp token buffer
-			scan_buf.push_back(look);
-			// check to see if any automata has accepted
-			// if this is the case, break
-			if (this->check_any_kword_accepted() == true) {
-				// get accepted keyword
-				TokType kword = this->get_first_accepted_kword();
-				// worry about special cases (these are rather discriminating
-				// for Mikropascal it seems)
-				// boolean operations with two symbols (a bit hacky, so generalize later)
-				if (kword == MP_EQUALS | kword == MP_LESSTHAN
-						| kword == MP_GREATERTHAN | kword == MP_COLON) {
-					// one char of lookahead required to ascertain whether or not
-					// we can ascertain the token type
-					vector<string> match_letters;
-					match_letters.push_back("=>");
-					pair<TokType, vector<char>> lk_for_binary_op = this->quick_lookahead_kword(kword, match_letters);
-					kword = lk_for_binary_op.first;
-					scan_buf.insert(scan_buf.end(), lk_for_binary_op.second.begin(), lk_for_binary_op.second.end());
-					// readln and writeln
-				} else if (kword == MP_READ | kword == MP_WRITE) {
-					// two chara of lookahead required to ascertain whether or not
-					// we can ascertain the token type
-					vector<string> match_letters;
-					match_letters.push_back("l");
-					match_letters.push_back("n");
-					pair<TokType, vector<char>> lk_for_binary_op = this->quick_lookahead_kword(kword, match_letters);
-					kword = lk_for_binary_op.first;
-					scan_buf.insert(scan_buf.end(), lk_for_binary_op.second.begin(), lk_for_binary_op.second.end());
+			// parse id
+			// initialize the identifier automata
+			this->step_id(this->peek());
+			this->step_all_kword(this->peek());
+			// push back the first character
+			scan_buf->push_back(this->peek());
+			// if there is another alphanumeric char
+			// in the input to the right
+			if (!(this->isalnum(this->next()) || this->next() == '_')) {
+				TokType kword;
+				if (this->check_any_kword_accepted() == true
+						&& this->check_id_accepted() == true) {
+					// get the matched token
+					kword = this->get_first_accepted_kword();
+				} else if (this->check_any_kword_accepted() == false
+						&& this->check_id_accepted() == true) {
+					kword = TokType::MP_ID;
+				} else {
+					// chances are this is bad
+					kword = TokType::MP_MALFORMED;
 				}
 				// convert input stream to a string
-				string buf_lexeme = string(scan_buf.begin(), scan_buf.end());
+				string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
 				// generate token
 				shared_ptr<Token> new_kword = shared_ptr<Token>(
 						new Token(this->get_line_number(),
 								this->get_col_number(), kword, buf_lexeme));
 				// save token
 				this->found_tokens->push_back(new_kword);
+				// clear the scan buffer
+				this->scan_buf->clear();
 				// move the file pointer ahead by 1 (as per contract)
 				this->right();
 				// we're done here, so we can return the new token
-				return new_kword;
-			}
-			// move the file pointer ahead 1 (as per contract)
-			this->right();
-		}
-		// clear the scan buffer, since we're done with it
-		scan_buf.clear();
-	}
-	// error case token (shouldn't happen, yikes!)
-	return shared_ptr<Token>(
-			new Token(this->get_line_number(), this->get_col_number(),
-					TokType::MP_MALFORMED, "INVALID"));
-}
-
-// lookahead for multi-char operators
-pair<TokType, vector<char>> Scanner::quick_lookahead_kword(TokType old_type,
-		vector<string> looking_for) {
-	// save a vector of the lookahead chars found that were successful
-	// also, save a new token type, if applicable.
-	// finally, we need to determine if a new type was in fact found
-	// and if not, make sure we don't break things
-	vector<char> lookahead_chars_found;
-	TokType new_type;
-	bool new_type_found = false;
-	// variable arguments (vector) indicate levels of lookahead (1, 2, 10 chars)
-	// strings indicate what letters should be looked for at each level
-	for (vector<string>::iterator i = looking_for.begin(); i != looking_for.end(); i++) {
-		// get the string for lookahead level
-		string lookahead_chooser = *i;
-		// determine if there is a lookahead character in the input string that
-		// satisfies the character we are looking for
-		for (string::iterator j = lookahead_chooser.begin(); j != lookahead_chooser.end(); j++) {
-			if (this->next() == *j) {
-				// step everything another time
-				this->step_all_kword(*j);
-				lookahead_chars_found.push_back(*j);
-				// move right once
+				return *(this->found_tokens->end() - 1);
+			} else {
+				// continue on scanning
 				this->right();
 			}
 		}
-		// check if a keyword has been accepted for this level
-		if (this->check_any_kword_accepted() == true) {
-			new_type = this->get_first_accepted_kword();
-			new_type_found = true;
-		}
-		// else keep what was the original
-		// or perhaps malformed... error case can go here later
 	}
-	// done
-	// indicate the return type based on what was found after investigation
-	if (new_type_found)
-		return pair<TokType, vector<char>>(new_type, lookahead_chars_found);
-	else
-		return pair<TokType, vector<char>>(old_type, lookahead_chars_found);
+	// look for symbols
+	else {
+		this->reset_all_kword_automata();
+		// parse short keyword
+		// look at the char in the input
+		// initialize the identifier automata
+		this->step_all_kword(this->peek());
+		// push back the first character
+		scan_buf->push_back(this->peek());
+		// get the first accepted symbol
+		TokType kword = this->get_first_accepted_kword();
+		// go one to the right, and get second accepted if possible
+		this->step_all_kword(this->next());
+		if (this->check_any_kword_accepted() == true) {
+			this->right();
+			scan_buf->push_back(this->peek());
+			kword = this->get_first_accepted_kword();
+		}
+		// convert input stream to a string
+		string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+		// generate token
+		shared_ptr<Token> new_kword = shared_ptr<Token>(
+				new Token(this->get_line_number(), this->get_col_number(),
+						kword, buf_lexeme));
+		// save token
+		this->found_tokens->push_back(new_kword);
+		// clear the scan buffer
+		this->scan_buf->clear();
+		// move the file pointer ahead by 1 (as per contract)
+		this->right();
+		// we're done here, so we can return the new token
+		return *(this->found_tokens->end() - 1);
+	}
+}
+shared_ptr<Token> Scanner::scan_num() {
+	if (this->isnum(this->peek())) {
+		// reset automata
+		this->reset_flt();
+		this->reset_int();
+		while (true) {
+			// push back the first character
+			scan_buf->push_back(this->peek());
+
+			// step each automata
+			this->step_int(this->peek());
+			this->step_flt(this->peek());
+
+			if (!(this->isnum(this->next()) || this->next() == '.')) {
+				// make the decision as to what type of number this is
+				TokType kword;
+				if (this->check_flt_accepted()) {
+					kword = TokType::MP_FLOAT_LITERAL;
+				} else if (this->check_int_accepted()) {
+					kword = TokType::MP_INT_LITERAL;
+				} else {
+					kword = TokType::MP_MALFORMED;
+				}
+				// convert input stream to a string
+				string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+				// generate token
+				shared_ptr<Token> new_kword = shared_ptr<Token>(
+						new Token(this->get_line_number(),
+								this->get_col_number(), kword, buf_lexeme));
+				// save token
+				this->found_tokens->push_back(new_kword);
+				// clear the scan buffer
+				this->scan_buf->clear();
+				// move the file pointer ahead by 1 (as per contract)
+				this->right();
+				// we're done here, so we can return the new token
+				return *(this->found_tokens->end() - 1);
+			} else {
+				// keep scanning
+				this->right();
+			}
+		}
+	}
+	return *(this->found_tokens->end() - 1);
+}
+shared_ptr<Token> Scanner::scan_line_comment() {
+	// new line comment, so ends at the next line
+	while (this->peek() != '\n') {
+		// push the current char on to the scan buffer
+		scan_buf->push_back(this->peek());
+		// move the file pointer to the right a tad
+		this->right();
+	}
+	// convert input stream to a string
+	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+	// create the token
+	shared_ptr<Token> comment_tok = shared_ptr<Token>(
+			new Token(this->get_line_number(), this->get_col_number(),
+					TokType::MP_COMMENT, buf_lexeme));
+	// push token onto the list of found tokens
+	found_tokens->push_back(comment_tok);
+	// clear the scan buffer
+	this->scan_buf->clear();
+	// move the file pointer ahead 1 (as per contract)
+	this->right();
+	// return the comment
+	return *(this->found_tokens->end() - 1);
+}
+shared_ptr<Token> Scanner::scan_bracket_comment() {
+	// push back the left bracket (lexeme) and
+	// wait for the second bracket to appear under the file pointer
+	while (this->peek() != get_token_info(TokType::MP_BRACKET_RIGHT).second[0]) {
+		// push back the current bracket
+		scan_buf->push_back(this->peek());
+		// move the file pointer ahead 1 (as per contract)
+		this->right();
+	}
+	// once done push back a right bracket (lexeme)
+	scan_buf->push_back(get_token_info(TokType::MP_BRACKET_RIGHT).second[0]);
+	// convert input stream to a string
+	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+	// create the token
+	shared_ptr<Token> comment_tok = shared_ptr<Token>(
+			new Token(this->get_line_number(), this->get_col_number(),
+					TokType::MP_COMMENT, buf_lexeme));
+	// save the token
+	this->found_tokens->push_back(comment_tok);
+	// clear the scan buffer
+	scan_buf->clear();
+	// move the file pointer ahead 1 (as per contract)
+	this->right();
+	// return the last token
+	return *(this->found_tokens->end() - 1);
+}
+
+shared_ptr<Token> Scanner::scan_string_literal() {
+	this->right();
+	while (this->peek() != '\'') {
+		scan_buf->push_back(this->peek());
+		this->right();
+	}
+	// convert input stream to a string
+	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+	// create the token
+	shared_ptr<Token> string_tok = shared_ptr<Token>(
+			new Token(this->get_line_number(), this->get_col_number(),
+					TokType::MP_STRING, buf_lexeme));
+	// save the token
+	this->found_tokens->push_back(string_tok);
+	// clear the scan buffer
+	scan_buf->clear();
+	// move the file pointer ahead 1 (as per contract)
+	this->right();
+	// return the last token
+	return *(this->found_tokens->end() - 1);
 }
 
 // look at the current character under the file pointer
 char Scanner::peek() {
-	// look at the current char in the input
+// look at the current char in the input
 	if (this->file_ptr != this->string_ptr->end())
 		// if not end, character is valid
 		return *this->file_ptr;
@@ -336,7 +394,7 @@ char Scanner::peek() {
 
 // look at the next character under the file pointer
 char Scanner::next() {
-	// look at the next char in the input, without consuming
+// look at the next char in the input, without consuming
 	if (this->right()) {
 		// get the next character
 		char lookahead = this->peek();
@@ -351,7 +409,7 @@ char Scanner::next() {
 
 // move the file pointer to the right
 bool Scanner::right() {
-	// move the file pointer to the right by one
+// move the file pointer to the right by one
 	if (this->file_ptr != this->string_ptr->end()) {
 		// deal with line and column numbers
 		if (*this->file_ptr == '\n') {
@@ -370,8 +428,8 @@ bool Scanner::right() {
 
 // move the file pointer to the right twice (deprecated)
 bool Scanner::right_two() {
-	// go to the right two, if you went back
-	// starts cleanly at the next token
+// go to the right two, if you went back
+// starts cleanly at the next token
 	bool success = true;
 	for (auto i = 0; i < 2; i++)
 		success &= this->right();
@@ -380,17 +438,18 @@ bool Scanner::right_two() {
 
 // move the file pointer left
 bool Scanner::left() {
-	// move the file pointer to the left by one
+// move the file pointer to the left by one
 	if (this->file_ptr != this->string_ptr->begin()) {
 		// deal with line and column numbers
-		if (*this->file_ptr == '\n') {
-			this->line_number--;
-			// determine the length of the last line
-			// unimplemented, expect shady results
-			// this->col_number = 1;
-		} else {
-			this->col_number--;
-		}
+		/*
+		 if (*this->file_ptr == '\n') {
+		 this->line_number--;
+		 // determine the length of the last line
+		 // unimplemented, expect shady results
+		 // this->col_number = 1;
+		 }
+		 this->col_number--;
+		 */
 		// successful
 		this->file_ptr--;
 		return true;
@@ -401,19 +460,19 @@ bool Scanner::left() {
 
 // set the line number
 void Scanner::set_line_number(int new_line_number) {
-	// get the line number
+// get the line number
 	this->line_number = new_line_number;
 }
 
 // set the column number
 void Scanner::set_col_number(int new_col_number) {
-	// get the column number
+// get the column number
 	this->col_number = new_col_number;
 }
 
 // create automata for dealing with keywords
 void Scanner::load_keyword_automata() {
-	// get the token type for all keyworded or single char types
+// get the token type for all keyworded or single char types
 	for (TokType i = TokType::MP_SEMI_COLON; i <= TokType::MP_BOOLEAN; i++) {
 		// create new automata for all types
 		shared_ptr<FiniteAutomataContainer> new_fa = shared_ptr<
@@ -471,50 +530,110 @@ void Scanner::reset_id() {
 
 // load automata for scanning numeric literals
 void Scanner::load_numerical_automata() {
-	// unimplemented
+	// create floating point automata
+	this->float_literal_automata = shared_ptr<FiniteAutomataContainer>(
+			new FiniteAutomataContainer("FLT_LITERAL", true));
+	this->float_literal_automata->add_state("0", true, false);
+	this->float_literal_automata->add_state("1", false, true);
+	this->float_literal_automata->add_digits("0", "0");
+	this->float_literal_automata->add_digits("1", "1");
+	this->float_literal_automata->add_transition("0", '.', "1");
+
+	// create integer automata
+	this->int_literal_automata = shared_ptr<FiniteAutomataContainer>(
+			new FiniteAutomataContainer("INT_LITERAL", true));
+	this->int_literal_automata->add_state("0", true, false);
+	this->int_literal_automata->add_state("1", false, true);
+	this->int_literal_automata->add_digits("1", "1");
+	this->int_literal_automata->add_digits("0", "1");
+
+	// reset both
+	this->float_literal_automata->reset();
+	this->int_literal_automata->reset();
+}
+
+bool Scanner::check_int_accepted() {
+	return this->int_literal_automata->accepted();
+}
+
+void Scanner::step_int(char next) {
+	this->int_literal_automata->step(next);
+}
+
+void Scanner::reset_int() {
+	this->int_literal_automata->reset();
+}
+
+bool Scanner::check_flt_accepted() {
+	return this->float_literal_automata->accepted();
+}
+
+void Scanner::step_flt(char next) {
+	this->float_literal_automata->step(next);
+}
+
+void Scanner::reset_flt() {
+	this->float_literal_automata->reset();
 }
 
 // load automata for determining if an input symbol is a letter or digit
-void Scanner::load_ld_automata() {
-	// load automata that decides whether or not a character is a digit
-	// operation is performed only once before dead state
-	// so automata must be reset on every run
-	this->is_digit = shared_ptr<FiniteAutomataContainer>(
-			new FiniteAutomataContainer("IS_DIGIT", true));
-	this->is_digit->add_state("0", true, false);
-	this->is_digit->add_state("1", false, true);
-	this->is_digit->add_digits("0", "1");
-	// load automata that decides whether or not a character is a letter
-	// operation is performed only once before dead state
-	// so automata must be reset on every run
-	this->is_letter = shared_ptr<FiniteAutomataContainer>(
-			new FiniteAutomataContainer("IS_LETTER", true));
-	this->is_letter->add_state("0", true, false);
-	this->is_letter->add_state("1", false, true);
-	this->is_letter->add_alphabet("0", "1");
-	// reset both
-	this->is_letter->reset();
-	this->is_digit->reset();
-}
-
-// step over a letter
-void Scanner::step_letter(char next) {
-	this->is_letter->step(next);
+bool Scanner::isalnum(char next) {
+	if (isalpha(next) || isdigit(next))
+		return true;
+	else
+		return false;
 }
 
 // step over a digit
-void Scanner::step_digits(char next) {
-	this->is_digit->step(next);
+bool Scanner::isnum(char next) {
+	// load automata that decides whether or not a character is a digit
+	// operation is performed only once before dead state
+	// so automata must be reset on every run
+	shared_ptr<FiniteAutomataContainer> is_digit = shared_ptr<
+			FiniteAutomataContainer>(
+			new FiniteAutomataContainer("IS_DIGIT", true));
+	is_digit->add_state("0", true, false);
+	is_digit->add_state("1", false, true);
+	is_digit->add_digits("0", "1");
+	// reset to start
+	is_digit->reset();
+	// step
+	is_digit->step(next);
+	// determine acceptance
+	// then free memory and return result
+	if (is_digit->accepted() == true) {
+		is_digit.reset();
+		return true;
+	} else {
+		is_digit.reset();
+		return false;
+	}
 }
 
-// accept a letter
-bool Scanner::accept_letter() {
-	return this->is_letter->accepted();
-}
-
-// accept a digit
-bool Scanner::accept_digit() {
-	return this->is_digit->accepted();
+// step over a letter
+bool Scanner::isalpha(char next) {
+	// load automata that decides whether or not a character is a letter
+	// operation is performed only once before dead state
+	// so automata must be reset on every run
+	shared_ptr<FiniteAutomataContainer> is_letter = shared_ptr<
+			FiniteAutomataContainer>(
+			new FiniteAutomataContainer("IS_LETTER", true));
+	is_letter->add_state("0", true, false);
+	is_letter->add_state("1", false, true);
+	is_letter->add_alphabet("0", "1");
+	// reset both
+	is_letter->reset();
+	// step on both
+	is_letter->step(next);
+	// determine acceptance
+	// then free memory and return result
+	if (is_letter->accepted() == true) {
+		is_letter.reset();
+		return true;
+	} else {
+		is_letter.reset();
+		return false;
+	}
 }
 
 // get the line number
@@ -531,23 +650,33 @@ int Scanner::get_col_number() {
 
 // write tokens to a file
 void Scanner::write_tokens_tof(string filename) {
-// unimplemented
+	if (this->found_tokens->size() > 0) {
+		ofstream file;
+		file.open(filename);
+		for (vector<shared_ptr<Token>>:: iterator i = this->found_tokens->begin();
+				i != this->found_tokens->end(); i++) {
+			file << (*(*i)->to_string()) << '\n';
+		}
+		file.close();
+	}
 }
 
 // display tokens on the screen
 void Scanner::display_tokens() {
 	cout << "+";
-	for (auto i = 0; i < 31 + 20 + 25; i++) cout << "-";
+	for (auto i = 0; i < 31 + 20 + 25; i++)
+		cout << "-";
 	cout << endl;
 	stringstream ss;
 	ss << setw(1) << std::left << "| ";
 	ss << setw(25) << std::left << "Token:";
-    ss << setw(10) << std::left << "Line:";
+	ss << setw(10) << std::left << "Line:";
 	ss << setw(10) << std::left << "Column:";
-    ss << setw(30) << std::left << "Lexeme:";
+	ss << setw(30) << std::left << "Lexeme:";
 	cout << ss.str() << endl;
 	cout << "+";
-	for (auto i = 0; i < 31 + 20 + 25; i++) cout << "-";
+	for (auto i = 0; i < 31 + 20 + 25; i++)
+		cout << "-";
 	cout << endl;
 	for (vector<shared_ptr<Token>>::iterator i = this->found_tokens->begin();
 			i != found_tokens->end(); i++) {
@@ -555,7 +684,8 @@ void Scanner::display_tokens() {
 		cout << "| " << *string_rep << endl;
 	}
 	cout << "+";
-	for (auto i = 0; i < 31 + 20 + 25; i++) cout << "-";
+	for (auto i = 0; i < 31 + 20 + 25; i++)
+		cout << "-";
 	cout << endl;
 }
 

@@ -19,6 +19,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <fstream>
 
 // all C derived includes here
 #include <cassert>

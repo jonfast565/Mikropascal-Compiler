@@ -86,8 +86,8 @@ enum TokType {
 	MP_BOOLEAN,
 
 	// numeric literals
-	MP_DIGITS,
-	MP_DECIMAL_DIGITS,
+	MP_INT_LITERAL,
+	MP_FLOAT_LITERAL,
 
 	// identifier
 	MP_ID,
@@ -229,14 +229,20 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_BRACKET_LEFT", "{");
 	case MP_BRACKET_RIGHT:
 		return pair<string, string>("MP_BRACKET_RIGHT", "}");
+    
+    // others
 	case MP_NULLCHAR:
 		return pair<string, string>("MP_NULLCHAR", "\0");
     case MP_COMMENT:
         return pair<string, string>("MP_COMMENT", "");
     case MP_ID:
         return pair<string, string>("MP_ID", "");
+    case MP_INT_LITERAL:
+        return pair<string, string>("MP_INT_LITERAL", "");
+    case MP_FLOAT_LITERAL:
+        return pair<string, string>("MP_FLT_LITERAL", "");
     case MP_MALFORMED:
-    	return pair<string, string>("MP_MALFORMED", "");
+        return pair<string, string>("MP_MALFORMED", "");
 	default:
 		return pair<string, string>("", "");
 	}
@@ -305,11 +311,10 @@ private:
 	shared_ptr<FiniteAutomataContainer> id_automata;
 	shared_ptr<FiniteAutomataContainer> int_literal_automata;
 	shared_ptr<FiniteAutomataContainer> float_literal_automata;
-	shared_ptr<FiniteAutomataContainer> is_letter;
-	shared_ptr<FiniteAutomataContainer> is_digit;
 	shared_ptr<vector<shared_ptr<Token>>> found_tokens;
 	shared_ptr<Input> input_ptr;
 	shared_ptr<string> string_ptr;
+	shared_ptr<vector<char>> scan_buf;
 	string::iterator file_ptr;
 	string::iterator get_begin_fp();
 	string::iterator get_end_fp();
@@ -328,11 +333,9 @@ public:
 	TokType get_first_accepted_kword();
 	pair<TokType, vector<char>> quick_lookahead_kword(TokType old, vector<string> looking_for);
 	// ld ops
-	void load_ld_automata();
-	void step_letter(char next);
-	void step_digits(char next);
-	bool accept_letter();
-	bool accept_digit();
+	bool isalnum(char next);
+	bool isnum(char next);
+	bool isalpha(char next);
 	// id ops
 	void load_id_automata();
 	bool check_id_accepted();
@@ -340,11 +343,19 @@ public:
 	void reset_id();
 	// numerical automata ops
 	void load_numerical_automata();
-	bool check_num_accepted();
-	void step_num();
-	void reset_num();
+	bool check_int_accepted();
+    bool check_flt_accepted();
+	void step_int(char next);
+	void reset_int();
+    void step_flt(char next);
+    void reset_flt();
 	// scanner ops
 	shared_ptr<Token> scan_one();
+	shared_ptr<Token> scan_keyword_or_id();
+	shared_ptr<Token> scan_num();
+	shared_ptr<Token> scan_line_comment();
+	shared_ptr<Token> scan_bracket_comment();
+	shared_ptr<Token> scan_string_literal();
 	void scan_all();
 	char peek();
 	char next();
