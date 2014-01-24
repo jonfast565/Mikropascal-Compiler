@@ -17,6 +17,7 @@
 class FiniteAutomataContainer;
 class FiniteAutomataState;
 
+// class that creates a state in an FA
 class FiniteAutomataState {
 private:
 	bool is_final;
@@ -24,6 +25,7 @@ private:
 	string name;
 	shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>> to_state;
 public:
+	// ctor
 	FiniteAutomataState(bool is_initial,
                         bool is_final, string name) :
 	is_final(is_final), is_initial(is_initial), name(name) {
@@ -31,36 +33,46 @@ public:
 		shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>>
 		(new map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>);
 	}
+	// dtor
 	virtual ~FiniteAutomataState() {
 		to_state->clear();
 	}
+	// get initial state
 	bool get_is_initial() {
 		return this->is_initial;
 	}
+	// get final state
 	bool get_is_final() {
 		return this->is_final;
 	}
+	// get FA name
 	string get_name() {
 		return this->name;
 	}
+	// set FA name
 	void set_name(string name) {
 		this->name = name;
 	}
+	// set initial state
 	void set_is_initial(bool is_initial) {
 		this->is_initial = is_initial;
 	}
+	// set final state
 	void set_is_final(bool is_final) {
 		this->is_final = is_final;
 	}
+	// add a transition to this state
 	void add_transition(char on,
                         vector<shared_ptr<FiniteAutomataState>>::iterator new_state) {
 		this->to_state->insert(
                                pair<char, vector<shared_ptr<FiniteAutomataState>>::iterator>(on,
                                                                                              new_state));
 	}
+	// remove a transition from this state
 	void remove_transition(char on) {
 		this->to_state->erase(on);
 	}
+	// modify a transition from this state to another
 	void change_transition(char on,
                            vector<shared_ptr<FiniteAutomataState>>::iterator new_state) {
 		this->to_state->erase(on);
@@ -68,18 +80,25 @@ public:
                                pair<char, vector<shared_ptr<FiniteAutomataState>>::iterator>(on,
                                                                                              new_state));
 	}
+	// return the map of character to transitions (iterators to new states)
 	shared_ptr<map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>> get_transitions() {
 		return this->to_state;
 	}
+	// return a particular transition to another state (iterator)
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_transition(char input_char) {
 		return (*to_state)[input_char];
 	}
+	// determine if a particular transition exists
 	bool transition_exists(char through) {
+		// ensure that a state we find is not invalid
+		// by comparing against the end() iterator
 		if (this->to_state->find(through) != this->to_state->end())
             return true;
 		else
             return false;
 	}
+	// state comparison by reference
+	// names are compared for equality
 	inline bool operator==(const FiniteAutomataState& rhs) {
 		// object comparison is by name alone, not by pointed type
 		if (this->name.compare(rhs.name) == 0)
@@ -87,12 +106,16 @@ public:
 		else
             return false;
 	}
+	// state comparison by pointed type
+	// names are compared for equality
 	inline bool operator==(const FiniteAutomataState* rhs) {
 		if (this->name.compare(rhs->name) == 0)
             return true;
 		else
             return false;
 	}
+	// state comparison by pointed to type via shared_ptr<T>
+	// names are compared for equality
 	inline bool operator==(const shared_ptr<FiniteAutomataState> rhs) {
 		if (this->name.compare(rhs->name) == 0)
             return true;
@@ -101,55 +124,83 @@ public:
 	}
 };
 
-// pre decls
+// class that creates a container in an FA
 class FiniteAutomataContainer {
 private:
+	// consists of a vector of states, and an iterator over that
+	// vector for running the machine
 	shared_ptr<vector<shared_ptr<FiniteAutomataState>>> states;
-	vector<shared_ptr<FiniteAutomataState>>::iterator run_iter;
-	bool dead_state;
+	vector<shared_ptr<FiniteAutomataState>>::iterator run_ptr;
+	// info variables like a machine name
+	// and if a DEAD state exists
+	bool dead_state_exists;
 	string name;
-	// private methods
+
+	// get an iterator for the first element of the state vector
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_begin_iter() {
 		return this->states->begin();
 	}
+
+	// get an iterator for the last element of the state vector
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_end_iter() {
 		return this->states->end();
 	}
+
 public:
-	FiniteAutomataContainer(string name) : dead_state(true), name(name) {
+	// construct an entire finite automata (ctor)
+	FiniteAutomataContainer(string name) : dead_state_exists(true), name(name) {
+		// create a list of states
 		this->states = shared_ptr<vector<shared_ptr<FiniteAutomataState>>>(new vector<shared_ptr<FiniteAutomataState>>);
+		// automatically create a dead state (hack), that the iterator goes to if a match is not found
 		this->states->push_back(
                                 shared_ptr<FiniteAutomataState>(new FiniteAutomataState(false, false, "DEAD")));
-		this->run_iter = this->states->end();
+		// move the run pointer to the end state (as for now it is invalid)
+		// this is the equivalent of the pointer in an array of char
+		this->run_ptr = this->states->end();
 	}
+
+	// construct an FA with the option of setting if a dead state exists
+	// performs the same function as the ctor above
 	FiniteAutomataContainer(string name, bool dead_states_enabled) :
-	dead_state(dead_states_enabled), name(name) {
+	dead_state_exists(dead_states_enabled), name(name) {
 		this->states = shared_ptr<vector<shared_ptr<FiniteAutomataState>>>(new vector<shared_ptr<FiniteAutomataState>>);
-		if (dead_state) {
+		if (dead_state_exists) {
 			this->states->push_back(
                                     shared_ptr<FiniteAutomataState>(new FiniteAutomataState(false, false, "DEAD")));
 		};
-		this->run_iter = this->states->end();
+		this->run_ptr = this->states->end();
 	}
+
+	// destructor clears all loose states
 	virtual ~FiniteAutomataContainer() {
 		this->states->clear();
 	}
+
+	// get this automata's name
 	string get_name() {
 		return this->name;
 	}
+
+	// set this automata's name
 	void set_name(string name) {
 		this->name = name;
 	}
+
+	// add a state to this automata
 	void add_state(string state_name, bool is_initial, bool is_final) {
 		try {
+			// ensure that the state we're adding is not a copy of a previous one
 			vector<shared_ptr<FiniteAutomataState>>::iterator old_state = this->get_state(
                                                                                           state_name);
+			// error throws a copy state and exits
 			if (old_state != states->end())
                 throw string("COPY STATE");
 			else {
+				// otherwise add this as a state
 				this->states->push_back(
                                         shared_ptr<FiniteAutomataState>(new FiniteAutomataState(is_initial, is_final,
                                                                                                 state_name)));
+				// get a state iterator to this new state, so we can edit it a little
 				vector<shared_ptr<FiniteAutomataState>>::iterator new_state_iter =
 				this->get_state(state_name);
 				// set new initial and final states if this node has
@@ -161,66 +212,93 @@ public:
 					this->set_final_state((*new_state_iter)->get_name());
 				}
 			}
+			// reset the run pointer to a new initial state if necessary
 			this->reset();
 		} catch (string& exception) {
 			return;
 		}
 	}
+
+	// remove a state
 	void remove_state(string state_name) {
 		try {
+			// get an iterator to a null state (meaning we need to search for the correct one)
 			vector<shared_ptr<FiniteAutomataState>>::iterator rem_target = states->end();
 			// get the exact item for removal
 			for (vector<shared_ptr<FiniteAutomataState>>::iterator i =
                  this->get_begin_iter(); i != this->get_end_iter(); ++i)
-                // item with the same state name is the object
+                // we need to find an item with the same state name, which is the correct
                 if ((*i)->get_name().compare(state_name) == 0) {
+                	// iterator now set to remove i
                     rem_target = i;
                     break;
                 }
+			// if state found is null
 			if (rem_target == states->end())
                 throw string("NO SUCH STATE");
-			// remove all transitions
+			// otherwise, remove all invalid transitions to the state we took away
+			// look through each state's transition map to find the appropriate matches
 			for (vector<shared_ptr<FiniteAutomataState>>::iterator i =
                  this->get_begin_iter(); i != this->get_end_iter(); ++i) {
+				// iterate through the map
 				for (map<char, vector<shared_ptr<FiniteAutomataState>>::iterator>::iterator t =
                      (*i)->get_transitions()->begin();
                      t != (*i)->get_transitions()->end(); ++t) {
+					// if the removal iterator rem_target is equivalent to any iterator
+					// that points to itself
 					if ((*i) == *(t->second)) {
+						// erase the transition that is pointed to by the map iterator
 						(*i)->get_transitions()->erase(t);
 					}
 				}
 			}
-			// finally, erase the state
+			// finally, erase the state when all transitions are dealt with
 			this->states->erase(rem_target);
 		} catch (string &exception) {
+			// fall through, can't remove a state that's not there
 			return;
 		}
 	}
+
+	// get a state
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_state(string state_name) {
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
+			// compare names of states to determine if we can obtain
 			if ((*i)->get_name().compare(state_name) == 0) {
 				return i;
 			}
 		}
+		// otherwise, return null state
 		return states->end();
 	}
+
+	// return all states that are not equivalent to the one given
 	shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> get_states_not(
                                                                                          string opposite_state_name) {
+		// create a vector to retrieve all other states than the one described by
+		// the input string
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> opposite_states =
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>>
 		(new vector<vector<shared_ptr<FiniteAutomataState>>::iterator>);
+		// iterate through all states
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
+			// if names are not equal
 			if ((*i)->get_name().compare(opposite_state_name) != 0) {
+				// add the opposite state to the vector
 				opposite_states->push_back(i);
 			}
 		}
+		// if no states have been added, push back the null state (error)
 		if (opposite_states->size() == 0) {
 			opposite_states->push_back(states->end());
 		}
+		// return a pointer to a vector of opposite states
 		return opposite_states;
 	}
+
+	// set a new initial state
 	void set_initial_state(string state_name) {
 		// set initial
 		vector<shared_ptr<FiniteAutomataState>>::iterator new_initial = this->get_state(
@@ -242,12 +320,19 @@ public:
 		new_non_initial->clear();
 
 		// move the run iterator to the new starting position
-		this->run_iter = this->get_state(state_name);
+		this->run_ptr = this->get_state(state_name);
 	}
+
+	// sets the final state of this machine
 	void set_final_state(string state_name) {
 		vector<shared_ptr<FiniteAutomataState>>::iterator new_final = this->get_state(
                                                                                       state_name);
-		(*new_final)->set_is_final(true);
+		// if the state selected is valid, add a new finals state
+		if (new_final != states->end())
+			(*new_final)->set_is_final(true);
+
+		// unnecessary code to ensure a final state is unique, since you
+		// should be able to add multiple final states
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> new_non_final =
 		this->get_states_not(state_name);
 		for (vector<vector<shared_ptr<FiniteAutomataState>>::iterator>::iterator i =
@@ -256,6 +341,8 @@ public:
 		}
 		new_non_final->clear();
 	}
+
+	// iterate through states to find a final state
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_final_state() {
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
@@ -264,6 +351,8 @@ public:
 		}
 		return states->end();
 	}
+
+	// iterate through states to find an initial state
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_initial_state() {
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
@@ -272,6 +361,9 @@ public:
 		}
 		return states->end();
 	}
+
+	// iterate through states to find the dead state (there should only be one)
+	// however, the hackyness of this issue needs to be resolved.
 	vector<shared_ptr<FiniteAutomataState>>::iterator get_dead_state() {
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
@@ -280,7 +372,10 @@ public:
 		}
 		return states->end();
 	}
+
+	// add a transition from one state to another
 	void add_transition(string first_state, char through, string second_state) {
+		// get iterators pointing to both new states
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
 		this->get_state(first_state);
 		vector<shared_ptr<FiniteAutomataState>>::iterator second_state_iter =
@@ -294,6 +389,8 @@ public:
 			}
 		}
 	}
+
+	// remove a transition
 	void remove_transition(string first_state, char through) {
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
 		this->get_state(first_state);
@@ -305,8 +402,10 @@ public:
                 return;
 		}
 	}
+
+	// add all alphabetic characters as transitions between these two states
 	void add_alphabet(string first_state, string second_state) {
-		// assumes ascii
+		// assumes ascii is used!!!!
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
 		this->get_state(first_state);
 		vector<shared_ptr<FiniteAutomataState>>::iterator second_state_iter =
@@ -318,6 +417,8 @@ public:
                 this->add_transition(first_state, (char) i, second_state);
 		}
 	}
+
+	// add all digits as transitions between two states
 	void add_digits(string first_state, string second_state) {
 		// assumes ascii
 		vector<shared_ptr<FiniteAutomataState>>::iterator first_state_iter =
@@ -329,6 +430,8 @@ public:
                 this->add_transition(first_state, (char) i, second_state);
 		}
 	}
+
+	// give a detailed description of this FA
 	void print() {
 		cout << "Name: " << this->name << endl;
 		cout << "-" << endl;
@@ -355,18 +458,22 @@ public:
 		}
 		cout << "-" << endl;
 	}
+
+	// determines if this FA has accepted
 	bool accepted() {
 		// invalid state of the iterator
-		if (this->run_iter == this->states->end())
+		if (this->run_ptr == this->states->end())
             return false;
 		else {
 			//else we need to determine if the iterator is on a final state
-			if ((*this->run_iter)->get_is_final() == true)
+			if ((*this->run_ptr)->get_is_final() == true)
                 return true;
 			else
                 return false;
 		}
 	}
+
+	// runs a string on this FA, provided it is not empty
 	void run(string input_str) {
 		if (input_str.compare("") != 0)
             // go through each char in the string and step
@@ -374,26 +481,32 @@ public:
                  ++i)
                 this->step(*i);
 	}
+
+	// resets this FA to its initial state
 	void reset() {
 		// reset the run iterator to the initial state
-		this->run_iter = this->get_initial_state();
+		this->run_ptr = this->get_initial_state();
 	}
+
+	// steps through this FA one character at a time
 	void step(char input_char) {
 		// get transitions for the current state
-		if ((*this->run_iter)->transition_exists(input_char)) {
-			this->run_iter = (*this->run_iter)->get_transition(input_char);
+		if ((*this->run_ptr)->transition_exists(input_char)) {
+			this->run_ptr = (*this->run_ptr)->get_transition(input_char);
 			if (RUN_DEBUG)
-                cout << "In: " << (*this->run_iter)->get_name() << endl;
+                cout << "In: " << (*this->run_ptr)->get_name() << endl;
 		} else {
 			// dead state
 			if (RUN_DEBUG) {
 				cout << "Unable to transition..." << endl;
 			}
-			if (this->dead_state == true) {
-				this->run_iter = this->get_dead_state();
+			if (this->dead_state_exists == true) {
+				this->run_ptr = this->get_dead_state();
 			}
 		}
 	}
+
+	// builds an FA in this container from a keyword
 	void build_keyword(string kword) {
 		// build single stage fsas for keywords
 		// only run on a newly formed automata
@@ -417,6 +530,9 @@ public:
             this->add_transition(to_string(i), char_pair.second, to_string(i + 1));
         }
 	}
+
+	// helper
+	// returns all variants of a character (upper and lowercase)
 	pair<char, char> all_char_variants(char c) {
 		pair<char, char> char_pair;
 		if (c == toupper(c)) {
