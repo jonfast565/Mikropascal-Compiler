@@ -209,7 +209,7 @@ public:
 					this->set_initial_state((*new_state_iter)->get_name());
 				}
 				if ((*new_state_iter)->get_is_final() == true) {
-					this->set_final_state((*new_state_iter)->get_name());
+					this->set_final_state((*new_state_iter)->get_name(), true);
 				}
 			}
 			// reset the run pointer to a new initial state if necessary
@@ -324,15 +324,16 @@ public:
 	}
 
 	// sets the final state of this machine
-	void set_final_state(string state_name) {
+	void set_final_state(string state_name, bool is_final) {
 		vector<shared_ptr<FiniteAutomataState>>::iterator new_final = this->get_state(
                                                                                       state_name);
 		// if the state selected is valid, add a new finals state
 		if (new_final != states->end())
-			(*new_final)->set_is_final(true);
+			(*new_final)->set_is_final(is_final);
 
 		// unnecessary code to ensure a final state is unique, since you
 		// should be able to add multiple final states
+		/*
 		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> new_non_final =
 		this->get_states_not(state_name);
 		for (vector<vector<shared_ptr<FiniteAutomataState>>::iterator>::iterator i =
@@ -340,16 +341,20 @@ public:
 			(*(*i))->set_is_final(false);
 		}
 		new_non_final->clear();
+		*/
 	}
 
 	// iterate through states to find a final state
-	vector<shared_ptr<FiniteAutomataState>>::iterator get_final_state() {
+	shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> get_final_states() {
+		shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>> final_states =
+				shared_ptr<vector<vector<shared_ptr<FiniteAutomataState>>::iterator>>(
+						new vector<vector<shared_ptr<FiniteAutomataState>>::iterator>);
 		for (vector<shared_ptr<FiniteAutomataState>>::iterator i = this->get_begin_iter();
              i != this->get_end_iter(); ++i) {
 			if ((*i)->get_is_final() == true)
-                return i;
+                final_states->push_back(i);
 		}
-		return states->end();
+		return final_states;
 	}
 
 	// iterate through states to find an initial state

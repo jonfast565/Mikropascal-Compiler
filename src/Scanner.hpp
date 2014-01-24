@@ -34,6 +34,7 @@ enum TokType {
 
 	// io tokens
 	MP_READ,
+	MP_READLN,
 	MP_WRITE,
 	MP_WRITELN,
 
@@ -99,7 +100,8 @@ enum TokType {
 	MP_NULLCHAR,
 
 	//ignorable
-	MP_COMMENT
+	MP_COMMENT,
+	MP_MALFORMED
 };
 
 // token mapper (except digits, decimal digits, or ids)
@@ -108,131 +110,135 @@ static pair<string, string> get_token_info(TokType token) {
 	
     // primitive tokens
 	case MP_SEMI_COLON:
-		return pair<string, string>("MP_SEMI_COLON", string(";"));
+		return pair<string, string>("MP_SEMI_COLON", ";");
 	case MP_COLON:
-		return pair<string, string>("MP_COLON", string(":"));
+		return pair<string, string>("MP_COLON", ":");
 	case MP_COMMA:
-		return pair<string, string>("MP_COMMA", string(","));
+		return pair<string, string>("MP_COMMA", ",");
 	case MP_ASSIGNMENT:
-		return pair<string, string>("MP_ASSIGNMENT", string(":="));
+		return pair<string, string>("MP_ASSIGNMENT", ":=");
 	case MP_LEFT_PAREN:
-		return pair<string, string>("MP_LEFT_PAREN", string("("));
+		return pair<string, string>("MP_LEFT_PAREN", "(");
 	case MP_RIGHT_PAREN:
-		return pair<string, string>("MP_RIGHT_PAREN", string(")"));
+		return pair<string, string>("MP_RIGHT_PAREN", ")");
     case MP_PERIOD:
-        return pair<string, string>("MP_PERIOD", string("."));
+        return pair<string, string>("MP_PERIOD", ".");
 
     // program info tokens
 	case MP_PROGRAM:
-		return pair<string, string>("MP_PROGRAM", string("program"));
+		return pair<string, string>("MP_PROGRAM", "program");
 	case MP_PROCEDURE:
-		return pair<string, string>("MP_PROCEDURE", string("procedure"));
+		return pair<string, string>("MP_PROCEDURE", "procedure");
 	case MP_FUNCTION:
-		return pair<string, string>("MP_FUNCTION", string("function"));
+		return pair<string, string>("MP_FUNCTION", "function");
 	case MP_VAR:
-		return pair<string, string>("MP_VAR", string("var"));
+		return pair<string, string>("MP_VAR", "var");
 	case MP_BEGIN:
-		return pair<string, string>("MP_BEGIN", string("begin"));
+		return pair<string, string>("MP_BEGIN", "begin");
 	case MP_END:
-		return pair<string, string>("MP_END", string("end"));
+		return pair<string, string>("MP_END", "end");
 
 		// io tokens
 	case MP_READ:
-		return pair<string, string>("MP_READ", string("read"));
+		return pair<string, string>("MP_READ", "read");
+	case MP_READLN:
+		return pair<string, string>("MP_READLN", "readln");
 	case MP_WRITE:
-		return pair<string, string>("MP_WRITE", string("write"));
+		return pair<string, string>("MP_WRITE", "write");
 	case MP_WRITELN:
-		return pair<string, string>("MP_WRITELN", string("writeln"));
+		return pair<string, string>("MP_WRITELN", "writeln");
 
 		// loop tokens
 	case MP_REPEAT:
-		return pair<string, string>("MP_REPEAT", string("repeat"));
+		return pair<string, string>("MP_REPEAT", "repeat");
 	case MP_UNTIL:
-		return pair<string, string>("MP_UNTIL", string("until"));
+		return pair<string, string>("MP_UNTIL", "until");
 	case MP_WHILE:
-		return pair<string, string>("MP_WHILE", string("while"));
+		return pair<string, string>("MP_WHILE", "while");
 	case MP_DO:
-		return pair<string, string>("MP_DO", string("do"));
+		return pair<string, string>("MP_DO", "do");
 	case MP_FOR:
-		return pair<string, string>("MP_FOR", string("for"));
+		return pair<string, string>("MP_FOR", "for");
 	case MP_TO:
-		return pair<string, string>("MP_TO", string("to"));
+		return pair<string, string>("MP_TO", "to");
 	case MP_DOWNTO:
-		return pair<string, string>("MP_DOWNTO", string("downto"));
+		return pair<string, string>("MP_DOWNTO", "downto");
 
 		// control flow tokens
 	case MP_IF:
-		return pair<string, string>("MP_IF", string("if"));
+		return pair<string, string>("MP_IF", "if");
 	case MP_THEN:
-		return pair<string, string>("MP_THEN", string("then"));
+		return pair<string, string>("MP_THEN", "then");
 	case MP_ELSE:
-		return pair<string, string>("MP_ELSE", string("else"));
+		return pair<string, string>("MP_ELSE", "else");
 	case MP_EQUALS:
-		return pair<string, string>("MP_EQUALS", string("="));
+		return pair<string, string>("MP_EQUALS", "=");
 
 		// boolean comparison tokens
 	case MP_LESSTHAN:
-		return pair<string, string>("MP_LESSTHAN", string("<"));
+		return pair<string, string>("MP_LESSTHAN", "<");
 	case MP_GREATERTHAN:
-		return pair<string, string>("MP_GREATERTHAN", string(">"));
+		return pair<string, string>("MP_GREATERTHAN", ">");
 	case MP_GREATERTHAN_EQUALTO:
-		return pair<string, string>("MP_GREATERTHAN_EQUALTO", string(">="));
+		return pair<string, string>("MP_GREATERTHAN_EQUALTO", ">=");
 	case MP_LESSTHAN_EQUALTO:
-		return pair<string, string>("MP_LESSTHAN_EQUALTO", string("<="));
+		return pair<string, string>("MP_LESSTHAN_EQUALTO", "<=");
 	case MP_NOT_EQUAL:
-		return pair<string, string>("MP_NOT_EQUAL", string("<>"));
+		return pair<string, string>("MP_NOT_EQUAL", "<>");
 
 		// boolean (logical) operator tokens
 	case MP_OR:
-		return pair<string, string>("MP_OR", string("or"));
+		return pair<string, string>("MP_OR", "or");
 	case MP_AND:
-		return pair<string, string>("MP_AND", string("and"));
+		return pair<string, string>("MP_AND", "and");
 	case MP_NOT:
-		return pair<string, string>("MP_NOT", string("not"));
+		return pair<string, string>("MP_NOT", "not");
 
 		// boolean result tokens
 	case MP_TRUE:
-		return pair<string, string>("MP_TRUE", string("true"));
+		return pair<string, string>("MP_TRUE", "true");
 	case MP_FALSE:
-		return pair<string, string>("MP_FALSE", string("false"));
+		return pair<string, string>("MP_FALSE", "false");
 
 		// operator tokens
 	case MP_PLUS:
-		return pair<string, string>("MP_PLUS", string("+"));
+		return pair<string, string>("MP_PLUS", "+");
 	case MP_MINUS:
-		return pair<string, string>("MP_MINUS", string("-"));
+		return pair<string, string>("MP_MINUS", "-");
 	case MP_MULT:
-		return pair<string, string>("MP_MULT", string("*"));
+		return pair<string, string>("MP_MULT", "*");
 	case MP_DIV:
-		return pair<string, string>("MP_DIV", string("/"));
+		return pair<string, string>("MP_DIV", "/");
 
 		// multi character operator tokens
 	case MP_DIV_KW:
-		return pair<string, string>("MP_DIV_KW", string("div"));
+		return pair<string, string>("MP_DIV_KW", "div");
 	case MP_MOD_KW:
-		return pair<string, string>("MP_MOD_KW", string("mod"));
+		return pair<string, string>("MP_MOD_KW", "mod");
 
 		// type declaration tokens
 	case MP_INTEGER:
-		return pair<string, string>("MP_INTEGER", string("integer"));
+		return pair<string, string>("MP_INTEGER", "integer");
 	case MP_FLOAT:
-		return pair<string, string>("MP_FLOAT", string("float"));
+		return pair<string, string>("MP_FLOAT", "float");
 	case MP_STRING:
-		return pair<string, string>("MP_STRING", string("string"));
+		return pair<string, string>("MP_STRING", "string");
 	case MP_BOOLEAN:
-		return pair<string, string>("MP_BOOLEAN", string("boolean"));
+		return pair<string, string>("MP_BOOLEAN", "boolean");
 	case MP_BRACKET_LEFT:
-		return pair<string, string>("MP_BRACKET_LEFT", string("{"));
+		return pair<string, string>("MP_BRACKET_LEFT", "{");
 	case MP_BRACKET_RIGHT:
-		return pair<string, string>("MP_BRACKET_RIGHT", string("}"));
+		return pair<string, string>("MP_BRACKET_RIGHT", "}");
 	case MP_NULLCHAR:
-		return pair<string, string>("MP_NULLCHAR", string("\0"));
+		return pair<string, string>("MP_NULLCHAR", "\0");
     case MP_COMMENT:
-        return pair<string, string>("MP_COMMENT", string(""));
+        return pair<string, string>("MP_COMMENT", "");
     case MP_ID:
-        return pair<string, string>("MP_ID", string(""));
+        return pair<string, string>("MP_ID", "");
+    case MP_MALFORMED:
+    	return pair<string, string>("MP_MALFORMED", "");
 	default:
-		return pair<string, string>(string(), string());
+		return pair<string, string>("", "");
 	}
 }
 
@@ -285,10 +291,10 @@ public:
 	}
 	shared_ptr<string> to_string() {
 		stringstream ss;
-		ss << setw(15) << left << get_token_info(this->get_token()).first
-        << setw(4) << left << this->get_line()
-		<< setw(4) << left << this->get_column()
-        << setw(20) << left << string("'" + this->get_lexeme() + "'");
+		ss << setw(25) << left << get_token_info(this->get_token()).first
+        << setw(10) << left << this->get_line()
+		<< setw(10) << left << this->get_column()
+        << setw(30) << left << string("'" + this->get_lexeme() + "'");
 		return shared_ptr<string>(new string(ss.str()));
 	}
 };
@@ -314,10 +320,30 @@ public:
 	Scanner(shared_ptr<Input> input_ptr);
 	virtual ~Scanner();
 	void reset();
+	// kword ops
+	void load_keyword_automata();
 	void reset_all_kword_automata();
 	void step_all_kword(char next);
 	bool check_any_kword_accepted();
-	TokType get_first_accepted_token();
+	TokType get_first_accepted_kword();
+	pair<TokType, vector<char>> quick_lookahead_kword(TokType old, vector<string> looking_for);
+	// ld ops
+	void load_ld_automata();
+	void step_letter(char next);
+	void step_digits(char next);
+	bool accept_letter();
+	bool accept_digit();
+	// id ops
+	void load_id_automata();
+	bool check_id_accepted();
+	void step_id(char next);
+	void reset_id();
+	// numerical automata ops
+	void load_numerical_automata();
+	bool check_num_accepted();
+	void step_num();
+	void reset_num();
+	// scanner ops
 	shared_ptr<Token> scan_one();
 	void scan_all();
 	char peek();
@@ -325,16 +351,16 @@ public:
 	bool right();
 	bool right_two();
 	bool left();
+	// line and col numbers
 	int get_line_number();
 	int get_col_number();
-	void load_keyword_automata();
-	void load_id_automata();
-	void load_ld_automata();
-	void load_numerical_automata();
 	void set_line_number(int new_line_number);
 	void set_col_number(int new_col_number);
-	void write_tokens_tof(string filename);
+	// display tokens on the screen
 	void display_tokens();
+	void display_all_automata();
+	// file ops
+	void write_tokens_tof(string filename);
 };
 
 #endif
