@@ -109,7 +109,8 @@ TokType Scanner::get_first_accepted_kword() {
 			return get_token_by_name((*i)->get_name());
 		}
 	}
-	return (TokType) 0;
+	// this is weird, so return the weird one
+	return TokType::MP_MALFORMED;
 }
 
 // scan over all token until the file pointer reaches the end of file
@@ -187,53 +188,47 @@ shared_ptr<Token> Scanner::scan_keyword_or_id() {
 	// reset the id automata
 	this->reset_id();
 	this->reset_all_kword_automata();
-	// continuously parse
 	if (this->isalnum(this->peek()) || this->peek() == '_') {
-		while (true) {
+		// continuously parse
+		while (this->isalnum(this->peek()) || this->peek() == '_') {
 			// parse id
 			// initialize the identifier automata
 			this->step_id(this->peek());
 			this->step_all_kword(this->peek());
 			// push back the first character
 			scan_buf->push_back(this->peek());
-			// if there is another alphanumeric char
-			// in the input to the right
-			if (!(this->isalnum(this->next()) || this->next() == '_')) {
-				TokType kword;
-				if (this->check_any_kword_accepted() == true
-						&& this->check_id_accepted() == true) {
-					// get the matched token
-					kword = this->get_first_accepted_kword();
-				} else if (this->check_any_kword_accepted() == false
-						&& this->check_id_accepted() == true) {
-					kword = TokType::MP_ID;
-				} else {
-					// chances are this is bad
-					kword = TokType::MP_MALFORMED;
-				}
-				// convert input stream to a string
-				string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-				// generate token
-				shared_ptr<Token> new_kword = shared_ptr<Token>(
-						new Token(this->get_line_number(),
-								this->get_col_number(), kword, buf_lexeme));
-				// save token
-				this->found_tokens->push_back(new_kword);
-				// clear the scan buffer
-				this->scan_buf->clear();
-				// move the file pointer ahead by 1 (as per contract)
-				this->right();
-				// we're done here, so we can return the new token
-				return *(this->found_tokens->end() - 1);
-			} else {
-				// continue on scanning
-				this->right();
-			}
+			// move right
+			this->right();
 		}
+		TokType kword;
+		if (this->check_any_kword_accepted() == true
+				&& this->check_id_accepted() == true) {
+			// get the matched token
+			kword = this->get_first_accepted_kword();
+		} else if (this->check_any_kword_accepted() == false
+				&& this->check_id_accepted() == true) {
+			kword = TokType::MP_ID;
+		} else {
+			// chances are this is bad
+			kword = TokType::MP_MALFORMED;
+		}
+		// convert input stream to a string
+		string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+		// generate token
+		shared_ptr<Token> new_kword = shared_ptr<Token>(
+				new Token(this->get_line_number(), this->get_col_number(),
+						kword, buf_lexeme));
+		// save token
+		this->found_tokens->push_back(new_kword);
+		// clear the scan buffer
+		this->scan_buf->clear();
+		// move the file pointer ahead by 1 (as per contract)
+		this->right();
+		// we're done here, so we can return the new token
+		return *(this->found_tokens->end() - 1);
 	}
 	// look for symbols
 	else {
-		this->reset_all_kword_automata();
 		// parse short keyword
 		// look at the char in the input
 		// initialize the identifier automata
@@ -266,48 +261,44 @@ shared_ptr<Token> Scanner::scan_keyword_or_id() {
 	}
 }
 shared_ptr<Token> Scanner::scan_num() {
-	if (this->isnum(this->peek())) {
-		// reset automata
-		this->reset_flt();
-		this->reset_int();
-		while (true) {
-			// push back the first character
-			scan_buf->push_back(this->peek());
+	// reset automata
+	this->reset_flt();
+	this->reset_int();
 
-			// step each automata
-			this->step_int(this->peek());
-			this->step_flt(this->peek());
-
-			if (!(this->isnum(this->next()) || this->next() == '.')) {
-				// make the decision as to what type of number this is
-				TokType kword;
-				if (this->check_flt_accepted()) {
-					kword = TokType::MP_FLOAT_LITERAL;
-				} else if (this->check_int_accepted()) {
-					kword = TokType::MP_INT_LITERAL;
-				} else {
-					kword = TokType::MP_MALFORMED;
-				}
-				// convert input stream to a string
-				string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-				// generate token
-				shared_ptr<Token> new_kword = shared_ptr<Token>(
-						new Token(this->get_line_number(),
-								this->get_col_number(), kword, buf_lexeme));
-				// save token
-				this->found_tokens->push_back(new_kword);
-				// clear the scan buffer
-				this->scan_buf->clear();
-				// move the file pointer ahead by 1 (as per contract)
-				this->right();
-				// we're done here, so we can return the new token
-				return *(this->found_tokens->end() - 1);
-			} else {
-				// keep scanning
-				this->right();
-			}
-		}
+	// keep scanning until there is some nasty fail
+	while (this->isnum(this->next()) || this->next() == '.' ||
+			this->next() == 'E' || this->next() == 'e' || this->next() == '+' ||
+			this->next() == '-') {
+		// push back the first character
+		scan_buf->push_back(this->peek());
+		// step each automata
+		this->step_int(this->peek());
+		this->step_flt(this->peek());
+		// move right
+		this->right();
 	}
+	// once done, make the decision as to what type of number this is
+	TokType kword;
+	if (this->check_flt_accepted()) {
+		kword = TokType::MP_FLOAT_LITERAL;
+	} else if (this->check_int_accepted()) {
+		kword = TokType::MP_INT_LITERAL;
+	} else {
+		kword = TokType::MP_MALFORMED;
+	}
+	// convert input stream to a string
+	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
+	// generate token
+	shared_ptr<Token> new_kword = shared_ptr<Token>(
+			new Token(this->get_line_number(), this->get_col_number(), kword,
+					buf_lexeme));
+	// save token
+	this->found_tokens->push_back(new_kword);
+	// clear the scan buffer
+	this->scan_buf->clear();
+	// move the file pointer ahead by 1 (as per contract)
+	this->right();
+	// we're done here, so we can return the new token
 	return *(this->found_tokens->end() - 1);
 }
 shared_ptr<Token> Scanner::scan_line_comment() {
@@ -384,7 +375,7 @@ shared_ptr<Token> Scanner::scan_string_literal() {
 
 // look at the current character under the file pointer
 char Scanner::peek() {
-// look at the current char in the input
+	// look at the current char in the input
 	if (this->file_ptr != this->string_ptr->end())
 		// if not end, character is valid
 		return *this->file_ptr;
@@ -394,7 +385,7 @@ char Scanner::peek() {
 
 // look at the next character under the file pointer
 char Scanner::next() {
-// look at the next char in the input, without consuming
+	// look at the next char in the input, without consuming
 	if (this->right()) {
 		// get the next character
 		char lookahead = this->peek();
@@ -409,7 +400,7 @@ char Scanner::next() {
 
 // move the file pointer to the right
 bool Scanner::right() {
-// move the file pointer to the right by one
+	// move the file pointer to the right by one
 	if (this->file_ptr != this->string_ptr->end()) {
 		// deal with line and column numbers
 		if (*this->file_ptr == '\n') {
@@ -428,8 +419,8 @@ bool Scanner::right() {
 
 // move the file pointer to the right twice (deprecated)
 bool Scanner::right_two() {
-// go to the right two, if you went back
-// starts cleanly at the next token
+	// go to the right two, if you went back
+	// starts cleanly at the next token
 	bool success = true;
 	for (auto i = 0; i < 2; i++)
 		success &= this->right();
@@ -438,7 +429,7 @@ bool Scanner::right_two() {
 
 // move the file pointer left
 bool Scanner::left() {
-// move the file pointer to the left by one
+	// move the file pointer to the left by one
 	if (this->file_ptr != this->string_ptr->begin()) {
 		// deal with line and column numbers
 		/*
@@ -460,19 +451,19 @@ bool Scanner::left() {
 
 // set the line number
 void Scanner::set_line_number(int new_line_number) {
-// get the line number
+	// get the line number
 	this->line_number = new_line_number;
 }
 
 // set the column number
 void Scanner::set_col_number(int new_col_number) {
-// get the column number
+	// get the column number
 	this->col_number = new_col_number;
 }
 
 // create automata for dealing with keywords
 void Scanner::load_keyword_automata() {
-// get the token type for all keyworded or single char types
+	// get the token type for all keyworded or single char types
 	for (TokType i = TokType::MP_SEMI_COLON; i <= TokType::MP_BOOLEAN; i++) {
 		// create new automata for all types
 		shared_ptr<FiniteAutomataContainer> new_fa = shared_ptr<
@@ -653,8 +644,9 @@ void Scanner::write_tokens_tof(string filename) {
 	if (this->found_tokens->size() > 0) {
 		ofstream file;
 		file.open(filename);
-		for (vector<shared_ptr<Token>>:: iterator i = this->found_tokens->begin();
-				i != this->found_tokens->end(); i++) {
+		for (vector<shared_ptr<Token>>::iterator i =
+				this->found_tokens->begin(); i != this->found_tokens->end();
+				i++) {
 			file << (*(*i)->to_string()) << '\n';
 		}
 		file.close();
