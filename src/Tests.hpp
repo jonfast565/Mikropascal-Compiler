@@ -16,8 +16,8 @@
 int automata_keyword_test_cases() {
 	cout << "--- Automata Keyword Tests ---" << endl;
 	shared_ptr<FiniteAutomataContainer> while_dfa = shared_ptr<
-				FiniteAutomataContainer>(
-				new FiniteAutomataContainer("MP_WHILE", true));
+			FiniteAutomataContainer>(
+			new FiniteAutomataContainer("MP_WHILE", true));
 	while_dfa->build_keyword("while");
 	while_dfa->print();
 
@@ -86,9 +86,9 @@ int scanner_test(string filename) {
 	//cout << "--- Scanner Test ---" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
-    scanner->scan_all();
-    scanner->display_tokens();
-    scanner->write_tokens_tof(string(filename + "_tokens.txt"));
+	scanner->scan_all();
+	scanner->display_tokens();
+	scanner->write_tokens_tof(string(filename + "_tokens.txt"));
 	// cout << "--- End ---" << endl;
 	return 0;
 }

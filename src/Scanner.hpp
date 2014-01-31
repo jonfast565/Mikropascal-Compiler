@@ -22,7 +22,7 @@ enum TokType {
 	MP_ASSIGNMENT,
 	MP_LEFT_PAREN,
 	MP_RIGHT_PAREN,
-    MP_PERIOD,
+	MP_PERIOD,
 
 	// program info tokens
 	MP_PROGRAM,
@@ -91,7 +91,7 @@ enum TokType {
 
 	// literal for string
 	MP_STRING_LITERAL,
-    MP_RUN_STRING,
+	MP_RUN_STRING,
 
 	// identifier
 	MP_ID,
@@ -106,16 +106,16 @@ enum TokType {
 
 	//ignorable
 	MP_COMMENT,
-    MP_RUN_COMMENT,
+	MP_RUN_COMMENT,
 	MP_MALFORMED,
-    MP_ERROR
+	MP_ERROR
 };
 
 // token mapper (except digits, decimal digits, or ids)
 static pair<string, string> get_token_info(TokType token) {
 	switch (token) {
-	
-    // primitive tokens
+
+	// primitive tokens
 	case MP_SEMI_COLON:
 		return pair<string, string>("MP_SEMI_COLON", ";");
 	case MP_COLON:
@@ -128,10 +128,10 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_LEFT_PAREN", "(");
 	case MP_RIGHT_PAREN:
 		return pair<string, string>("MP_RIGHT_PAREN", ")");
-    case MP_PERIOD:
-        return pair<string, string>("MP_PERIOD", ".");
+	case MP_PERIOD:
+		return pair<string, string>("MP_PERIOD", ".");
 
-    // program info tokens
+		// program info tokens
 	case MP_PROGRAM:
 		return pair<string, string>("MP_PROGRAM", "program");
 	case MP_PROCEDURE:
@@ -236,30 +236,30 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_BRACKET_LEFT", "{");
 	case MP_BRACKET_RIGHT:
 		return pair<string, string>("MP_BRACKET_RIGHT", "}");
-    
-    // others
+
+		// others
 	case MP_NULLCHAR:
 		return pair<string, string>("MP_NULLCHAR", "\0");
 	case MP_EOF:
 		return pair<string, string>("MP_EOF", "EOF");
-    case MP_COMMENT:
-        return pair<string, string>("MP_COMMENT", "");
-    case MP_ID:
-        return pair<string, string>("MP_ID", "");
-    case MP_INT_LITERAL:
-        return pair<string, string>("MP_INT_LITERAL", "");
-    case MP_FLOAT_LITERAL:
-        return pair<string, string>("MP_FLT_LITERAL", "");
-    case MP_STRING_LITERAL:
-    	return pair<string, string>("MP_STR_LITERAL", "'");
-    case MP_RUN_STRING:
-        return pair<string, string>("MP_RUN_STRING", "'");
-    case MP_RUN_COMMENT:
-        return pair<string, string>("MP_RUN_COMMENT", "'");
-    case MP_MALFORMED:
-        return pair<string, string>("MP_MALFORMED", "");
-    case MP_ERROR:
-        return pair<string, string>("MP_ERROR", "");
+	case MP_COMMENT:
+		return pair<string, string>("MP_COMMENT", "");
+	case MP_ID:
+		return pair<string, string>("MP_ID", "");
+	case MP_INT_LITERAL:
+		return pair<string, string>("MP_INT_LITERAL", "");
+	case MP_FLOAT_LITERAL:
+		return pair<string, string>("MP_FLT_LITERAL", "");
+	case MP_STRING_LITERAL:
+		return pair<string, string>("MP_STR_LITERAL", "'");
+	case MP_RUN_STRING:
+		return pair<string, string>("MP_RUN_STRING", "'");
+	case MP_RUN_COMMENT:
+		return pair<string, string>("MP_RUN_COMMENT", "'");
+	case MP_MALFORMED:
+		return pair<string, string>("MP_MALFORMED", "");
+	case MP_ERROR:
+		return pair<string, string>("MP_ERROR", "");
 	default:
 		return pair<string, string>("", "");
 	}
@@ -314,29 +314,33 @@ public:
 	}
 	shared_ptr<string> to_string() {
 		stringstream ss;
-        if (this->token == TokType::MP_MALFORMED || this->token == TokType::MP_RUN_COMMENT ||
-            this->token == TokType::MP_RUN_STRING || this->token == TokType::MP_ERROR) {
-            ss << std::left << setw(76) << string(this->get_lexeme());
-        } else {
-            ss << setw(25) << std::left << get_token_info(this->get_token()).first
-            << setw(10) << std::left << this->get_line()
-            << setw(10) << std::left << (this->get_column() - this->get_lexeme().size())
-            << setw(30) << std::left << string("'" + this->get_lexeme() + "'");
-        }
+		if (this->token == TokType::MP_MALFORMED
+				|| this->token == TokType::MP_RUN_COMMENT
+				|| this->token == TokType::MP_RUN_STRING
+				|| this->token == TokType::MP_ERROR) {
+			ss << std::left << setw(76) << string(this->get_lexeme());
+		} else {
+			ss << setw(25) << std::left
+					<< get_token_info(this->get_token()).first << setw(10)
+					<< std::left << this->get_line() << setw(10) << std::left
+					<< (this->get_column() - this->get_lexeme().size())
+					<< setw(30) << std::left
+					<< string("'" + this->get_lexeme() + "'");
+		}
 		return shared_ptr<string>(new string(ss.str()));
 	}
 };
 
 class Scanner {
 private:
-    // finite automata
+	// finite automata
 	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> keyword_machines;
 	shared_ptr<FiniteAutomataContainer> id_machine;
 	shared_ptr<FiniteAutomataContainer> intlit_machine;
 	shared_ptr<FiniteAutomataContainer> fltlit_machine;
-    // tokens
+	// tokens
 	shared_ptr<vector<shared_ptr<Token>>> consumed_tokens;
-    // file mgmt
+	// file mgmt
 	shared_ptr<Input> input_ptr;
 	shared_ptr<string> file_buf_ptr;
 	shared_ptr<vector<char>> scan_buf;
@@ -344,7 +348,7 @@ private:
 	string::iterator get_begin_fp();
 	string::iterator get_end_fp();
 	void set_fp_begin();
-    // file info (line & col)
+	// file info (line & col)
 	unsigned int line_number;
 	unsigned int col_number;
 	// kword ops
@@ -361,11 +365,11 @@ private:
 	// numerical automata ops
 	void load_num_automata();
 	bool check_int_accepted();
-    bool check_flt_accepted();
+	bool check_flt_accepted();
 	void step_int(char next);
 	void reset_int();
-    void step_flt(char next);
-    void reset_flt();
+	void step_flt(char next);
+	void reset_flt();
 	// scanner internal ops
 	shared_ptr<Token> scan_keyword_or_id();
 	shared_ptr<Token> scan_num();
@@ -387,7 +391,7 @@ public:
 	// scan pointer (file pointer) movement
 	shared_ptr<Token> scan_one();
 	// scan pointer with appropriate naming conventions
-	shared_ptr<Token> dispatcher() { return this->scan_one();};
+	shared_ptr<Token> dispatcher() {return this->scan_one();};
 	void scan_all();
 	char peek();
 	char next();
