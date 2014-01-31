@@ -39,7 +39,7 @@ Input::~Input() {
     entire_input.reset();
 }
 
-shared_ptr<Input> Input::try_get_input(string filename) {
+shared_ptr<Input> Input::open_file(string filename) {
 	// factory pattern, try to get the input
     // do this the good ol' C way
     FILE* f = nullptr;

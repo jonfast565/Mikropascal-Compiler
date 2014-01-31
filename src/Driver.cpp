@@ -23,11 +23,15 @@ int main(int argc, char* argv[]) {
 			scanner_test(string(argv[1]));
 		}
 	} else {
-		scanner_test(string("/Users/jonfast/Desktop/program.pas"));
+		FILE* fp = fopen("/Users/jonfast/Desktop/program.pas", "r");
+		if (fp == NULL)
+			cout << "Failure: Could not open the default hardcoded file."
+					<< endl;
+		else {
+			fclose(fp);
+			scanner_test(string("/Users/jonfast/Desktop/program.pas"));
+		}
+		return EXIT_SUCCESS;
 	}
-	return EXIT_SUCCESS;
 }
-
-
-
 

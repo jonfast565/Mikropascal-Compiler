@@ -1,5 +1,5 @@
 //
-//  Standard.h
+//  Standard.hpp
 //  Compiler
 //
 //  Created by Jonathan Fast on 1/17/14.
@@ -20,6 +20,7 @@
 #include <map>
 #include <string>
 #include <fstream>
+#include <stack>
 
 // all C derived includes here
 #include <cassert>

@@ -89,6 +89,10 @@ enum TokType {
 	MP_INT_LITERAL,
 	MP_FLOAT_LITERAL,
 
+	// literal for string
+	MP_STRING_LITERAL,
+    MP_RUN_STRING,
+
 	// identifier
 	MP_ID,
 
@@ -98,10 +102,13 @@ enum TokType {
 
 	// end of file
 	MP_NULLCHAR,
+	MP_EOF,
 
 	//ignorable
 	MP_COMMENT,
-	MP_MALFORMED
+    MP_RUN_COMMENT,
+	MP_MALFORMED,
+    MP_ERROR
 };
 
 // token mapper (except digits, decimal digits, or ids)
@@ -233,6 +240,8 @@ static pair<string, string> get_token_info(TokType token) {
     // others
 	case MP_NULLCHAR:
 		return pair<string, string>("MP_NULLCHAR", "\0");
+	case MP_EOF:
+		return pair<string, string>("MP_EOF", "EOF");
     case MP_COMMENT:
         return pair<string, string>("MP_COMMENT", "");
     case MP_ID:
@@ -241,8 +250,16 @@ static pair<string, string> get_token_info(TokType token) {
         return pair<string, string>("MP_INT_LITERAL", "");
     case MP_FLOAT_LITERAL:
         return pair<string, string>("MP_FLT_LITERAL", "");
+    case MP_STRING_LITERAL:
+    	return pair<string, string>("MP_STR_LITERAL", "'");
+    case MP_RUN_STRING:
+        return pair<string, string>("MP_RUN_STRING", "'");
+    case MP_RUN_COMMENT:
+        return pair<string, string>("MP_RUN_COMMENT", "'");
     case MP_MALFORMED:
         return pair<string, string>("MP_MALFORMED", "");
+    case MP_ERROR:
+        return pair<string, string>("MP_ERROR", "");
 	default:
 		return pair<string, string>("", "");
 	}
@@ -256,14 +273,14 @@ static TokType get_token_by_name(string name) {
 		}
 	}
 	// error
-	return (TokType) 0;
+	return MP_MALFORMED;
 }
 
 // Token class
 class Token {
 private:
-	int line;
-	int column;
+	unsigned int line;
+	unsigned int column;
 	TokType token;
 	string lexeme;
 public:
@@ -271,10 +288,10 @@ public:
 			line(line), column(column), token(token), lexeme(lexeme) {
 	}
 	virtual ~Token() = default;
-	void set_line(int line) {
+	void set_line(unsigned int line) {
 		this->line = line;
 	}
-	void set_column(int column) {
+	void set_column(unsigned int column) {
 		this->column = column;
 	}
 	void set_token(TokType token) {
@@ -283,10 +300,10 @@ public:
 	void set_lexeme(string lexeme) {
 		this->lexeme = lexeme;
 	}
-	int get_line() {
+	unsigned int get_line() {
 		return this->line;
 	}
-	int get_column() {
+	unsigned int get_column() {
 		return this->column;
 	}
 	TokType get_token() {
@@ -297,76 +314,88 @@ public:
 	}
 	shared_ptr<string> to_string() {
 		stringstream ss;
-		ss << setw(25) << left << get_token_info(this->get_token()).first
-        << setw(10) << left << this->get_line()
-		<< setw(10) << left << this->get_column()
-        << setw(30) << left << string("'" + this->get_lexeme() + "'");
+        if (this->token == TokType::MP_MALFORMED || this->token == TokType::MP_RUN_COMMENT ||
+            this->token == TokType::MP_RUN_STRING || this->token == TokType::MP_ERROR) {
+            ss << std::left << setw(76) << string(this->get_lexeme());
+        } else {
+            ss << setw(25) << std::left << get_token_info(this->get_token()).first
+            << setw(10) << std::left << this->get_line()
+            << setw(10) << std::left << (this->get_column() - this->get_lexeme().size())
+            << setw(30) << std::left << string("'" + this->get_lexeme() + "'");
+        }
 		return shared_ptr<string>(new string(ss.str()));
 	}
 };
 
 class Scanner {
 private:
-	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> keyword_automata;
-	shared_ptr<FiniteAutomataContainer> id_automata;
-	shared_ptr<FiniteAutomataContainer> int_literal_automata;
-	shared_ptr<FiniteAutomataContainer> float_literal_automata;
-	shared_ptr<vector<shared_ptr<Token>>> found_tokens;
+    // finite automata
+	shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>> keyword_machines;
+	shared_ptr<FiniteAutomataContainer> id_machine;
+	shared_ptr<FiniteAutomataContainer> intlit_machine;
+	shared_ptr<FiniteAutomataContainer> fltlit_machine;
+    // tokens
+	shared_ptr<vector<shared_ptr<Token>>> consumed_tokens;
+    // file mgmt
 	shared_ptr<Input> input_ptr;
-	shared_ptr<string> string_ptr;
+	shared_ptr<string> file_buf_ptr;
 	shared_ptr<vector<char>> scan_buf;
 	string::iterator file_ptr;
 	string::iterator get_begin_fp();
 	string::iterator get_end_fp();
 	void set_fp_begin();
-	int line_number;
-	int col_number;
-public:
-	Scanner(shared_ptr<Input> input_ptr);
-	virtual ~Scanner();
-	void reset();
+    // file info (line & col)
+	unsigned int line_number;
+	unsigned int col_number;
 	// kword ops
-	void load_keyword_automata();
-	void reset_all_kword_automata();
+	void load_keyword_machines();
+	void reset_all_kword();
 	void step_all_kword(char next);
-	bool check_any_kword_accepted();
-	TokType get_first_accepted_kword();
-	pair<TokType, vector<char>> quick_lookahead_kword(TokType old, vector<string> looking_for);
-	// ld ops
-	bool isalnum(char next);
-	bool isnum(char next);
-	bool isalpha(char next);
+	bool check_all_kword_accept();
+	TokType get_first_kword_accept();
 	// id ops
-	void load_id_automata();
+	void load_id_machine();
 	bool check_id_accepted();
 	void step_id(char next);
 	void reset_id();
 	// numerical automata ops
-	void load_numerical_automata();
+	void load_num_automata();
 	bool check_int_accepted();
     bool check_flt_accepted();
 	void step_int(char next);
 	void reset_int();
     void step_flt(char next);
     void reset_flt();
-	// scanner ops
-	shared_ptr<Token> scan_one();
+	// scanner internal ops
 	shared_ptr<Token> scan_keyword_or_id();
 	shared_ptr<Token> scan_num();
 	shared_ptr<Token> scan_line_comment();
 	shared_ptr<Token> scan_bracket_comment();
 	shared_ptr<Token> scan_string_literal();
+	// line and col numbers setters
+	void set_line_number(int new_line_number);
+	void set_col_number(int new_col_number);
+public:
+	Scanner(shared_ptr<Input> input_ptr);
+	virtual ~Scanner();
+	// reset the scanner
+	void reset();
+	// ld ops
+	bool isalnum(char next);
+	bool isnum(char next);
+	bool isalpha(char next);
+	// scan pointer (file pointer) movement
+	shared_ptr<Token> scan_one();
+	// scan pointer with appropriate naming conventions
+	shared_ptr<Token> dispatcher() { return this->scan_one();};
 	void scan_all();
 	char peek();
 	char next();
 	bool right();
-	bool right_two();
 	bool left();
 	// line and col numbers
-	int get_line_number();
-	int get_col_number();
-	void set_line_number(int new_line_number);
-	void set_col_number(int new_col_number);
+	unsigned int get_line_number();
+	unsigned int get_col_number();
 	// display tokens on the screen
 	void display_tokens();
 	void display_all_automata();

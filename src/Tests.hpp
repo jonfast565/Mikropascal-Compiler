@@ -76,7 +76,7 @@ int automata_test_cases() {
 
 int input_test_cases(string path) {
 	cout << "--- Input Tests ---" << endl;
-	shared_ptr<Input> test_input = Input::try_get_input(path);
+	shared_ptr<Input> test_input = Input::open_file(path);
 	test_input->print_input();
 	cout << "--- End ---" << endl;
 	return 0;
@@ -84,7 +84,7 @@ int input_test_cases(string path) {
 
 int scanner_test(string filename) {
 	//cout << "--- Scanner Test ---" << endl;
-	shared_ptr<Input> test_input = Input::try_get_input(filename);
+	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
     scanner->scan_all();
     scanner->display_tokens();
