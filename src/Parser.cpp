@@ -226,6 +226,8 @@ void Parser::parse_statement_tail() {
 }
 
 void Parser::parse_statement() {
+	// parsing these will be trial and
+	// error, so will have to add things for it?
 	this->parse_compound_statement();
 	this->parse_read_statement();
 	this->parse_write_statement();
