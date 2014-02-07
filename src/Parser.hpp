@@ -102,8 +102,13 @@ public:
 	void parse_ordinal_expression();
 	void parse_identifier_list();
 	void parse_identifier_tail();
+	void parse_identifier();
 	// parse end of file
 	void parse_eof();
+
+	// helper functions
+	bool is_relational_operator();
+	bool is_multiplying_operator();
 
 	// error reporting
 	void report_error(string error);

@@ -21,20 +21,24 @@ Parser::Parser(shared_ptr<Scanner> scanner) {
 bool Parser::just_match(TokType expected) {
 	if (this->lookahead != expected)
 		return false;
-	else return true;
+	else
+		return true;
 }
 
 void Parser::match(TokType expected) {
 	if (this->lookahead != expected) {
-		report_error(string("Syntax error, expected " + get_token_info(expected).first +
-				" but got " + get_token_info(this->lookahead->get_token()).first + " instead. Fail!"));
+		report_error(
+				string(
+						"Syntax error, expected "
+								+ get_token_info(expected).first + " but got "
+								+ get_token_info(this->lookahead->get_token()).first
+								+ " instead. Fail!"));
 	} else {
 		// consume the token and get the next
 		if (this->fromList == false) {
 			// get the next token from the dispatcher
 			this->lookahead = this->scanner->scan_one();
-		}
-		else if (this->fromList == true) {
+		} else if (this->fromList == true) {
 			// implement this later... with detaching token list
 		}
 	}
@@ -73,8 +77,7 @@ void Parser::parse_variable_declaration_part() {
 		this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
 		this->parse_variable_declaration_tail();
-	}
-	else {
+	} else {
 		// or matches epsilon
 	}
 }
@@ -85,8 +88,7 @@ void Parser::parse_variable_declaration_tail() {
 		this->match(MP_SEMI_COLON);
 		// recursive so watch out!
 		this->parse_variable_declaration_tail();
-	}
-	else {
+	} else {
 		// or matches epsilon
 	}
 }
@@ -104,18 +106,15 @@ void Parser::parse_type() {
 	bool boolean_match = just_match(MP_BOOLEAN);
 	if (integer_match) {
 		this->report_match("Matched integer decl.");
-	}
-	else if (float_match) {
+	} else if (float_match) {
 		this->report_match("Matched float decl.");
-	}
-	else if (string_match) {
+	} else if (string_match) {
 		this->report_match("Matched string decl.");
-	}
-	else if (boolean_match) {
+	} else if (boolean_match) {
 		this->report_match("Matched boolean decl.");
-	}
-	else {
-		this->report_error(string("Syntax is incorrect when matching identifier."));
+	} else {
+		this->report_error(
+				string("Syntax is incorrect when matching identifier."));
 	}
 }
 
@@ -165,8 +164,7 @@ void Parser::parse_optional_formal_parameter_list() {
 		this->parse_formal_parameter_section();
 		this->parse_formal_parameter_section_tail();
 		this->match(MP_RIGHT_PAREN);
-	}
-	else {
+	} else {
 		// or match epsilon
 	}
 }
@@ -424,8 +422,174 @@ void Parser::parse_expression() {
 }
 
 void Parser::parse_optional_relational_part() {
-	this->parse_relational_operator();
-	this->parse_simple_expression();
+	if (this->is_relational_operator()) {
+		this->parse_relational_operator();
+		this->parse_simple_expression();
+	} else {
+		// epsilon
+	}
+}
+
+void Parser::parse_relational_operator() {
+	if (this->just_match(MP_EQUALS))
+		this->match(MP_EQUALS);
+	else if (this->just_match(MP_LESSTHAN))
+		this->match(MP_LESSTHAN);
+	else if (this->just_match(MP_GREATERTHAN))
+		this->match(MP_GREATERTHAN);
+	else if (this->just_match(MP_GREATERTHAN_EQUALTO))
+		this->match(MP_GREATERTHAN_EQUALTO);
+	else if (this->just_match(MP_LESSTHAN_EQUALTO))
+		this->match(MP_LESSTHAN_EQUALTO);
+	else
+		this->match(MP_NOT_EQUAL);
+	// no error should happen since we checked
+	// for relational before running
+}
+
+void Parser::parse_simple_expression() {
+	this->parse_optional_sign();
+	this->parse_term();
+	this->parse_term_tail();
+}
+
+void Parser::parse_optional_sign() {
+	if (this->just_match(MP_PLUS))
+		this->match(MP_PLUS);
+	else if (this->just_match(MP_MINUS))
+		this->match(MP_MINUS);
+	else {
+		// no optional sign, epsilon
+	}
+}
+
+void Parser::parse_adding_operator() {
+	if (this->just_match(MP_PLUS))
+		this->match(MP_PLUS);
+	else if (this->just_match(MP_MINUS))
+		this->match(MP_MINUS);
+	else if (this->just_match(MP_OR))
+		this->match(MP_OR);
+	else {
+		// syntax error!!!!!
+	}
+}
+
+void Parser::parse_term_tail() {
+	this->parse_adding_operator();
+	this->parse_term();
+	this->parse_term_tail();
+}
+
+void Parser::parse_term() {
+	this->parse_factor();
+	this->parse_factor_tail();
+}
+
+void Parser::parse_factor_tail() {
+	if (this->is_multiplying_operator()) {
+		this->parse_multiplying_operator();
+		this->parse_factor();
+		this->parse_factor_tail();
+	} else {
+		// epsilon
+	}
+}
+
+void Parser::parse_multiplying_operator() {
+	if (this->just_match(MP_MULT))
+		this->match(MP_MULT);
+	else if (this->just_match(MP_DIV))
+		this->match(MP_DIV);
+	else if (this->just_match(MP_AND))
+		this->match(MP_AND);
+	else if (this->just_match(MP_MOD_KW))
+		this->match(MP_MOD_KW);
+	else if (this->just_match(MP_DIV_KW))
+		this->match(MP_DIV_KW);
+	else {
+		// syntax error!!!!!
+	}
+}
+
+void Parser::parse_factor() {
+	if (this->just_match(MP_LEFT_PAREN)) {
+		// assume an expression
+		this->match(MP_LEFT_PAREN);
+		this->parse_expression();
+		this->match(MP_RIGHT_PAREN);
+	} else if (this->just_match(MP_INT_LITERAL)) {
+		this->match(MP_INT_LITERAL);
+	} else if (this->just_match(MP_FLOAT_LITERAL)) {
+		this->match(MP_FLOAT_LITERAL);
+	} else if (this->just_match(MP_STRING_LITERAL)) {
+		this->match(MP_STRING_LITERAL);
+	} else if (this->just_match(MP_NOT)) {
+		this->match(MP_NOT);
+		this->parse_factor();
+	} else {
+		// would have expected a function identifier anyways
+		this->parse_function_identifier();
+		this->parse_optional_actual_parameter_list();
+	}
+}
+
+void Parser::parse_program_identifier() {
+	// or this->match(MP_ID);
+	this->parse_identifier();
+}
+
+void Parser::parse_variable_identifier() {
+	this->parse_identifier();
+}
+
+void Parser::parse_procedure_identifier() {
+	this->parse_identifier();
+}
+
+void Parser::parse_function_identifier() {
+	this->parse_identifier();
+}
+
+void Parser::parse_boolean_expression() {
+	this->parse_expression();
+}
+
+void Parser::parse_ordinal_expression() {
+	this->parse_expression();
+}
+
+void Parser::parse_identifier_list() {
+	this->parse_identifier();
+	this->parse_identifier_tail();
+}
+
+void Parser::parse_identifier_tail() {
+	if (this->just_match(MP_COMMA)) {
+		this->parse_identifier();
+		this->parse_identifier_tail();
+	} else {
+		// epsilon
+	}
+}
+
+bool Parser::is_relational_operator() {
+	TokType lookahead_type = this->lookahead->get_token();
+	if ((int) lookahead_type <= MP_NOT_EQUAL
+			&& (int) lookahead_type >= MP_EQUALS) {
+		return true;
+	} else
+		return false;
+}
+
+bool Parser::is_multiplying_operator() {
+	TokType lookahead_type = this->lookahead->get_token();
+	if ((int) lookahead_type <= MP_MOD_KW && (int) lookahead_type >= MP_MULT) {
+		return true;
+	} else if ((int) lookahead_type == MP_AND)
+		return true;
+	else
+		return false;
 }
 
 void Parser::report_error(string error) {
@@ -441,8 +605,7 @@ void Parser::next_token() {
 	if (this->fromList == false) {
 		// get the next token from the dispatcher
 		this->lookahead = this->scanner->scan_one();
-	}
-	else if (this->fromList == true) {
+	} else if (this->fromList == true) {
 		// implement this later... with detaching token list
 	}
 }

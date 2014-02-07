@@ -176,10 +176,10 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_THEN", "then");
 	case MP_ELSE:
 		return pair<string, string>("MP_ELSE", "else");
-	case MP_EQUALS:
-		return pair<string, string>("MP_EQUALS", "=");
 
 		// boolean comparison tokens
+	case MP_EQUALS:
+		return pair<string, string>("MP_EQUALS", "=");
 	case MP_LESSTHAN:
 		return pair<string, string>("MP_LESSTHAN", "<");
 	case MP_GREATERTHAN:
