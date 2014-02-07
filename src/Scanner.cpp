@@ -786,3 +786,7 @@ void Scanner::display_tokens() {
 	cout << endl;
 }
 
+shared_ptr<vector<shared_ptr<Token>>> Scanner::detach_tokens() {
+	return this->consumed_tokens;
+}
+
