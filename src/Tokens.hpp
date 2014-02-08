@@ -264,9 +264,10 @@ static pair<string, string> get_token_info(TokType token) {
 }
 
 // inverse token mapper, get token from a string
+// it is used, don't let it fool you that it isn't!!!
 static TokType get_token_by_name(string name) {
-	for (auto i = TokType::MP_SEMI_COLON; i <= TokType::MP_BOOLEAN; i++) {
-		if (get_token_info(i).first.compare(name) == 0) {
+	for (auto i = (int)TokType::MP_SEMI_COLON; i <= (int)TokType::MP_BOOLEAN; i++) {
+		if (get_token_info((TokType) i).first.compare(name) == 0) {
 			return (TokType) i;
 		}
 	}

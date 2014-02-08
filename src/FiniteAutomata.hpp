@@ -518,7 +518,7 @@ public:
 		int state_counter = 0;
 		string prev_state;
 		string next_state;
-		for (int i = 0; i < kword.size(); i++) {
+		for (unsigned int i = 0; i < kword.size(); i++) {
 			if (i == 0)
 			this->add_state(to_string(i), true, false);
 			else
@@ -529,7 +529,7 @@ public:
 		this->add_state(to_string(state_counter), false, true);
 
 		// add transitions
-		for (int i = 0; i < kword.size(); i++) {
+		for (unsigned int i = 0; i < kword.size(); i++) {
 			pair<char, char> char_pair = all_char_variants(kword[i]);
 			this->add_transition(to_string(i), char_pair.first, to_string(i + 1));
 			this->add_transition(to_string(i), char_pair.second, to_string(i + 1));

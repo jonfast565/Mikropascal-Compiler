@@ -12,6 +12,7 @@
 #include "FiniteAutomata.hpp"
 #include "Input.hpp"
 #include "Scanner.hpp"
+#include "Parser.hpp"
 
 int automata_keyword_test_cases() {
 	cout << "--- Automata Keyword Tests ---" << endl;
@@ -90,6 +91,15 @@ int scanner_test(string filename) {
 	scanner->display_tokens();
 	scanner->write_tokens_tof(string(filename + "_tokens.txt"));
 	// cout << "--- End ---" << endl;
+	return 0;
+}
+
+int parser_test(string filename) {
+	cout << "Parser Test" << endl;
+	shared_ptr<Input> test_input = Input::open_file(filename);
+	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
+	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner));
+	parser->parseMe();
 	return 0;
 }
 

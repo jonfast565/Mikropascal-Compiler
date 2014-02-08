@@ -10,6 +10,7 @@
 
 #include "Standard.hpp"
 #include "Tokens.hpp"
+#include "Scanner.hpp"
 
 class Parser {
 private:
@@ -22,7 +23,7 @@ public:
 	Parser(shared_ptr<Scanner> scanner);
 	void parseMe();
 	void match(TokType expected);
-	bool just_match(TokType expected)
+	bool just_match(TokType expected);
 	virtual ~Parser() {
 		if (scanner != nullptr)
 			scanner.reset();

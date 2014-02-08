@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 			cout << "Failure: Could not open specified file." << endl;
 		else {
 			fclose(fp);
-			scanner_test(string(argv[1]));
+			parser_test(string(argv[1]));
 		}
 	} else {
 		FILE* fp = fopen("/Users/jonfast/Desktop/program.pas", "r");
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 					<< endl;
 		else {
 			fclose(fp);
-			scanner_test(string("/Users/jonfast/Desktop/program.pas"));
+			parser_test(string("/Users/jonfast/Desktop/program.pas"));
 		}
 		return EXIT_SUCCESS;
 	}

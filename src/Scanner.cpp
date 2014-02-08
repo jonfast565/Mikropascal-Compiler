@@ -559,13 +559,13 @@ void Scanner::set_col_number(int new_col_number) {
 // create automata for dealing with keywords
 void Scanner::load_keyword_machines() {
 	// get the token type for all keyworded or single char types
-	for (TokType i = TokType::MP_SEMI_COLON; i <= TokType::MP_BOOLEAN; i++) {
+	for (auto i = (int) TokType::MP_SEMI_COLON; i <= (int) TokType::MP_BOOLEAN; i++) {
 		// create new automata for all types
 		shared_ptr<FiniteAutomataContainer> new_fa = shared_ptr<
 				FiniteAutomataContainer>(
-				new FiniteAutomataContainer(get_token_info(i).first, true));
+				new FiniteAutomataContainer(get_token_info((TokType)i).first, true));
 		// build the keyword into the automata
-		new_fa->build_keyword(get_token_info(i).second);
+		new_fa->build_keyword(get_token_info((TokType)i).second);
 		// add to the vector of automata
 		this->keyword_machines->push_back(new_fa);
 	}
