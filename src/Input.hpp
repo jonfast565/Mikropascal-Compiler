@@ -11,7 +11,6 @@
 
 // use standard includes
 #include "Standard.hpp"
-#define DEFAULT_LINE_ALLOC 10000
 
 // input structure
 class Input {
@@ -19,7 +18,7 @@ private:
 	// input in lines and string
 	shared_ptr<vector<string>> lines;
 	shared_ptr<string> entire_input;
-	Input(string filename, int line_alloc);
+	Input(string filename);
 public:
 	virtual ~Input();
 	static shared_ptr<Input> open_file(string filename);

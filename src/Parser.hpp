@@ -110,6 +110,7 @@ public:
 	// helper functions
 	bool is_relational_operator();
 	bool is_multiplying_operator();
+    bool is_adding_operator();
 
 	// error reporting
 	void report_error(string error);

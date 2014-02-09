@@ -124,70 +124,61 @@ void Scanner::scan_all() {
 shared_ptr<Token> Scanner::scan_one() {
 
 	// VIRTUAL CONTRACT CLAUSE ADHERENCE: Always stop at the beginning of the next token.
-	// token, move there at the end of every case
-	// using this->right();
-
-	// tokenize the input until done
-	// debug printer for the scanner
-	if (PRINT_DEBUG) {
-		static int iteration = 0;
-		cout << "Iteration: " << iteration << endl;
-		cout << "-" << endl;
-		this->display_tokens();
-		cout << "-" << endl;
-		iteration++;
-	}
-
 	// check for the end of file, and return the EOF token.
-	if (this->file_ptr == this->file_buf_ptr->end()) {
+	if (this->peek() == 0x03) {
 		shared_ptr<Token> eof = shared_ptr<Token>(
 				new Token(this->get_line_number(), this->get_col_number(),
 						TokType::MP_EOF, "EOF"));
 		this->consumed_tokens->push_back(eof);
 		return *(this->consumed_tokens->end() - 1);
 	}
+
 	// basic cases for comments, whitespace, and newlines
-	// remove whitespace
-	if (this->peek() == get_token_info(TokType::MP_NULLCHAR).second[0]) {
-		// create token
-		shared_ptr<Token> null_tok = shared_ptr<Token>(
-				new Token(this->get_line_number(), this->get_col_number(),
-						TokType::MP_NULLCHAR, "\0"));
-		// push back and return
-		this->consumed_tokens->push_back(null_tok);
-		return *(this->consumed_tokens->end() - 1);
+	// check for space, tab, or newline
+	if (this->peek() == ' ' ||
+        this->peek() == '\n' ||
+        this->peek() == '\t' ||
+        this->peek() == '\r' ||
+        this->peek() == '\v' ||
+        this->peek() == '\f') {
+		while(this->peek() == ' ' ||
+              this->peek() == '\n' ||
+              this->peek() == '\t' ||
+              this->peek() == '\r' ||
+              this->peek() == '\v' ||
+              this->peek() == '\f')
+			this->right();
 	}
-	// check for space or newline
-	if (this->peek() == ' ' || this->peek() == '\n') {
-		// ignore whitespace
-		// ignore newline, (line number managed in right() and left())
-		// move the file pointer ahead 1 (as per contract)
-		this->right();
-	}
+    
 	// remove double dash comments
-	else if (this->peek() == get_token_info(TokType::MP_DIV).second[0]
+	if (this->peek() == get_token_info(TokType::MP_DIV).second[0]
 			&& (this->next() == get_token_info(TokType::MP_DIV).second[0])) {
 		return this->scan_line_comment();
 	}
+    
 	// remove bracket comments
 	else if (this->peek()
 			== get_token_info(TokType::MP_BRACKET_LEFT).second[0]) {
 		return this->scan_bracket_comment();
 	}
+    
 	// scan string literals
 	else if (this->peek()
 			== get_token_info(TokType::MP_STRING_LITERAL).second[0]) {
 		return this->scan_string_literal();
 	}
+    
 	// now look for other tokens that are actually important
 	// find numeric tokens, literal, etc.
 	else if (this->isnum(this->peek())) {
 		return this->scan_num();
 	}
+    
 	// scan a keyword, id, or malformed item?
 	else {
 		return this->scan_keyword_or_id();
 	}
+    
 	// should not happen
 	return shared_ptr<Token>(
 			new Token(this->get_line_number(), this->get_col_number(),
@@ -487,13 +478,13 @@ shared_ptr<Token> Scanner::scan_string_literal() {
 }
 
 // look at the current character under the file pointer
-char Scanner::peek() {
+int Scanner::peek() {
 	// look at the current char in the input
 	if (this->file_ptr != this->file_buf_ptr->end())
 		// if not end, character is valid
 		return *this->file_ptr;
 	else
-		return '\0';
+		return 0x03;
 }
 
 // look at the next character under the file pointer
@@ -742,6 +733,19 @@ unsigned int Scanner::get_line_number() {
 unsigned int Scanner::get_col_number() {
 	// get the scanning column number
 	return this->col_number;
+}
+
+void Scanner::thin_comments() {
+    if (this->consumed_tokens->size() > 0) {
+        for (vector<shared_ptr<Token>>::iterator i =
+             this->consumed_tokens->begin();
+             i != consumed_tokens->end(); i++)
+        {
+            if ((*i)->get_token() == MP_COMMENT) {
+                this->consumed_tokens->erase(i);
+            }
+        }
+    }
 }
 
 // write tokens to a file

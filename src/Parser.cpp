@@ -32,14 +32,19 @@ void Parser::match(TokType expected) {
 		report_error(
 				string(
 						"Syntax error, expected "
-								+ get_token_info(expected).first + " but got "
+								+ get_token_info(expected).first + " but got '"
 								+ get_token_info(this->lookahead->get_token()).first
-								+ " instead. Fail!"));
+								+ "' instead. Fail!"));
+        // recover by scanning one
+        if (DEBUG_OUTPUT)
+            cout << "RECOVERING..." << endl;
+        this->lookahead = this->scanner->scan_one();
 	} else {
 		// consume the token and get the next
 		if (this->fromList == false) {
 			// get the next token from the dispatcher
-			this->lookahead = this->scanner->scan_one();
+            report_match(string("Match: " + get_token_info(expected).first + ": '" + this->lookahead->get_lexeme() + "'"));
+            this->lookahead = this->scanner->scan_one();
 		} else if (this->fromList == true) {
 			// implement this later... with detaching token list
 		}
@@ -53,14 +58,19 @@ void Parser::parseMe() {
 	// parse the system goal!
 	this->next_token();
 	this->parse_system_goal();
+	if (DEBUG_OUTPUT)
+		if (this->fromList == false) {
+			this->scanner->display_tokens();
+		}
 }
 
 void Parser::parse_system_goal() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_SYSTEM_GOAL" << endl;
 	// parse system goal
-	this->parse_program();
-	this->parse_eof();
+    if (this->just_match(MP_PROGRAM))
+        this->parse_program();
+    this->parse_eof();
 }
 
 void Parser::parse_eof() {
@@ -69,7 +79,10 @@ void Parser::parse_eof() {
 	bool is_eof = this->just_match(MP_EOF);
 	if (!is_eof) {
 		report_error(string("No end-of-file detected."));
-	}
+	} else {
+        this->match(MP_EOF);
+    }
+    cout << "Done..." << endl;
 }
 
 void Parser::parse_program() {
@@ -98,9 +111,10 @@ void Parser::parse_program_heading() {
 
 void Parser::parse_variable_declaration_part() {
 	if (DEBUG_OUTPUT)
-		cout << "PARSE_VARIABLE_DECLARATION" << endl;
+		cout << "PARSE_VARIABLE_DECLARATION_PART" << endl;
 	// is an identifier clause
 	if (this->just_match(MP_VAR)) {
+        this->match(MP_VAR);
 		this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
 		this->parse_variable_declaration_tail();
@@ -114,16 +128,17 @@ void Parser::parse_variable_declaration_part() {
 void Parser::parse_variable_declaration_tail() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_VARIABLE_DECL_TAIL" << endl;
-	if (this->just_match(MP_VAR)) {
-		this->parse_variable_declaration();
+    if (this->just_match(MP_VAR)) {
+        this->match(MP_VAR);
+        this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
 		// recursive so watch out!
 		this->parse_variable_declaration_tail();
-	} else {
-		// or matches epsilon
+    } else {
+ 		// or epsilon
 		if (DEBUG_OUTPUT)
 			cout << "EPSILON_MATCHED" << endl;
-	}
+    }
 }
 
 void Parser::parse_variable_declaration() {
@@ -143,12 +158,16 @@ void Parser::parse_type() {
 	bool boolean_match = just_match(MP_BOOLEAN);
 	if (integer_match) {
 		this->report_match("Matched integer decl.");
+        this->match(MP_INTEGER);
 	} else if (float_match) {
 		this->report_match("Matched float decl.");
+        this->match(MP_FLOAT);
 	} else if (string_match) {
 		this->report_match("Matched string decl.");
+        this->match(MP_STRING);
 	} else if (boolean_match) {
-		this->report_match("Matched boolean decl.");
+		this->report_match("Match: boolean decl.");
+        this->match(MP_BOOLEAN);
 	} else {
 		this->report_error(
 				string("Syntax is incorrect when matching identifier."));
@@ -336,7 +355,10 @@ void Parser::parse_empty_statement() {
 void Parser::parse_read_statement() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_READ_STATEMENT" << endl;
-	this->match(MP_READ);
+    if (this->just_match(MP_READ))
+        this->match(MP_READ);
+    else if (this->just_match(MP_READLN))
+        this->match(MP_READLN);
 	this->match(MP_LEFT_PAREN);
 	this->parse_read_parameter();
 	this->parse_read_parameter_tail();
@@ -633,9 +655,15 @@ void Parser::parse_adding_operator() {
 void Parser::parse_term_tail() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_TERM_TAIL" << endl;
-	this->parse_adding_operator();
-	this->parse_term();
-	this->parse_term_tail();
+    if (this->is_adding_operator()) {
+        this->parse_adding_operator();
+        this->parse_term();
+        this->parse_term_tail();
+    } else {
+		// epsilon
+		if (DEBUG_OUTPUT)
+			cout << "EPSILON_REACHED" << endl;
+    }
 }
 
 void Parser::parse_term() {
@@ -750,6 +778,7 @@ void Parser::parse_identifier_tail() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_IDENTIFIER_TAIL" << endl;
 	if (this->just_match(MP_COMMA)) {
+        this->match(MP_COMMA);
 		this->parse_identifier();
 		this->parse_identifier_tail();
 	} else {
@@ -781,6 +810,17 @@ bool Parser::is_multiplying_operator() {
 	if ((int) lookahead_type <= MP_MOD_KW && (int) lookahead_type >= MP_MULT) {
 		return true;
 	} else if ((int) lookahead_type == MP_AND)
+		return true;
+	else
+		return false;
+}
+
+bool Parser::is_adding_operator() {
+    if (DEBUG_OUTPUT)
+		cout << "IS_ADDING_OPERATOR" << endl;
+    TokType lookahead_type = this->lookahead->get_token();
+    if ((int) lookahead_type == MP_PLUS || (int) lookahead_type == MP_MINUS ||
+        (int) lookahead_type == MP_OR)
 		return true;
 	else
 		return false;

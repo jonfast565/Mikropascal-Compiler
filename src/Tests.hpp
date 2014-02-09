@@ -97,6 +97,7 @@ int scanner_test(string filename) {
 int parser_test(string filename) {
 	cout << "Parser Test" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
+    test_input->print_input();
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner));
 	parser->parseMe();

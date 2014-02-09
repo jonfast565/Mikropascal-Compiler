@@ -75,7 +75,7 @@ public:
 	// scan pointer with appropriate naming conventions
 	shared_ptr<Token> dispatcher() {return this->scan_one();};
 	void scan_all();
-	char peek();
+	int peek();
 	char next();
 	bool right();
 	bool left();
@@ -87,6 +87,7 @@ public:
 	void display_all_automata();
 	// file ops
 	void write_tokens_tof(string filename);
+    void thin_comments();
 	shared_ptr<vector<shared_ptr<Token>>> detach_tokens();
 };
 
