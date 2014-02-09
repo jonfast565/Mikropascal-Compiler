@@ -8,9 +8,6 @@
 #include "Standard.hpp"
 #include "Tests.hpp"
 
-// prototypes
-int main(int, char*[]);
-
 int main(int argc, char* argv[]) {
 	cout << "--- Mikropascal Compiler ---" << endl;
 	if (argc >= 2) {

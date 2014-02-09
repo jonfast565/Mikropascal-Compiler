@@ -204,7 +204,7 @@ void Parser::parse_procedure_declaration() {
 void Parser::parse_function_declaration() {
 	if (DEBUG_OUTPUT)
 		cout << "PARSE_FUNCTION_DECL" << endl;
-	this->parse_function_declaration();
+	this->parse_function_heading();
 	this->match(MP_SEMI_COLON);
 	this->parse_block();
 	this->match(MP_SEMI_COLON);
