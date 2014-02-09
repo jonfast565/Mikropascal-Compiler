@@ -38,13 +38,15 @@ void Parser::match(TokType expected) {
         // recover by scanning one
         if (DEBUG_OUTPUT)
             cout << "RECOVERING..." << endl;
-        this->lookahead = this->scanner->scan_one();
+        if (this->lookahead->get_token() != TokType::MP_EOF)
+            this->lookahead = this->scanner->scan_one();
 	} else {
 		// consume the token and get the next
 		if (this->fromList == false) {
 			// get the next token from the dispatcher
             report_match(string("Match: " + get_token_info(expected).first + ": '" + this->lookahead->get_lexeme() + "'"));
-            this->lookahead = this->scanner->scan_one();
+            if (this->lookahead->get_token() != TokType::MP_EOF)
+                this->lookahead = this->scanner->scan_one();
 		} else if (this->fromList == true) {
 			// implement this later... with detaching token list
 		}

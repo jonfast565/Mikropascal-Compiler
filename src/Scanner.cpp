@@ -124,14 +124,6 @@ void Scanner::scan_all() {
 shared_ptr<Token> Scanner::scan_one() {
 
 	// VIRTUAL CONTRACT CLAUSE ADHERENCE: Always stop at the beginning of the next token.
-	// check for the end of file, and return the EOF token.
-	if (this->peek() == 0x03) {
-		shared_ptr<Token> eof = shared_ptr<Token>(
-				new Token(this->get_line_number(), this->get_col_number(),
-						TokType::MP_EOF, "EOF"));
-		this->consumed_tokens->push_back(eof);
-		return *(this->consumed_tokens->end() - 1);
-	}
 
 	// basic cases for comments, whitespace, and newlines
 	// check for space, tab, or newline
@@ -148,6 +140,15 @@ shared_ptr<Token> Scanner::scan_one() {
               this->peek() == '\v' ||
               this->peek() == '\f')
 			this->right();
+	}
+    
+    // check for the end of file, and return the EOF token.
+	if (this->peek() == '\0') {
+		shared_ptr<Token> eof = shared_ptr<Token>(
+                                                  new Token(this->get_line_number(), this->get_col_number(),
+                                                            TokType::MP_EOF, "EOF"));
+		this->consumed_tokens->push_back(eof);
+		return *(this->consumed_tokens->end() - 1);
 	}
     
 	// remove double dash comments
@@ -484,7 +485,7 @@ int Scanner::peek() {
 		// if not end, character is valid
 		return *this->file_ptr;
 	else
-		return 0x03;
+		return '\0';
 }
 
 // look at the next character under the file pointer
