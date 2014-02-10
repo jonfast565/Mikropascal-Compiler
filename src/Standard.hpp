@@ -34,4 +34,7 @@
 // use the standard namespace
 using namespace std;
 
+// defines
+#define DEBUG_OUTPUT 1
+
 #endif

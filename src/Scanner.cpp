@@ -6,7 +6,6 @@
  */
 
 #include "Scanner.hpp"
-#define PRINT_DEBUG 0
 
 // scanner constructor initializes all FAs and column, line numbers and file pointer
 Scanner::Scanner(shared_ptr<Input> input_ptr) {

@@ -70,10 +70,10 @@ public:
 	bool isalnum(char next);
 	bool isnum(char next);
 	bool isalpha(char next);
-	// scan pointer (file pointer) movement
-	shared_ptr<Token> scan_one();
 	// scan pointer with appropriate naming conventions
 	shared_ptr<Token> dispatcher() {return this->scan_one();};
+    // scan pointer (file pointer) movement
+	shared_ptr<Token> scan_one();
 	void scan_all();
 	int peek();
 	char next();

@@ -13,11 +13,11 @@ private:
 	// position and item
 	Item item;
 	bool is_base;
-
+    
 	// previous and next pointers
 	// StackNode* previous;
 	StackElement* next;
-
+    
 public:
 	// ctor and dtor
 	StackElement(Item new_item) {
@@ -32,34 +32,34 @@ public:
 	~StackElement() {
 	}
 	;
-
+    
 	// getter and setter methods
 	Item get_item() {
 		return item;
 	}
-
+    
 	void set_item(Item new_item) {
 		this->item = new_item;
 	}
-
+    
 	/*
 	 void set_prev(StackElement* prev_node)
 	 {
 	 this->previous = prev_node;
 	 }
 	 */
-
+    
 	void set_next(StackElement* next_node) {
 		this->next = next_node;
 	}
-
+    
 	/*
 	 StackElement* get_prev()
 	 {
 	 return this->previous;
 	 }
 	 */
-
+    
 	StackElement* get_next() {
 		return this->next;
 	}
@@ -74,30 +74,30 @@ private:
 	StackElement<Item>* base;
 	// keep track of the length
 	// int length;
-
+    
 	void set_top(StackElement<Item> * new_top) {
 		this->top = new_top;
 	}
-
+    
 	void set_next(StackElement<Item>* current, StackElement<Item>* new_next) {
 		current->set_next(new_next);
 	}
-
+    
 	StackElement<Item>* get_base() {
 		return this->base;
 	}
-
+    
 	void set_base(StackElement<Item>* new_base) {
 		this->base = new_base;
 	}
-
+    
 public:
 	Stack() {
 		this->set_base(new StackElement<Item>());
 		this->top = nullptr;
 		this->set_top(this->base);
 	}
-
+    
 	~Stack() {
 		while (top != base) {
 			StackElement<Item>* current_top = this->get_top();
@@ -107,11 +107,11 @@ public:
 		delete base;
 	}
 	;
-
+    
 	StackElement<Item>* get_top() {
 		return this->top;
 	}
-
+    
 	Item pop() {
 		if (this->get_top() != this->get_base()) {
 			StackElement<Item>* last_top = get_top();
@@ -122,14 +122,14 @@ public:
 		} else
 			return (Item) nullptr;
 	}
-
+    
 	Item peek() {
 		if (this->get_top() != this->get_base())
 			return top->get_item();
 		else
 			return (Item) nullptr;
 	}
-
+    
 	void push(Item item) {
 		StackElement<Item>* new_node = new StackElement<Item>(item);
 		if (this->get_top() == this->get_base()) {
@@ -141,7 +141,7 @@ public:
 			this->set_next(new_node, prev_node);
 		}
 	}
-
+    
 	void print() {
 		StackElement<Item>* current = this->get_top();
 		while (current != this->get_base()) {
@@ -150,7 +150,7 @@ public:
 		}
 		cout << "Base\n" << endl;
 	}
-
+    
 	unique_ptr<string> to_string() {
 		unique_ptr<string> stack_rep(new string(""));
 		StackElement<Item>* current = this->get_top();
@@ -248,16 +248,14 @@ public:
 			new_link->set_next(this->end);
 		}
 	}
-	/* // not implemented
-	 Item remove_link(Link<Item>* link) {
-	 return (Item) nullptr;
-	 }
-	 Item remove_link(unsigned int link_number) {
-	 if (link_number < num_elements) {
-	 return (Item) nullptr;
-	 } else return (Item) nullptr;
-	 }
-	 */
+    Item remove_link(Link<Item>* link) {
+        return (Item) nullptr;
+    }
+    Item remove_link(unsigned int link_number) {
+        if (link_number < num_elements) {
+            return (Item) nullptr;
+        } else return (Item) nullptr;
+    }
 };
 
 #endif

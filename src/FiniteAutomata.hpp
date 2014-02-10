@@ -12,7 +12,8 @@
 #define automata_h
 
 #include "Standard.hpp"
-#define RUN_DEBUG 0
+
+#define AUTOMATA_DEBUG 0
 
 class FiniteAutomataContainer;
 class FiniteAutomataState;
@@ -498,11 +499,11 @@ public:
 		// get transitions for the current state
 		if ((*this->run_ptr)->transition_exists(input_char)) {
 			this->run_ptr = (*this->run_ptr)->get_transition(input_char);
-			if (RUN_DEBUG)
+			if (AUTOMATA_DEBUG)
 			cout << "In: " << (*this->run_ptr)->get_name() << endl;
 		} else {
 			// dead state
-			if (RUN_DEBUG) {
+			if (AUTOMATA_DEBUG) {
 				cout << "Unable to transition..." << endl;
 			}
 			if (this->dead_state_exists == true) {

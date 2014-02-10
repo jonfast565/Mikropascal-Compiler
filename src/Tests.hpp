@@ -84,23 +84,23 @@ int input_test_cases(string path) {
 }
 
 int scanner_test(string filename) {
-	//cout << "--- Scanner Test ---" << endl;
+	cout << "--- Scanner Test ---" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
 	scanner->scan_all();
 	scanner->display_tokens();
 	scanner->write_tokens_tof(string(filename + "_tokens.txt"));
-	// cout << "--- End ---" << endl;
+	cout << "--- End ---" << endl;
 	return 0;
 }
 
 int parser_test(string filename) {
-	cout << "Parser Test" << endl;
+	cout << "--- Parser Test ---" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
-    test_input->print_input();
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner));
-	parser->parseMe();
+	parser->parse_me();
+    cout << "--- End ---" << endl;
 	return 0;
 }
 
