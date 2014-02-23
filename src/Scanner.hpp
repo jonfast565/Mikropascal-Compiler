@@ -12,6 +12,7 @@
 #include "Input.hpp"
 #include "FiniteAutomata.hpp"
 #include "Tokens.hpp"
+#include "Helper.hpp"
 
 class Scanner {
 private:
@@ -84,6 +85,7 @@ public:
 	unsigned int get_col_number();
 	// display tokens on the screen
 	void display_tokens();
+	void display_tokens_as_msg();
 	void display_all_automata();
 	// file ops
 	void write_tokens_tof(string filename);

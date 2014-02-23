@@ -226,15 +226,8 @@ shared_ptr<Token> Scanner::scan_keyword_or_id() {
 					shared_ptr<Token>(
 							new Token(this->get_line_number(),
 									this->get_col_number(), kword,
-									string(
-											"<< Scan Error: Malformed ID detected at line "
-													+ to_string(
-															this->get_line_number())
-													+ " col "
-													+ to_string(
-															this->get_col_number()
-																	- this->scan_buf->size())
-													+ " >>")));
+									format_error_lc("Scan Error", "Malformed ID", this->get_line_number(),
+											this->get_col_number())));
 		}
 		// save token
 		this->consumed_tokens->push_back(new_kword);
@@ -260,15 +253,11 @@ shared_ptr<Token> Scanner::scan_keyword_or_id() {
 			new_symbol = shared_ptr<Token>(
 					new Token(this->get_line_number(), this->get_col_number(),
 							TokType::MP_ERROR,
-							string(
-									"<< Scan Error: Unrecognized symbol '"
-											+ string(scan_buf->begin(),
-													scan_buf->end())
-											+ "' (MP_ERROR) at line "
-											+ to_string(this->get_line_number())
-											+ " col "
-											+ to_string(this->get_col_number())
-											+ " >>")));
+							format_error_lc("Scan Error", "Unrecognized symbol '"
+									+ string(scan_buf->begin(),
+											scan_buf->end())
+									+ "' (MP_ERROR)", this->get_line_number(),
+																		this->get_col_number())));
 		} else {
 			// go one to the right, and get second accepted if possible
 			this->step_all_kword(this->next());
@@ -335,14 +324,8 @@ shared_ptr<Token> Scanner::scan_num() {
 				shared_ptr<Token>(
 						new Token(this->get_line_number(),
 								this->get_col_number(), TokType::MP_ERROR,
-								string(
-										"<< Scan Error: Malformed numeric literal detected (MP_ERROR) at line "
-												+ to_string(
-														this->get_line_number())
-												+ " col "
-												+ to_string(
-														this->get_col_number())
-												+ " >>")));
+								format_error_lc("Scan Error", "Malformed numeric literal (MP_ERROR)",
+										this->get_line_number(), this->get_col_number())));
 	}
 	// save token
 	this->consumed_tokens->push_back(numeric_literal);
@@ -391,14 +374,8 @@ shared_ptr<Token> Scanner::scan_bracket_comment() {
 							new Token(this->get_line_number(),
 									this->get_col_number(),
 									TokType::MP_RUN_COMMENT,
-									string(
-											"<< Scan Error: Comment reaching EOF detected (MP_RUN_COMMENT) at line "
-													+ to_string(
-															this->get_line_number())
-													+ " col "
-													+ to_string(
-															this->get_col_number())
-													+ " >>")));
+									format_error_lc("Scan Error", "Run on comment (MP_RUN_COMMENT)",
+																			this->get_line_number(), this->get_col_number())));
 			// save the token
 			this->consumed_tokens->push_back(comment_tok);
 			// clear the scan buffer
@@ -458,14 +435,8 @@ shared_ptr<Token> Scanner::scan_string_literal() {
 				shared_ptr<Token>(
 						new Token(this->get_line_number(),
 								this->get_col_number(), TokType::MP_RUN_STRING,
-								string(
-										"<< Scan Error: Run-on string detected (MP_RUN_STRING) at line "
-												+ to_string(
-														this->get_line_number())
-												+ " col "
-												+ to_string(
-														this->get_col_number())
-												+ " >>")));
+								format_error_lc("Scan Error", "Run on string (MP_RUN_STRING)",
+																		this->get_line_number(), this->get_col_number())));
 	}
 	// save the token
 	this->consumed_tokens->push_back(string_tok);
@@ -788,6 +759,13 @@ void Scanner::display_tokens() {
 	for (auto i = 0; i < 31 + 20 + 25; i++)
 		cout << "-";
 	cout << endl;
+}
+
+void Scanner::display_tokens_as_msg() {
+	for (vector<shared_ptr<Token>>::iterator i = this->consumed_tokens->begin();
+			i != consumed_tokens->end(); i++) {
+		report_error_lc("Token found", "'" + (*i)->get_lexeme() + "'", (*i)->get_line(), (*i)->get_column());
+	}
 }
 
 shared_ptr<vector<shared_ptr<Token>>> Scanner::detach_tokens() {

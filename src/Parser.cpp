@@ -7,18 +7,95 @@
 
 #include "Parser.hpp"
 
+// AST Stuff
+AbstractTree::AbstractTree() {
+	this->root_node = shared_ptr<AbstractNode>(new AbstractNode());
+	this->iterable = this->root_node;
+}
+
+AbstractTree::AbstractTree(shared_ptr<AbstractNode> root) {
+	this->root_node = root;
+	this->iterable = this->root_node;
+}
+
+void AbstractTree::add_move_child(shared_ptr<AbstractNode> child_node) {
+	this->iterable->add_child_node(child_node);
+	child_node->set_parent(this->iterable);
+	this->iterable = child_node;
+}
+
+void AbstractTree::goto_parent() {
+	if (this->iterable->get_parent() != nullptr) {
+		this->iterable = this->iterable->get_parent();
+	}
+}
+
+shared_ptr<AbstractNode> AbstractTree::get_current_parent() {
+	if (this->iterable->get_parent() != nullptr) {
+		return this->iterable->get_parent();
+	}
+	return nullptr;
+}
+
+void AbstractTree::display_tree() {
+	// unimplemented (recurse but stop on size() = 0)
+}
+
+AbstractNode::AbstractNode() {
+	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+	this->parse_type = NO_RULE;
+	this->is_root = true;
+}
+
+AbstractNode::AbstractNode(ParseType parse_type) {
+	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+	this->parse_type = parse_type;
+	this->is_root = false;
+}
+
+AbstractNode::AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type) {
+	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+	this->is_root = false;
+	this->parse_type = parse_type;
+}
+
+void AbstractNode::add_child_node(shared_ptr<AbstractNode> child_node) {
+	this->child_nodes->push_back(child_node);
+}
+
+void AbstractNode::set_is_root(bool is_root) {
+	this->is_root = is_root;
+}
+
+void AbstractNode::set_parent(shared_ptr<AbstractNode> parent_node) {
+	this->parent_node = parent_node;
+}
+
+shared_ptr<AbstractNode> AbstractNode::get_parent() {
+	if (this->parent_node == nullptr) {
+		return nullptr;
+	} else {
+		return this->parent_node;
+	}
+}
+
+// Parser Stuff
 Parser::Parser(shared_ptr<vector<shared_ptr<Token>>> token_list) {
 	this->token_list = token_list;
 	this->fromList = true;
+	this->parse_depth = 0;
+
 }
 
 // USE ONLY THIS CONSTRUCTOR FOR NOW!!!!
 Parser::Parser(shared_ptr<Scanner> scanner) {
 	this->scanner = scanner;
 	this->fromList = false;
+	this->parse_depth = 0;
+	this->program_syntax = shared_ptr<AbstractTree>(new AbstractTree());
 }
 
-bool Parser::just_match(TokType expected) {
+bool Parser::try_match(TokType expected) {
 	if (this->lookahead->get_token() != expected)
 		return false;
 	else
@@ -34,7 +111,8 @@ void Parser::match(TokType expected) {
                             + get_token_info(this->lookahead->get_token()).first
                             + "' instead. Fail!"));
         // recover by scanning one
-        report_parse("RECOVERING...", this->parse_depth);
+        report_error("Notice", "Attempting to recover...");
+        // scan in attempt to find a match?
         if (this->lookahead->get_token() != TokType::MP_EOF)
             this->lookahead = this->scanner->scan_one();
 	} else {
@@ -59,58 +137,69 @@ void Parser::parse_me() {
 
 void Parser::parse_system_goal() {
     this->more_indent();
+    this->go_into(SYSTEM_GOAL);
 	report_parse("PARSE_SYSTEM_GOAL", this->parse_depth);
 	// parse system goal
-    if (this->just_match(MP_PROGRAM))
+    if (this->try_match(MP_PROGRAM))
         this->parse_program();
     this->parse_eof();
+    this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_eof() {
     this->more_indent();
+    this->go_into(EOF_RULE);
 	report_parse("PARSE_EOF", this->parse_depth);
-	bool is_eof = this->just_match(MP_EOF);
+	bool is_eof = this->try_match(MP_EOF);
 	if (!is_eof) {
 		report_error("Parse Error", "No end-of-file detected.");
 	} else {
         this->match(MP_EOF);
     }
+	this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_program() {
     this->more_indent();
+    this->go_into(PROGRAM);
 	report_parse("PARSE_PROGRAM", this->parse_depth);
 	this->parse_program_heading();
 	this->match(MP_SEMI_COLON);
 	this->parse_block();
 	this->match(MP_PERIOD);
+	this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_block() {
     this->more_indent();
+    this->go_into(BLOCK);
 	report_parse("PARSE_BLOCK", this->parse_depth);
 	this->parse_variable_declaration_part();
 	this->parse_procedure_and_function_declaration_part();
 	this->parse_statement_part();
+	this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_program_heading() {
     this->more_indent();
+    this->go_into(PROGRAM_HEADING);
 	report_parse("PARSE_PROGRAM_HEADING", this->parse_depth);
 	this->match(MP_PROGRAM);
 	this->parse_program_identifier();
+	this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_variable_declaration_part() {
     this->more_indent();
+    this->go_into(VARIABLE_DECL_PART);
 	report_parse("PARSE_VARIABLE_DECLARATION_PART", this->parse_depth);
 	// is an identifier clause
-	if (this->just_match(MP_VAR)) {
+	if (this->try_match(MP_VAR)) {
         this->match(MP_VAR);
 		this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
@@ -119,13 +208,14 @@ void Parser::parse_variable_declaration_part() {
 		// or matches epsilon
         report_parse("EPSILON_MATCHED", this->parse_depth);
 	}
+	this->return_from();
     this->less_indent();
 }
 
 void Parser::parse_variable_declaration_tail() {
     this->more_indent();
 	report_parse("PARSE_VARIABLE_DECL_TAIL", this->parse_depth);
-    if (this->just_match(MP_VAR)) {
+    if (this->try_match(MP_VAR)) {
         this->match(MP_VAR);
         this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
@@ -150,10 +240,10 @@ void Parser::parse_variable_declaration() {
 void Parser::parse_type() {
     this->more_indent();
 	report_parse("PARSE_TYPE", this->parse_depth);
-	bool integer_match = just_match(MP_INTEGER);
-	bool float_match = just_match(MP_FLOAT);
-	bool string_match = just_match(MP_STRING);
-	bool boolean_match = just_match(MP_BOOLEAN);
+	bool integer_match = try_match(MP_INTEGER);
+	bool float_match = try_match(MP_FLOAT);
+	bool string_match = try_match(MP_STRING);
+	bool boolean_match = try_match(MP_BOOLEAN);
 	if (integer_match) {
         this->match(MP_INTEGER);
 	} else if (float_match) {
@@ -172,10 +262,10 @@ void Parser::parse_type() {
 void Parser::parse_procedure_and_function_declaration_part() {
     this->more_indent();
 	report_parse("PARSE_PROCEDURE_AND_FUNCTION_DECL_PART", this->parse_depth);
-	if (this->just_match(MP_PROCEDURE)) {
+	if (this->try_match(MP_PROCEDURE)) {
 		this->parse_procedure_declaration();
 		this->parse_procedure_and_function_declaration_part();
-	} else if (this->just_match(MP_FUNCTION)) {
+	} else if (this->try_match(MP_FUNCTION)) {
 		this->parse_function_declaration();
 		this->parse_procedure_and_function_declaration_part();
 	} else {
@@ -227,7 +317,7 @@ void Parser::parse_function_heading() {
 void Parser::parse_optional_formal_parameter_list() {
     this->more_indent();
 	report_parse("PARSE_OPT_FORMAL_PARAM_LIST", this->parse_depth);
-	if (this->just_match(MP_LEFT_PAREN)) {
+	if (this->try_match(MP_LEFT_PAREN)) {
 		this->match(MP_LEFT_PAREN);
 		this->parse_formal_parameter_section();
 		this->parse_formal_parameter_section_tail();
@@ -242,7 +332,7 @@ void Parser::parse_optional_formal_parameter_list() {
 void Parser::parse_formal_parameter_section_tail() {
     this->more_indent();
 	report_parse("PARSE_FORMAL_PARAM_SECTION_TAIL", this->parse_depth);
-	if (this->just_match(MP_SEMI_COLON)) {
+	if (this->try_match(MP_SEMI_COLON)) {
 		this->match(MP_SEMI_COLON);
 		this->parse_formal_parameter_section();
 		this->parse_formal_parameter_section_tail();
@@ -256,9 +346,9 @@ void Parser::parse_formal_parameter_section_tail() {
 void Parser::parse_formal_parameter_section() {
     this->more_indent();
 	report_parse("PARSE_FORMAL_PARAM_SECTION", this->parse_depth);
-	if (this->just_match(MP_ID)) {
+	if (this->try_match(MP_ID)) {
 		this->parse_value_parameter_section();
-	} else if (this->just_match(MP_VAR)) {
+	} else if (this->try_match(MP_VAR)) {
 		this->parse_variable_parameter_section();
 	}
     this->less_indent();
@@ -310,7 +400,7 @@ void Parser::parse_statement_sequence() {
 void Parser::parse_statement_tail() {
     this->more_indent();
 	report_parse("PARSE_STATEMENT_TAIL", this->parse_depth);
-	if (this->just_match(MP_SEMI_COLON)) {
+	if (this->try_match(MP_SEMI_COLON)) {
 		this->match(MP_SEMI_COLON);
 		this->parse_statement();
 		this->parse_statement_tail();
@@ -326,23 +416,23 @@ void Parser::parse_statement() {
 	report_parse("PARSE_STATEMENT", this->parse_depth);
 	// parsing these will be trial and
 	// error, so will have to add things for it?
-	if (this->just_match(MP_READ) || this->just_match(MP_READLN))
+	if (this->try_match(MP_READ) || this->try_match(MP_READLN))
 		this->parse_read_statement();
-	else if (this->just_match(MP_WRITE) || this->just_match(MP_WRITELN))
+	else if (this->try_match(MP_WRITE) || this->try_match(MP_WRITELN))
 		this->parse_write_statement();
-	else if (this->just_match(MP_ID))
+	else if (this->try_match(MP_ID))
 		this->parse_assignment_statement();
-	else if (this->just_match(MP_IF))
+	else if (this->try_match(MP_IF))
 		this->parse_if_statement();
-	else if (this->just_match(MP_WHILE))
+	else if (this->try_match(MP_WHILE))
 		this->parse_while_statement();
-	else if (this->just_match(MP_REPEAT))
+	else if (this->try_match(MP_REPEAT))
 		this->parse_repeat_statement();
-	else if (this->just_match(MP_FOR))
+	else if (this->try_match(MP_FOR))
 		this->parse_for_statement();
-	else if (this->just_match(MP_PROCEDURE))
+	else if (this->try_match(MP_PROCEDURE))
 		this->parse_procedure_statement();
-	else if (this->just_match(MP_BEGIN))
+	else if (this->try_match(MP_BEGIN))
 		this->parse_compound_statement();
 	else
 		this->parse_empty_statement();
@@ -360,9 +450,9 @@ void Parser::parse_empty_statement() {
 void Parser::parse_read_statement() {
     this->more_indent();
 	report_parse("PARSE_READ_STATEMENT", this->parse_depth);
-    if (this->just_match(MP_READ))
+    if (this->try_match(MP_READ))
         this->match(MP_READ);
-    else if (this->just_match(MP_READLN))
+    else if (this->try_match(MP_READLN))
         this->match(MP_READLN);
 	this->match(MP_LEFT_PAREN);
 	this->parse_read_parameter();
@@ -374,7 +464,7 @@ void Parser::parse_read_statement() {
 void Parser::parse_read_parameter_tail() {
     this->more_indent();
 	report_parse("PARSE_READ_PARAM_TAIL", this->parse_depth);
-	if (this->just_match(MP_COMMA)) {
+	if (this->try_match(MP_COMMA)) {
 		this->parse_read_parameter();
 		this->parse_read_parameter_tail();
 	} else {
@@ -394,9 +484,9 @@ void Parser::parse_read_parameter() {
 void Parser::parse_write_statement() {
     this->more_indent();
 	report_parse("PARSE_WRITE_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_WRITELN)) {
+	if (this->try_match(MP_WRITELN)) {
 		this->match(MP_WRITELN);
-	} else if (this->just_match(MP_WRITE)) {
+	} else if (this->try_match(MP_WRITE)) {
 		this->match(MP_WRITE);
 	}
 	this->match(MP_LEFT_PAREN);
@@ -409,7 +499,7 @@ void Parser::parse_write_statement() {
 void Parser::parse_write_parameter_tail() {
     this->more_indent();
 	report_parse("PARSE_WRITE_PARAM_TAIL", this->parse_depth);
-	if (this->just_match(MP_COMMA)) {
+	if (this->try_match(MP_COMMA)) {
 		this->match(MP_COMMA);
 		this->parse_write_parameter();
 		this->parse_write_parameter_tail();
@@ -430,7 +520,7 @@ void Parser::parse_write_parameter() {
 void Parser::parse_assignment_statement() {
     this->more_indent();
 	report_parse("PARSE_ASSIGN_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_ID)) {
+	if (this->try_match(MP_ID)) {
 		this->parse_variable_identifier();
 		this->match(MP_ASSIGNMENT);
 		this->parse_expression();
@@ -441,7 +531,7 @@ void Parser::parse_assignment_statement() {
 void Parser::parse_if_statement() {
     this->more_indent();
 	report_parse("PARSE_IF_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_IF)) {
+	if (this->try_match(MP_IF)) {
 		this->match(MP_IF);
 		this->parse_boolean_expression();
 		this->match(MP_THEN);
@@ -456,7 +546,7 @@ void Parser::parse_if_statement() {
 void Parser::parse_optional_else_part() {
     this->more_indent();
 	report_parse("PARSE_OPTIONAL_ELSE_PART", this->parse_depth);
-	if (this->just_match(MP_ELSE)) {
+	if (this->try_match(MP_ELSE)) {
 		// we have an else part
 		this->match(MP_ELSE);
 		this->parse_statement();
@@ -470,7 +560,7 @@ void Parser::parse_optional_else_part() {
 void Parser::parse_repeat_statement() {
     this->more_indent();
 	report_parse("PARSE_REPEAT_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_REPEAT)) {
+	if (this->try_match(MP_REPEAT)) {
 		this->match(MP_REPEAT);
 		this->parse_statement_sequence();
 		this->match(MP_UNTIL);
@@ -486,7 +576,7 @@ void Parser::parse_repeat_statement() {
 void Parser::parse_while_statement() {
     this->more_indent();
 	report_parse("PARSE_WHILE_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_WHILE)) {
+	if (this->try_match(MP_WHILE)) {
 		this->match(MP_WHILE);
 		this->parse_boolean_expression();
 		this->match(MP_DO);
@@ -502,7 +592,7 @@ void Parser::parse_while_statement() {
 void Parser::parse_for_statement() {
     this->more_indent();
 	report_parse("PARSE_FOR_STATEMENT", this->parse_depth);
-	if (this->just_match(MP_FOR)) {
+	if (this->try_match(MP_FOR)) {
 		this->match(MP_FOR);
 		this->parse_control_variable();
 		this->match(MP_ASSIGNMENT);
@@ -536,9 +626,9 @@ void Parser::parse_initial_value() {
 void Parser::parse_step_value() {
     this->more_indent();
 	report_parse("PARSE_STEP_VALUE", this->parse_depth);
-	if (this->just_match(MP_TO)) {
+	if (this->try_match(MP_TO)) {
 		this->match(MP_TO);
-	} else if (this->just_match(MP_DOWNTO)) {
+	} else if (this->try_match(MP_DOWNTO)) {
 		this->match(MP_DOWNTO);
 	} else {
 		// report some syntax error
@@ -565,7 +655,7 @@ void Parser::parse_procedure_statement() {
 void Parser::parse_optional_actual_parameter_list() {
     this->more_indent();
 	report_parse("PARSE_OPTIONAL_ACTUAL_PARAM_LIST", this->parse_depth);
-	if (this->just_match(MP_LEFT_PAREN)) {
+	if (this->try_match(MP_LEFT_PAREN)) {
 		// optional list used
 		this->match(MP_LEFT_PAREN);
 		this->parse_actual_parameter();
@@ -580,7 +670,7 @@ void Parser::parse_optional_actual_parameter_list() {
 void Parser::parse_actual_parameter_tail() {
     this->more_indent();
 	report_parse("PARSE_ACTUAL_PARAM_TAIL", this->parse_depth);
-	if (this->just_match(MP_COMMA)) {
+	if (this->try_match(MP_COMMA)) {
 		// param tail used
 		this->parse_actual_parameter();
 		this->parse_actual_parameter_tail();
@@ -622,15 +712,15 @@ void Parser::parse_optional_relational_part() {
 void Parser::parse_relational_operator() {
     this->more_indent();
 	report_parse("PARSE_RELATIONAL_OPERATOR", this->parse_depth);
-	if (this->just_match(MP_EQUALS))
+	if (this->try_match(MP_EQUALS))
 		this->match(MP_EQUALS);
-	else if (this->just_match(MP_LESSTHAN))
+	else if (this->try_match(MP_LESSTHAN))
 		this->match(MP_LESSTHAN);
-	else if (this->just_match(MP_GREATERTHAN))
+	else if (this->try_match(MP_GREATERTHAN))
 		this->match(MP_GREATERTHAN);
-	else if (this->just_match(MP_GREATERTHAN_EQUALTO))
+	else if (this->try_match(MP_GREATERTHAN_EQUALTO))
 		this->match(MP_GREATERTHAN_EQUALTO);
-	else if (this->just_match(MP_LESSTHAN_EQUALTO))
+	else if (this->try_match(MP_LESSTHAN_EQUALTO))
 		this->match(MP_LESSTHAN_EQUALTO);
 	else
 		this->match(MP_NOT_EQUAL);
@@ -651,9 +741,9 @@ void Parser::parse_simple_expression() {
 void Parser::parse_optional_sign() {
     this->more_indent();
 	report_parse("PARSE_OPT_SIGN", this->parse_depth);
-	if (this->just_match(MP_PLUS))
+	if (this->try_match(MP_PLUS))
 		this->match(MP_PLUS);
-	else if (this->just_match(MP_MINUS))
+	else if (this->try_match(MP_MINUS))
 		this->match(MP_MINUS);
 	else {
 		// no optional sign, epsilon
@@ -665,11 +755,11 @@ void Parser::parse_optional_sign() {
 void Parser::parse_adding_operator() {
     this->more_indent();
 	report_parse("PARSE_ADDING_OP", this->parse_depth);
-	if (this->just_match(MP_PLUS))
+	if (this->try_match(MP_PLUS))
 		this->match(MP_PLUS);
-	else if (this->just_match(MP_MINUS))
+	else if (this->try_match(MP_MINUS))
 		this->match(MP_MINUS);
-	else if (this->just_match(MP_OR))
+	else if (this->try_match(MP_OR))
 		this->match(MP_OR);
 	else {
 		// syntax error!!!!!
@@ -717,15 +807,15 @@ void Parser::parse_factor_tail() {
 void Parser::parse_multiplying_operator() {
     this->more_indent();
 	report_parse("PARSE_MULTIPLYING_OP", this->parse_depth);
-	if (this->just_match(MP_MULT))
+	if (this->try_match(MP_MULT))
 		this->match(MP_MULT);
-	else if (this->just_match(MP_DIV))
+	else if (this->try_match(MP_DIV))
 		this->match(MP_DIV);
-	else if (this->just_match(MP_AND))
+	else if (this->try_match(MP_AND))
 		this->match(MP_AND);
-	else if (this->just_match(MP_MOD_KW))
+	else if (this->try_match(MP_MOD_KW))
 		this->match(MP_MOD_KW);
-	else if (this->just_match(MP_DIV_KW))
+	else if (this->try_match(MP_DIV_KW))
 		this->match(MP_DIV_KW);
 	else {
 		// syntax error!!!!!
@@ -737,18 +827,18 @@ void Parser::parse_multiplying_operator() {
 void Parser::parse_factor() {
     this->more_indent();
 	report_parse("PARSE_FACTOR", this->parse_depth);
-	if (this->just_match(MP_LEFT_PAREN)) {
+	if (this->try_match(MP_LEFT_PAREN)) {
 		// assume an expression
 		this->match(MP_LEFT_PAREN);
 		this->parse_expression();
 		this->match(MP_RIGHT_PAREN);
-	} else if (this->just_match(MP_INT_LITERAL)) {
+	} else if (this->try_match(MP_INT_LITERAL)) {
 		this->match(MP_INT_LITERAL);
-	} else if (this->just_match(MP_FLOAT_LITERAL)) {
+	} else if (this->try_match(MP_FLOAT_LITERAL)) {
 		this->match(MP_FLOAT_LITERAL);
-	} else if (this->just_match(MP_STRING_LITERAL)) {
+	} else if (this->try_match(MP_STRING_LITERAL)) {
 		this->match(MP_STRING_LITERAL);
-	} else if (this->just_match(MP_NOT)) {
+	} else if (this->try_match(MP_NOT)) {
 		this->match(MP_NOT);
 		this->parse_factor();
 	} else {
@@ -813,7 +903,7 @@ void Parser::parse_identifier_list() {
 void Parser::parse_identifier_tail() {
     this->more_indent();
 	report_parse("PARSE_IDENTIFIER_TAIL", this->parse_depth);
-	if (this->just_match(MP_COMMA)) {
+	if (this->try_match(MP_COMMA)) {
         this->match(MP_COMMA);
 		this->parse_identifier();
 		this->parse_identifier_tail();
@@ -876,5 +966,13 @@ void Parser::next_token() {
 	} else if (this->fromList == true) {
 		// implement this later... with detaching token list
 	}
+}
+
+void Parser::return_from() {
+	this->program_syntax->goto_parent();
+}
+
+void Parser::go_into(ParseType parse_type) {
+	this->program_syntax->add_move_child(shared_ptr<AbstractNode>(new AbstractNode(parse_type)));
 }
 

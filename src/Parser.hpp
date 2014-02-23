@@ -12,104 +12,47 @@
 #include "Tokens.hpp"
 #include "Scanner.hpp"
 #include "Helper.hpp"
+#include "Rules.hpp"
 
-enum ParseType {
-    // parse for all Mikropascal non-terminals
-	SYSTEM_GOAL,
-	PROGRAM,
-	PROGRAM_HEADING,
-	// the program basically
-	BLOCK,
-	// variable declaration stuff
-	VARIABLE_DECLARATION_PART,
-    VARIABLE_DECLARATION_TAIL,
-    VARIABLE_DECLARATION,
-	TYPE,
-	// procedure and function declaration stuff
-	PROCEDURE_AND_FUNCTION_DECLARATION_PART,
-	PROCEDURE_DECLARATION,
-	FUNCTION_DECLARATION,
-	PROCEDURE_HEADING,
-	FUNCTION_HEADING,
-	OPTIONAL_FORMAL_PARAMETER_LIST,
-	FORMAL_PARAMETER_SECTION_TAIL,
-	FORMAL_PARAMETER,
-	VALUE_PARAMETER_SECTION,
-	VARIABLE_PARAMETER_SECTION,
-	// parse statements
-	STATEMENT_PART,
-	COMPOUND_STATEMENT,
-	STATEMENT_SEQUENCE,
-    STATEMENT_TAIL,
-    STATEMENT,
-	EMPTY_STATEMENT,
-	READ_STATEMENT,
-	READ_PARAMETER_TAIL,
-	READ_PARAMETER,
-	WRITE_STATEMENT,
-	WRITE_PARAMETER_TAIL,
-	WRITE_PARAMETER,
-	ASSIGNMENT_STATEMENT,
-	// parse control flow statements
-	IF_STATEMENT,
-    OPTIONAL_ELSE_PART,
-	// parse looping statements
-	REPEAT_STATEMENT,
-	WHILE_STATEMENT,
-	FOR_STATEMENT,
-	CONTROL_VARIABLE,
-	INITIAL_VALUE,
-	STEP_VALUE,
-	FINAL_VALUE,
-	// parse procedure statements
-	PROCEDURE_STATEMENT,
-	OPTIONAL_ACTUAL_PARAMETER_LIST,
-	ACTUAL_PARAMETER_TAIL,
-    ACTUAL_PARAMETER,
-	// parse expressions
-	EXPRESSION,
-	OPTIONAL_RELATIONAL_PART,
-	RELATIONAL_OPERATOR,
-	SIMPLE_EXPRESSION,
-    TERM_TAIL,
-	OPTIONAL_SIGN,
-    ADDING_OPERATOR,
-    TERM,
-    FACTOR_TAIL,
-    MULTIPLYING_OPERATOR,
-    FACTOR,
-	// parse identifiers
-	PROGRAM_IDENTIFIER,
-	VARIABLE_IDENTIFIER,
-	PROCEDURE_IDENTIFIER,
-	FUNCTION_IDENTFIER,
-	BOOLEAN_EXPRESSION,
-	ORDINAL_EXPRESSION,
-	IDENTFIER_LIST,
-    IDENTFIER_TAIL,
-	IDENTIFIER,
-	// parse end of file
-	EOFPARSE
+// AST Stuff
+class AbstractTree {
+private:
+	shared_ptr<AbstractNode> root_node;
+	shared_ptr<AbstractNode> iterable;
+public:
+	AbstractTree();
+	AbstractTree(shared_ptr<AbstractNode> root);
+	void add_move_child(shared_ptr<AbstractNode> child_node);
+	void goto_parent();
+	shared_ptr<AbstractNode> get_current_parent();
+	void display_tree();
+	virtual ~AbstractTree(){};
 };
-
 class AbstractNode {
 private:
     bool is_root;
     shared_ptr<AbstractNode> parent_node;
     shared_ptr<vector<shared_ptr<AbstractNode>>> child_nodes;
+    ParseType parse_type;
+    string decoration;
 public:
     AbstractNode();
-    virtual ~AbstractNode();
-    void add_child_node(shared_ptr<AbstractNode>);
+    AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type);
+    AbstractNode(ParseType parse_type);
+    virtual ~AbstractNode(){};
+    void add_child_node(shared_ptr<AbstractNode> child_node);
     void set_is_root(bool is_root);
+    void set_parent(shared_ptr<AbstractNode> parent_node);
+    shared_ptr<AbstractNode> get_parent();
 };
 
+// Parser Stuff
 class Parser {
 private:
 	shared_ptr<vector<shared_ptr<Token>>> token_list;
 	shared_ptr<Scanner> scanner;
 	shared_ptr<Token> lookahead;
-    shared_ptr<AbstractNode> abstract_syntax;
+    shared_ptr<AbstractTree> program_syntax;
 	bool fromList;
     unsigned int parse_depth;
 public:
@@ -117,7 +60,7 @@ public:
 	Parser(shared_ptr<Scanner> scanner);
 	void parse_me();
 	void match(TokType expected);
-	bool just_match(TokType expected);
+	bool try_match(TokType expected);
 	virtual ~Parser() {
 		if (scanner != nullptr)
 			scanner.reset();
@@ -208,6 +151,9 @@ public:
 	void next_token();
     void more_indent();
     void less_indent();
+    void return_from();
+    void go_into(ParseType parse_type);
+    void go_into_lit(TokType toktype, string lexeme);
 };
 
 
