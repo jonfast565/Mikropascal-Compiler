@@ -100,6 +100,7 @@ int parser_test(string filename) {
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner));
 	parser->parse_me();
+    parser->print_parse();
     cout << "[ End ]" << endl;
 	return 0;
 }

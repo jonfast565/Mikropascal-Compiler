@@ -38,15 +38,16 @@ shared_ptr<AbstractNode> AbstractTree::get_current_parent() {
 }
 
 void AbstractTree::display_tree() {
+    // display tree at the root, which is where it should be
+    report_msg("AST Printable Tree");
     display_tree_at(this->iterable);
 }
 
 void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
-	// unimplemented (recurse but stop on size() = 0) or on child_nodes = nullptr?
-    // use manual iterable pointer + indirect recursion for finer control...
+    // naturally... recursive
     if (!iterable->get_is_rule()) {
         // display token information
-        report_msg_type("Found Token", "");
+        report_msg_type("AST", string("Literal found '" + iterable->get_token()->get_lexeme() + "'"));
         this->goto_parent();
         return;
     } else if (iterable->get_is_epsilon()) {
@@ -56,12 +57,13 @@ void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
         // use a for loop to goto each child with
         // the iterable pointer
         // display rule information
-        report_msg_type("AST", "Rule found");
+        report_msg_type("AST", string("Rule found"));
         // go through all nodes at this level
         for (vector<shared_ptr<AbstractNode>>::iterator i = iterable->get_child_begin();
              i != iterable->get_child_end(); i++) {
             display_tree_at(*i);
         }
+        return;
     }
 }
 
@@ -115,6 +117,13 @@ bool AbstractNode::get_is_rule() {
 
 bool AbstractNode::get_is_epsilon() {
     return (this->parse_type == EPSILON);
+}
+
+shared_ptr<Token> AbstractNode::get_token() {
+    if (is_rule)
+        return nullptr;
+    else
+        return this->token;
 }
 
 void AbstractNode::set_parent(shared_ptr<AbstractNode> parent_node) {
@@ -1196,5 +1205,9 @@ void Parser::go_into(ParseType parse_type) {
 
 void Parser::go_into_lit(shared_ptr<Token> token) {
     this->program_syntax->add_move_child(shared_ptr<AbstractNode>(new AbstractNode(token)));
+}
+
+void Parser::print_parse() {
+    this->program_syntax->display_tree();
 }
 

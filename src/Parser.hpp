@@ -34,6 +34,7 @@ public:
     bool get_is_root();
     bool get_is_rule();
     bool get_is_epsilon();
+    shared_ptr<Token> get_token();
     void set_parent(shared_ptr<AbstractNode> parent_node);
     shared_ptr<AbstractNode> get_parent();
     vector<shared_ptr<AbstractNode>>::iterator get_child_begin();
@@ -167,6 +168,7 @@ public:
     void return_from();
     void go_into(ParseType parse_type);
     void go_into_lit(shared_ptr<Token> token);
+    void print_parse();
 };
 
 
