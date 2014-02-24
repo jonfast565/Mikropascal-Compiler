@@ -19,8 +19,8 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
 	this->load_keyword_machines();
 	this->load_id_machine();
 	this->load_num_automata();
-	this->col_number = 0;
-	this->line_number = 0;
+	this->col_number = 1;
+	this->line_number = 1;
 	this->file_ptr = this->get_begin_fp();
 }
 
@@ -121,10 +121,7 @@ void Scanner::scan_all() {
 
 // scan over one token (this is the dispatcher method!!!... crickey critical mate)
 shared_ptr<Token> Scanner::scan_one() {
-
 	// VIRTUAL CONTRACT CLAUSE ADHERENCE: Always stop at the beginning of the next token.
-
-	// basic cases for comments, whitespace, and newlines
 	// check for space, tab, or newline
 	if (this->peek() == ' ' ||
         this->peek() == '\n' ||
@@ -140,7 +137,6 @@ shared_ptr<Token> Scanner::scan_one() {
               this->peek() == '\f')
 			this->right();
 	}
-    
     // check for the end of file, and return the EOF token.
 	if (this->peek() == '\0') {
 		shared_ptr<Token> eof = shared_ptr<Token>(
@@ -149,36 +145,30 @@ shared_ptr<Token> Scanner::scan_one() {
 		this->consumed_tokens->push_back(eof);
 		return *(this->consumed_tokens->end() - 1);
 	}
-    
 	// remove double dash comments
 	if (this->peek() == get_token_info(TokType::MP_DIV).second[0]
 			&& (this->next() == get_token_info(TokType::MP_DIV).second[0])) {
 		return this->scan_line_comment();
 	}
-    
 	// remove bracket comments
 	else if (this->peek()
 			== get_token_info(TokType::MP_BRACKET_LEFT).second[0]) {
 		return this->scan_bracket_comment();
 	}
-    
 	// scan string literals
 	else if (this->peek()
 			== get_token_info(TokType::MP_STRING_LITERAL).second[0]) {
 		return this->scan_string_literal();
 	}
-    
 	// now look for other tokens that are actually important
 	// find numeric tokens, literal, etc.
 	else if (this->isnum(this->peek())) {
 		return this->scan_num();
 	}
-    
 	// scan a keyword, id, or malformed item?
 	else {
 		return this->scan_keyword_or_id();
 	}
-    
 	// should not happen
 	return shared_ptr<Token>(
 			new Token(this->get_line_number(), this->get_col_number(),

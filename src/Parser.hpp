@@ -15,6 +15,31 @@
 #include "Rules.hpp"
 
 // AST Stuff
+class AbstractNode {
+private:
+    bool is_root;
+    bool is_rule;
+    shared_ptr<AbstractNode> parent_node;
+    shared_ptr<vector<shared_ptr<AbstractNode>>> child_nodes;
+    ParseType parse_type;
+    shared_ptr<Token> token;
+public:
+    AbstractNode();
+    AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type);
+    AbstractNode(ParseType parse_type);
+    AbstractNode(shared_ptr<Token> token);
+    virtual ~AbstractNode(){};
+    void add_child_node(shared_ptr<AbstractNode> child_node);
+    void set_is_root(bool is_root);
+    bool get_is_root();
+    bool get_is_rule();
+    bool get_is_epsilon();
+    void set_parent(shared_ptr<AbstractNode> parent_node);
+    shared_ptr<AbstractNode> get_parent();
+    vector<shared_ptr<AbstractNode>>::iterator get_child_begin();
+    vector<shared_ptr<AbstractNode>>::iterator get_child_end();
+};
+
 class AbstractTree {
 private:
 	shared_ptr<AbstractNode> root_node;
@@ -25,25 +50,9 @@ public:
 	void add_move_child(shared_ptr<AbstractNode> child_node);
 	void goto_parent();
 	shared_ptr<AbstractNode> get_current_parent();
-	void display_tree();
+	void display_tree_at(shared_ptr<AbstractNode> iterable);
+    void display_tree();
 	virtual ~AbstractTree(){};
-};
-class AbstractNode {
-private:
-    bool is_root;
-    shared_ptr<AbstractNode> parent_node;
-    shared_ptr<vector<shared_ptr<AbstractNode>>> child_nodes;
-    ParseType parse_type;
-    string decoration;
-public:
-    AbstractNode();
-    AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type);
-    AbstractNode(ParseType parse_type);
-    virtual ~AbstractNode(){};
-    void add_child_node(shared_ptr<AbstractNode> child_node);
-    void set_is_root(bool is_root);
-    void set_parent(shared_ptr<AbstractNode> parent_node);
-    shared_ptr<AbstractNode> get_parent();
 };
 
 // Parser Stuff
@@ -54,6 +63,7 @@ private:
 	shared_ptr<Token> lookahead;
     shared_ptr<AbstractTree> program_syntax;
 	bool fromList;
+    bool error_reported;
     unsigned int parse_depth;
 public:
 	Parser(shared_ptr<vector<shared_ptr<Token>>> token_list);
@@ -148,12 +158,15 @@ public:
 	bool is_relational_operator();
 	bool is_multiplying_operator();
     bool is_adding_operator();
+    // grab the next token from the input stream
 	void next_token();
+    // indent/dedent the output by one level (debug)
     void more_indent();
     void less_indent();
+    // ast helper methods
     void return_from();
     void go_into(ParseType parse_type);
-    void go_into_lit(TokType toktype, string lexeme);
+    void go_into_lit(shared_ptr<Token> token);
 };
 
 

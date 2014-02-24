@@ -78,7 +78,9 @@ enum ParseType {
 	IDENTIFIER,
 	// parse end of file
 	EOF_RULE,
-	NO_RULE
+	NO_RULE,
+    EPSILON,
+    LITERAL
 };
 
 #endif

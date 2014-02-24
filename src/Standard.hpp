@@ -35,6 +35,6 @@
 using namespace std;
 
 // defines
-#define DEBUG_OUTPUT 1
+#define DEBUG_OUTPUT 0
 
 #endif
