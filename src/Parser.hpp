@@ -13,6 +13,7 @@
 #include "Scanner.hpp"
 #include "Helper.hpp"
 #include "Rules.hpp"
+#include "Symbols.hpp"
 
 // AST Stuff
 class AbstractNode {
