@@ -17,107 +17,21 @@ Notes:
 - Remember to add '-std=c++11' without quotes to 'Other Flags' or else this will not compile.
 - Use GCC 4.8.1 or above to compile, or Clang 3.4 or above.
 
-Updates:
---------
-4/23/2014 - Scanner is almost working.
-	Details: Missing string literals, int literals, float literals, and identifiers.
-			 Error checking also not implemented.
-	Note: If the scanner scans something it cannot get a token for, it will get stuck in an
-		  infinite loop. This will be resolved with some added failover.
-4/22/2014 - Work on scanning class methods has begun.
-4/21/2014 - Updates made to the scanner, FSAs now playing nice.
-4/18/2014 -> 4/20/2014 - FSA header only library devised.
-
 Descriptions:
 -------------
 Standard.hpp - A header file containing most standard includes needed for compilation.
 FiniteAutomata.hpp - A header only library containing FSA constructs.
 Input.hpp/Input.cpp - A general purpose class for getting input into the program.
 Scanner.hpp/Scanner.cpp - A class for scanning Mikropascal tokens from an Input class stream.
+Parser.hpp/Parser.cpp - A class for parsing a Mikropascal grammar given Mikropascal tokens from a Scanner class.
+Tokens.hpp - A list of Mikropascal tokens and accessors.
+Rules.hpp - A list of tokens and grammar rules and their accessors.
+Symbols.hpp/Symbols.cpp - A symbol table implementation for Mikropascal.
 Structures.hpp - Miscellaneous data structures (if necessary, can be removed).
+Helper.hpp - A list of helper functions for displaying output, errors, etc.
 Tests.hpp - Tests of each class.
 Driver.hpp - The file that includes the main() function used to initialize the compiler.
 
 Sample Output:
 --------------
-(as of 4/23/2014, edit as changes are made)
-
-"
---- Mikropascal Compiler ---
---- Scanner Test ---
-
---- Input --- (from file)
-{ this is also a string of text }
-program();
-      
-       var : Integer;
-      
-        begin {tester}
-          Write; Write;
-          Write();
-          Read();
-           := + ;
-          Write(,);
-          Write; Write;
-        end. {tester} 
-
-if = then
-begin
-end
-else
-begin
-end;
-
---- End ---
-
---- Tokens ---
-MP_COMMENT     0   32  '{ this is also a string of text }'
-MP_PROGRAM     1   7   'program'           
-MP_LEFT_PAREN  1   8   '('                 
-MP_RIGHT_PAREN 1   9   ')'                 
-MP_SEMI_COLON  1   10  ';'                 
-MP_VAR         3   10  'var'               
-MP_COLON       3   12  ':'                 
-MP_INTEGER     3   20  'Integer'           
-MP_SEMI_COLON  3   21  ';'                 
-MP_BEGIN       5   13  'begin'             
-MP_COMMENT     5   22  '{tester}'          
-MP_WRITE       6   15  'Write'             
-MP_SEMI_COLON  6   16  ';'                 
-MP_WRITE       6   22  'Write'             
-MP_SEMI_COLON  6   23  ';'                 
-MP_WRITE       7   15  'Write'             
-MP_LEFT_PAREN  7   16  '('                 
-MP_RIGHT_PAREN 7   17  ')'                 
-MP_SEMI_COLON  7   18  ';'                 
-MP_READ        8   14  'Read'              
-MP_LEFT_PAREN  8   15  '('                 
-MP_RIGHT_PAREN 8   16  ')'                 
-MP_SEMI_COLON  8   17  ';'                 
-MP_COLON       9   12  ':'                 
-MP_EQUALS      9   13  '='                 
-MP_PLUS        9   15  '+'                 
-MP_SEMI_COLON  9   17  ';'                 
-MP_WRITE       10  15  'Write'             
-MP_LEFT_PAREN  10  16  '('                 
-MP_COMMA       10  17  ','                 
-MP_RIGHT_PAREN 10  18  ')'                 
-MP_SEMI_COLON  10  19  ';'                 
-MP_WRITE       11  15  'Write'             
-MP_SEMI_COLON  11  16  ';'                 
-MP_WRITE       11  22  'Write'             
-MP_SEMI_COLON  11  23  ';'                 
-MP_END         12  11  'end'               
-MP_PERIOD      12  12  '.'                 
-MP_COMMENT     12  21  '{tester}'          
-MP_IF          14  2   'if'                
-MP_EQUALS      14  4   '='                 
-MP_THEN        14  9   'then'              
-MP_BEGIN       15  5   'begin'             
-MP_END         16  3   'end'               
-MP_ELSE        17  4   'else'              
-MP_BEGIN       18  5   'begin'             
-MP_END         19  3   'end'               
-MP_SEMI_COLON  19  4   ';'                 
---- End ---
-"
+(None currently...)

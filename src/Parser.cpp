@@ -57,7 +57,7 @@ void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
         // use a for loop to goto each child with
         // the iterable pointer
         // display rule information
-        report_msg_type("AST", string("Rule found"));
+        report_msg_type("AST", get_rule_info(this->iterable->get_parse_type()));
         // go through all nodes at this level
         for (vector<shared_ptr<AbstractNode>>::iterator i = iterable->get_child_begin();
              i != iterable->get_child_end(); i++) {
@@ -117,6 +117,13 @@ bool AbstractNode::get_is_rule() {
 
 bool AbstractNode::get_is_epsilon() {
     return (this->parse_type == EPSILON);
+}
+
+ParseType AbstractNode::get_parse_type() {
+	if (this->is_rule == false)
+		return this->parse_type;
+	else
+		return NO_RULE;
 }
 
 shared_ptr<Token> AbstractNode::get_token() {

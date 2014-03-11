@@ -35,6 +35,7 @@ public:
     bool get_is_root();
     bool get_is_rule();
     bool get_is_epsilon();
+    ParseType get_parse_type();
     shared_ptr<Token> get_token();
     void set_parent(shared_ptr<AbstractNode> parent_node);
     shared_ptr<AbstractNode> get_parent();
