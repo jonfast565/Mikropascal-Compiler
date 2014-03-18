@@ -13,6 +13,7 @@
 #include "Input.hpp"
 #include "Scanner.hpp"
 #include "Parser.hpp"
+#include "Helper.hpp"
 
 int automata_keyword_test_cases() {
 	cout << "[ Automata Keyword Tests ]" << endl;
@@ -29,7 +30,7 @@ int automata_keyword_test_cases() {
 	for (vector<string>::iterator i = test_strings.begin();
 			i != test_strings.end(); i++) {
 		while_dfa->run(*i);
-		accept_string = while_dfa->accepted() ? "Accepted." : "Rejected.";
+		accept_string = while_dfa->accepting() ? "Accepted." : "Rejected.";
 		cout << accept_string << endl;
 		while_dfa->reset();
 	}
@@ -66,7 +67,7 @@ int automata_test_cases() {
 	for (vector<string>::iterator i = test_strings.begin();
 			i != test_strings.end(); i++) {
 		while_dfa->run(*i);
-		accept_string = while_dfa->accepted() ? "Accepted." : "Rejected.";
+		accept_string = while_dfa->accepting() ? "Accepted." : "Rejected.";
 		cout << accept_string << endl;
 		while_dfa->reset();
 	}
@@ -87,7 +88,15 @@ int scanner_test(string filename) {
 	cout << "[ Scanner Test ]" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
-	scanner->scan_all();
+	for (int i = 0; i < 100; i++) {
+        TokenPtr t = scanner->scan_one();
+        if (t != nullptr) {
+            report_msg_type("Token", get_token_info(t->get_token()).first);
+            report_msg_type("Lexeme", t->get_lexeme());
+        } else {
+            report_error("Scan Error", "Token returned was nil");
+        }
+    }
 	scanner->display_tokens();
 	scanner->write_tokens_tof(string(filename + "-tokens.txt"));
 	cout << "[ End ]" << endl;

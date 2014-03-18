@@ -17,10 +17,6 @@
 // makes this easier to read
 using ScanBufPtr = shared_ptr<vector<char>>;
 using ScanBuf = vector<char>;
-using FSMachinePtr = shared_ptr<FiniteAutomataContainer>;
-using FSMachineList = vector<shared_ptr<FiniteAutomataContainer>>;
-using FSMachineListPtr = shared_ptr<vector<shared_ptr<FiniteAutomataContainer>>>;
-
 using TokenPtr = shared_ptr<Token>;
 using TokenList = vector<shared_ptr<Token>>;
 using TokenListPtr = shared_ptr<vector<shared_ptr<Token>>>;
@@ -28,59 +24,56 @@ using TokenListPtr = shared_ptr<vector<shared_ptr<Token>>>;
 class Scanner {
 private:
 	// finite automata
-	FSMachineListPtr keyword_machines;
-	FSMachinePtr id_machine;
-	FSMachinePtr intlit_machine;
-	FSMachinePtr fltlit_machine;
+	FSMachineListPtr fsmachines;
+    bool some_accept();
+    bool none_accept();
+    void reset_all_auto();
+    void run_all_auto(string input);
+    FSMachineListPtr not_dead();
+    FSMachineListPtr accepting();
+    FSMachineListPtr run_buffer();
+    void run_chain();
+    
+    // loading finite automata
+	void load_keyword_machines();
+	void load_id_machine();
+	void load_num_machines();
+    void load_strand_machines(unsigned int nesting);
 	
     // tokens
-	TokenListPtr consumed_tokens;
+	TokenListPtr consumed;
+    void consume(TokenPtr token);
+    TokenPtr last_token();
+    TokenPtr create_token(TokType token, string lexeme,
+    unsigned int line, unsigned int column);
 	
-    // file pointer and input mgmt
+    // buffers
 	shared_ptr<Input> input_ptr;
 	StringPtr file_buf_ptr;
 	ScanBufPtr scan_buf;
+    string contents();
+    void shave_all();
+    void shave_buffer();
+    void shave_file_ptr();
+    void shave_chain();
+    void clear_buffer();
+    
+    // pointers
 	string::iterator file_ptr;
-	string::iterator get_begin_fp();
-	string::iterator get_end_fp();
 	void set_fp_begin();
+    string::iterator get_begin_fp();
+	string::iterator get_end_fp();
 	
-    // file info (line & col)
+    // line and column numbers
 	unsigned int line_number;
 	unsigned int col_number;
-	
-    // kword ops
-	void load_keyword_machines();
-	void reset_all_kword();
-	void step_all_kword(char next);
-	bool check_all_kword_accept();
-	TokType get_first_kword_accept();
-	
-    // id ops
-	void load_id_machine();
-	bool check_id_accepted();
-	void step_id(char next);
-	void reset_id();
-	
-    // numerical automata ops
-	void load_num_automata();
-	bool check_int_accepted();
-	bool check_flt_accepted();
-	void step_int(char next);
-	void reset_int();
-	void step_flt(char next);
-	void reset_flt();
-	
-    // scanner internal ops
-	TokenPtr scan_keyword_or_id();
-	TokenPtr scan_num();
-	TokenPtr scan_line_comment();
-	TokenPtr scan_bracket_comment();
-	TokenPtr scan_string_literal();
-	
-    // line and col numbers setters
-	void set_line_number(int new_line_number);
-	void set_col_number(int new_col_number);
+    
+    // scanner internal operations
+    TokenPtr scan_infinite();
+    TokenPtr scan_finite();
+    
+    // debug set input string
+    void debug_set_input_string(StringPtr input);
     
 public:
     // constructors
@@ -101,10 +94,10 @@ public:
     // scan pointer (file pointer) movement
     void scan_all();
 	TokenPtr scan_one();
-	int peek();
-	char next();
-    bool left();
-	bool right();
+	int get_char();
+    bool forward();
+	bool rewind();
+    void cache();
     
     // useful scanning tools
     void skip_whitespace();
@@ -112,11 +105,11 @@ public:
 	// get line and col numbers
 	unsigned int get_line_number();
 	unsigned int get_col_number();
+    unsigned int last_newline();
     
 	// display tokens on the screen
 	void display_tokens();
-	void display_tokens_as_msg();
-	void display_all_automata();
+	void display_all_auto();
     
 	// file ops
 	void write_tokens_tof(string filename);

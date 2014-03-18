@@ -14,16 +14,34 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
 	this->file_buf_ptr = input_ptr->detach_input();
     
     // initialize token list
-	this->consumed_tokens = TokenListPtr(new vector<TokenPtr>);
+	this->consumed = TokenListPtr(new vector<TokenPtr>);
+    
+    // initialize all FSAs for MP keywords
+	this->fsmachines = shared_ptr<
+    vector<FSMachinePtr>>(new vector<FSMachinePtr>);
     
     // create a scan buffer
 	this->scan_buf = ScanBufPtr(new ScanBuf);
+    
+    // load all machines
 	this->load_keyword_machines();
 	this->load_id_machine();
-	this->load_num_automata();
+	this->load_num_machines();
+    this->load_strand_machines(100);
+    
+    // set the line and column numbers to default
 	this->col_number = 1;
 	this->line_number = 1;
+    
+    // put the file pointer on the first character in the buffer
 	this->file_ptr = this->get_begin_fp();
+}
+
+void Scanner::debug_set_input_string(StringPtr input) {
+    // for testing purposes only
+    // breaks encapsulation
+    this->file_buf_ptr = input;
+    this->file_ptr = input->begin();
 }
 
 string::iterator Scanner::get_begin_fp() {
@@ -43,58 +61,25 @@ void Scanner::set_fp_begin() {
 
 void Scanner::reset() {
 	// reset all FSAs, delete all tokens, move file pointer to beginning
-	this->reset_all_kword();
-	this->keyword_machines->clear();
+	this->reset_all_auto();
+    this->consumed->clear();
 	this->set_fp_begin();
 }
 
-void Scanner::reset_all_kword() {
-	// reset all keyword automata to their initial state
-	for (vector<FSMachinePtr>::iterator i =
-         this->keyword_machines->begin(); i != this->keyword_machines->end();
-         i++) {
-		if (i != this->keyword_machines->end())
-			(*i)->reset();
-	}
+void Scanner::reset_all_auto() {
+    // reset all FSMachines to their default states
+	for (auto i = this->fsmachines->begin();
+         i != fsmachines->end(); i++) {
+        (*i)->reset();
+    }
 }
 
-void Scanner::step_all_kword(char next) {
-    // step one character over all automata currently initialized
-	// run character 'next' on all FSAs
-	for (vector<FSMachinePtr>::iterator i =
-         this->keyword_machines->begin(); i != this->keyword_machines->end();
-         i++) {
-		if (i != this->keyword_machines->end())
-			(*i)->step(next);
-	}
-}
-
-bool Scanner::check_all_kword_accept() {
-	// check if any keyword FSA has accepted
-	for (vector<FSMachinePtr>::iterator i =
-         this->keyword_machines->begin(); i != this->keyword_machines->end();
-         i++) {
-		if (i != this->keyword_machines->end()) {
-			if ((*i)->accepted())
-				return true;
-		}
-	}
-	return false;
-}
-
-TokType Scanner::get_first_kword_accept() {
-	// get the first accepted token if available from an FSA
-	for (vector<FSMachinePtr>::iterator i =
-         this->keyword_machines->begin(); i != this->keyword_machines->end();
-         i++) {
-		if ((*i)->accepted()) {
-			// names of the tokens are aligned with their enum names
-			// which are the names of each created FSA
-			return get_token_by_name((*i)->get_name());
-		}
-	}
-	// this is weird, so return the weird one
-	return TokType::MP_MALFORMED;
+void Scanner::run_all_auto(string input) {
+    // reset all FSMachines to their default states
+	for (auto i = this->fsmachines->begin();
+         i != fsmachines->end(); i++) {
+        (*i)->run(input);
+    }
 }
 
 void Scanner::scan_all() {
@@ -104,356 +89,285 @@ void Scanner::scan_all() {
 
 void Scanner::skip_whitespace() {
     // check for space, tab, or newline, or etc...
-	if (this->peek() == ' ' ||
-        this->peek() == '\n' ||
-        this->peek() == '\t' ||
-        this->peek() == '\r' ||
-        this->peek() == '\v' ||
-        this->peek() == '\f') {
-		while(this->peek() == ' ' ||
-              this->peek() == '\n' ||
-              this->peek() == '\t' ||
-              this->peek() == '\r' ||
-              this->peek() == '\v' ||
-              this->peek() == '\f')
-			this->right();
+	if (this->get_char() == ' ' ||
+        this->get_char() == '\n' ||
+        this->get_char() == '\t' ||
+        this->get_char() == '\r' ||
+        this->get_char() == '\v' ||
+        this->get_char() == '\f') {
+		while(this->get_char() == ' ' ||
+              this->get_char() == '\n' ||
+              this->get_char() == '\t' ||
+              this->get_char() == '\r' ||
+              this->get_char() == '\v' ||
+              this->get_char() == '\f')
+			this->forward();
 	}
+}
+
+void Scanner::consume(TokenPtr token) {
+    // add a token to the buffer
+    this->consumed->push_back(token);
+}
+
+TokenPtr Scanner::last_token() {
+    // get the last token added to the buffer
+    return *(this->consumed->end() - 1);
+}
+
+string Scanner::contents() {
+    // dump the buffer contents
+    return string(this->scan_buf->begin(), this->scan_buf->end());
+}
+
+bool Scanner::some_accept() {
+    // determine if some machines accept
+    for (auto i = this->fsmachines->begin(); i !=
+         this->fsmachines->end(); i++) {
+        if ((*i)->accepting()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Scanner::none_accept() {
+    // determine if no machines accept
+    for (auto i = this->fsmachines->begin(); i !=
+         this->fsmachines->end(); i++) {
+        if ((*i)->accepting()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+FSMachineListPtr Scanner::not_dead() {
+    // return machines not in dead states
+    FSMachineListPtr alive_machines =
+    FSMachineListPtr(new FSMachineList());
+    for (auto i = this->fsmachines->begin(); i !=
+         this->fsmachines->end(); i++) {
+        if ((*i)->not_dead() == true) {
+            alive_machines->push_back(*i);
+        }
+    }
+    return alive_machines;
+}
+
+FSMachineListPtr Scanner::run_buffer() {
+    // run every machine against the buffer contents
+    this->run_all_auto(this->contents());
+    // return machines not in dead states
+    FSMachineListPtr alive_machines = this->not_dead();
+    return alive_machines;
+}
+
+FSMachineListPtr Scanner::accepting() {
+    // return a list of all accepting machines
+    // ordered by priority
+    FSMachineListPtr accepting_machines =
+    FSMachineListPtr(new FSMachineList());
+    for (auto i = this->fsmachines->begin(); i !=
+         this->fsmachines->end(); i++) {
+        if ((*i)->accepting() == true) {
+            accepting_machines->push_back(*i);
+        }
+    }
+    sort(accepting_machines->begin(),
+                accepting_machines->end());
+    return accepting_machines;
 }
 
 TokenPtr Scanner::scan_one() {
-	// dispatch one token
     // scan for whitespace
     this->skip_whitespace();
     
-    // check for the end of file, and return the EOF token.
-	if (this->peek() == '\0') {
-		TokenPtr eof = TokenPtr(
-                                new Token(this->get_line_number(), this->get_col_number(),
-                                          TokType::MP_EOF, "EOF"));
-		this->consumed_tokens->push_back(eof);
-		return *(this->consumed_tokens->end() - 1);
-	}
+    // throw a character into the buffer
+    this->cache();
     
-	// remove double dash comments
-	if (this->peek() == get_token_info(TokType::MP_DIV).second[0]
-        && (this->next() == get_token_info(TokType::MP_DIV).second[0])) {
-		return this->scan_line_comment();
-	}
+    // move the input pointer forward
+    this->forward();
     
-	// remove bracket comments
-	else if (this->peek()
-             == get_token_info(TokType::MP_BRACKET_LEFT).second[0]) {
-		return this->scan_bracket_comment();
-	}
+    // run buffer, then check to see what scanning
+    // mode we should be in
+    this->run_buffer();
     
-	// scan string literals
-	else if (this->peek()
-             == get_token_info(TokType::MP_STRING_LITERAL).second[0]) {
-		return this->scan_string_literal();
-	}
-    
-	// now look for other tokens that are actually important
-	// find numeric tokens, literal, etc.
-	else if (this->isnum(this->peek())) {
-		return this->scan_num();
-	}
-    
-	// scan a keyword, id, or malformed item?
-	else {
-		return this->scan_keyword_or_id();
-	}
+    // if none accept, scan to the end of the input
+    // to try to accept
+    if (this->none_accept()) {
+        // scan until we find something, or reach EOF
+        this->reset_all_auto();
+        return this->scan_infinite();
+    } else {
+        // scan until nothing accepts any longer
+        this->reset_all_auto();
+        return this->scan_finite();
+    }
 }
 
-TokenPtr Scanner::scan_keyword_or_id() {
-	// reset the id automata
-	this->reset_id();
-	this->reset_all_kword();
-	if (this->isalnum(this->peek()) || this->peek() == '_') {
-		// continuously parse
-		while (this->isalnum(this->peek()) || this->peek() == '_') {
-			// parse id
-			// initialize the identifier automata
-			this->step_id(this->peek());
-			this->step_all_kword(this->peek());
-			// push back the first character
-			scan_buf->push_back(this->peek());
-			// move right
-			this->right();
-		}
-		TokType kword;
-		if (this->check_all_kword_accept() == true
-            && this->check_id_accepted() == true) {
-			// get the matched token
-			kword = this->get_first_kword_accept();
-		} else if (this->check_all_kword_accept() == false
-                   && this->check_id_accepted() == true) {
-			kword = TokType::MP_ID;
-		} else {
-			// chances are this is bad
-			kword = TokType::MP_MALFORMED;
-		}
-		// convert input stream to a string
-		string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-		// generate token
-		TokenPtr new_kword;
-		if (kword != TokType::MP_MALFORMED) {
-			new_kword = TokenPtr(
-                                 new Token(this->get_line_number(), this->get_col_number(),
-                                           kword, buf_lexeme));
-		} else {
-			new_kword =
-            TokenPtr(
-                     new Token(this->get_line_number(),
-                               this->get_col_number(), kword,
-                               format_error_lc("Scan Error", "Malformed ID", this->get_line_number(),
-                                               this->get_col_number())));
-		}
-		// save token
-		this->consumed_tokens->push_back(new_kword);
-		// clear the scan buffer
-		this->scan_buf->clear();
-		// we're done here, so we can return the new token
-		return *(this->consumed_tokens->end() - 1);
-	}
-	// look for symbols
-	else {
-		// parse short keyword
-		// look at the char in the input
-		// initialize the identifier automata
-		this->step_all_kword(this->peek());
-		// push back the first character
-		scan_buf->push_back(this->peek());
-		// get the first accepted symbol
-		TokType symbol = this->get_first_kword_accept();
-		TokenPtr new_symbol;
-		// see if the symbol exists
-		if (symbol == TokType::MP_MALFORMED) {
-			// generate token
-			new_symbol = TokenPtr(
-                                  new Token(this->get_line_number(), this->get_col_number(),
-                                            TokType::MP_ERROR,
-                                            format_error_lc("Scan Error", "Unrecognized symbol '"
-                                                            + string(scan_buf->begin(),
-                                                                     scan_buf->end())
-                                                            + "' (MP_ERROR)", this->get_line_number(),
-                                                            this->get_col_number())));
-		} else {
-			// go one to the right, and get second accepted if possible
-			this->step_all_kword(this->next());
-			if (this->check_all_kword_accept() == true) {
-				this->right();
-				scan_buf->push_back(this->peek());
-				symbol = this->get_first_kword_accept();
-			}
-			// convert input stream to a string
-			string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-			// generate token
-			new_symbol = TokenPtr(
-                                  new Token(this->get_line_number(), this->get_col_number(),
-                                            symbol, buf_lexeme));
-		}
-        
-		// save token
-		this->consumed_tokens->push_back(new_symbol);
-		// clear the scan buffer
-		this->scan_buf->clear();
-		// move the file pointer ahead by 1 (as per contract)
-		this->right();
-		// we're done here, so we can return the new token
-		return *(this->consumed_tokens->end() - 1);
-	}
+void Scanner::shave_all() {
+    // shave both the scan buffer
+    // by a character and rewind the file
+    // pointer by one
+    this->shave_buffer();
+    this->shave_file_ptr();
 }
 
-TokenPtr Scanner::scan_num() {
-	// reset automata
-	this->reset_flt();
-	this->reset_int();
-    
-	// keep scanning until there is some nasty fail
-	while (this->isnum(this->peek()) || this->peek() == '.'
-           || this->peek() == 'E' || this->peek() == 'e' || this->peek() == '+'
-           || this->peek() == '-') {
-		// push back the first character
-		scan_buf->push_back(this->peek());
-		// step each automata
-		this->step_int(this->peek());
-		this->step_flt(this->peek());
-		// move right
-		this->right();
-	}
-	// once done, make the decision as to what type of number this is
-	TokType numeric_type;
-	if (this->check_flt_accepted()) {
-		numeric_type = TokType::MP_FLOAT_LITERAL;
-	} else if (this->check_int_accepted()) {
-		numeric_type = TokType::MP_INT_LITERAL;
-	} else {
-		numeric_type = TokType::MP_MALFORMED;
-	}
-	// convert input stream to a string
-	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-	// generate token
-	TokenPtr numeric_literal;
-	// determine if a scan error exists
-	if (numeric_type != TokType::MP_MALFORMED) {
-		numeric_literal = TokenPtr(
-                                   new Token(this->get_line_number(), this->get_col_number(),
-                                             numeric_type, buf_lexeme));
-	} else {
-		numeric_literal =
-        TokenPtr(
-                 new Token(this->get_line_number(),
-                           this->get_col_number(), TokType::MP_ERROR,
-                           format_error_lc("Scan Error", "Malformed numeric literal (MP_ERROR)",
-                                           this->get_line_number(), this->get_col_number())));
-	}
-	// save token
-	this->consumed_tokens->push_back(numeric_literal);
-	// clear the scan buffer
-	this->scan_buf->clear();
-	// we're done here, so we can return the new token
-	return *(this->consumed_tokens->end() - 1);
+void Scanner::shave_buffer() {
+    // pop the scan buffer
+    this->scan_buf->pop_back();
 }
 
-TokenPtr Scanner::scan_line_comment() {
-	// new line comment, so ends at the next line
-	while (this->peek() != '\n') {
-		// push the current char on to the scan buffer
-		scan_buf->push_back(this->peek());
-		// move the file pointer to the right a tad
-		this->right();
-	}
-	// convert input stream to a string
-	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-	// create the token
-	TokenPtr comment_tok = TokenPtr(
-                                    new Token(this->get_line_number(), this->get_col_number(),
-                                              TokType::MP_COMMENT, buf_lexeme));
-	// push token onto the list of found tokens
-	consumed_tokens->push_back(comment_tok);
-	// clear the scan buffer
-	this->scan_buf->clear();
-	// move the file pointer ahead 1 (as per contract)
-	this->right();
-	// return the comment
-	return *(this->consumed_tokens->end() - 1);
+void Scanner::shave_file_ptr() {
+    // rewind the file pointer by one
+    this->rewind();
 }
 
-TokenPtr Scanner::scan_bracket_comment() {
-	// push back the left bracket (lexeme) and
-	// wait for the second bracket to appear under the file pointer
-	stack<char> comment_stack;
-	// consume until all comments are consumed
-	TokType comment_valid = TokType::MP_COMMENT;
-	TokenPtr comment_tok;
-	do {
-		// check for new opening and closing braces, or an invalid condition
-		// (ie. reached the end of file)
-		if (this->file_ptr == this->file_buf_ptr->end()) {
-			// create the token
-			comment_tok =
-            TokenPtr(
-                     new Token(this->get_line_number(),
-                               this->get_col_number(),
-                               TokType::MP_RUN_COMMENT,
-                               format_error_lc("Scan Error", "Run on comment (MP_RUN_COMMENT)",
-                                               this->get_line_number(), this->get_col_number())));
-			// save the token
-			this->consumed_tokens->push_back(comment_tok);
-			// clear the scan buffer
-			scan_buf->clear();
-			// return the last token
-			return *(this->consumed_tokens->end() - 1);
-		} else if (this->peek()
-                   == get_token_info(TokType::MP_BRACKET_LEFT).second[0])
-			comment_stack.push(
-                               get_token_info(TokType::MP_BRACKET_LEFT).second[0]);
-		else if (this->peek()
-                 == get_token_info(TokType::MP_BRACKET_RIGHT).second[0])
-			comment_stack.pop();
-		// pop the last seen character onto the buffer
-		scan_buf->push_back(this->peek());
-		// move the file pointer ahead 1 (as per contract)
-		this->right();
-	} while (!comment_stack.empty());
-	// convert input stream to a string
-	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-	// create the token
-	comment_tok = TokenPtr(
-                           new Token(this->get_line_number(), this->get_col_number(),
-                                     comment_valid, buf_lexeme));
-	// save the token
-	this->consumed_tokens->push_back(comment_tok);
-	// clear the scan buffer
-	scan_buf->clear();
-	// return the last token
-	return *(this->consumed_tokens->end() - 1);
+void Scanner::shave_chain() {
+    // shave all
+    this->shave_all();
+    // reset all machines
+    this->reset_all_auto();
+    // run buffer
+    this->run_buffer();
 }
 
-TokenPtr Scanner::scan_string_literal() {
-	// move right to prevent malformed condition
-	this->right();
-	// determine if the string is not run-on while scanning
-	TokType string_valid = TokType::MP_STRING_LITERAL;
-	while (this->peek() != '\'') {
-		if (this->peek() == '\n') {
-			string_valid = TokType::MP_MALFORMED;
-			break;
-		} else {
-			scan_buf->push_back(this->peek());
-			this->right();
-		}
-	}
-	// convert input stream to a string
-	string buf_lexeme = string(scan_buf->begin(), scan_buf->end());
-	// create the token
-	TokenPtr string_tok;
-	if (string_valid == TokType::MP_STRING_LITERAL) {
-		string_tok = TokenPtr(
-                              new Token(this->get_line_number(), this->get_col_number(),
-                                        string_valid, buf_lexeme));
-	} else {
-		string_tok =
-        TokenPtr(
-                 new Token(this->get_line_number(),
-                           this->get_col_number(), TokType::MP_RUN_STRING,
-                           format_error_lc("Scan Error", "Run on string (MP_RUN_STRING)",
-                                           this->get_line_number(), this->get_col_number())));
-	}
-	// save the token
-	this->consumed_tokens->push_back(string_tok);
-	// clear the scan buffer
-	scan_buf->clear();
-	// move the file pointer ahead 1 (as per contract)
-	this->right();
-	// return the last token
-	return *(this->consumed_tokens->end() - 1);
+void Scanner::clear_buffer() {
+    // clear the scan buffer
+    this->scan_buf->clear();
 }
 
-int Scanner::peek() {
+void Scanner::run_chain() {
+    // standard run chain for all buffer moves
+    // reset all machines to their start states
+    this->reset_all_auto();
+    // cache the current token under the fp
+    this->cache();
+    // move the file pointer forward 1
+    this->forward();
+    // run the entire buffer against the automata
+    // individually
+    this->run_buffer();
+    // use with some, no, and not_dead()
+}
+
+TokenPtr Scanner::scan_infinite() {
+    // a token pointer to see what we can get
+    TokenPtr new_token = TokenPtr(new Token());
+    // moves to the end of the buffer
+    unsigned int moves = 0;
+    // scan until the null character
+    while (this->get_char() != '\0') {
+        // cache fp and move to the next character
+        this->run_chain();
+        moves++;
+        // check if a machine accepted
+        if (some_accept()) {
+            // if some machine(s) is(are) accepting
+            while(!none_accept() || this->not_dead()->size() > 0) {
+                // scan until none accept
+                this->run_chain();
+            }
+            // shave chain
+            this->shave_chain();
+            // some will accept, since
+            // the condition above satisfies it
+            // get first high priority accepting machines
+            FSMachinePtr accepting = *(this->accepting()->begin());
+            string token_name = accepting->get_name();
+            // create a token
+            new_token->set_token(get_token_by_name(token_name));
+            new_token->set_lexeme(this->contents());
+            unsigned int lex_start =
+            (unsigned int) new_token->get_lexeme().size() - this->col_number;
+            new_token->set_column(lex_start);
+            new_token->set_line(this->line_number);
+            // clear buffer
+            this->clear_buffer();
+            // return new token
+            return new_token;
+        }
+    }
+    // error condition
+    // unwind the file pointer back to the first item
+    for (unsigned int i = moves; i > 0; i--) {
+        this->shave_all();
+    }
+    if (this->get_char() == '\'') {
+        new_token->set_token(MP_RUN_STRING);
+    } else if (this->get_char() == '{') {
+        new_token->set_token(MP_RUN_COMMENT);
+    } else {
+        new_token->set_token(MP_ERROR);
+    }
+    // create the error token
+    new_token->set_lexeme(this->contents());
+    unsigned int lex_start =
+    (unsigned int) new_token->get_lexeme().size() - this->col_number;
+    new_token->set_column(lex_start);
+    new_token->set_line(this->line_number);
+    // hidden error message here? (might be good)
+    // clear buffer
+    this->clear_buffer();
+    // return error token
+    return new_token;
+}
+
+TokenPtr Scanner::scan_finite() {
+    // token to build
+    TokenPtr new_token = TokenPtr(new Token());
+    // wait until no state machine accepts
+    while (!this->none_accept() || this->not_dead()->size() > 0) {
+        // check for the null pointed item
+        if (this->get_char() == '\0') {
+            break;
+        }
+        // store and forward
+        this->run_chain();
+    }
+    // shave off the end of the buffer
+    this->shave_chain();
+    // get first high priority accepting machine
+    FSMachineListPtr accepting_list = this->accepting();
+    FSMachinePtr accepting = *(accepting_list->begin());
+    string token_name = accepting->get_name();
+    // create a token
+    new_token->set_token(get_token_by_name(token_name));
+    new_token->set_lexeme(this->contents());
+    unsigned int lex_start =
+    (unsigned int) new_token->get_lexeme().size() - this->col_number;
+    new_token->set_column(lex_start);
+    new_token->set_line(this->line_number);
+    // clear buffer
+    this->clear_buffer();
+    // return new token
+    return new_token;
+}
+
+TokenPtr create_token(TokType token, string lexeme,
+                      unsigned int line, unsigned int column) {
+    // create a cool token
+    return TokenPtr(new Token(token, lexeme, line, column));
+}
+
+int Scanner::get_char() {
 	// look at the current char in the input
 	if (this->file_ptr != this->file_buf_ptr->end())
 		// if not end, character is valid
-		return *this->file_ptr;
+		return *(this->file_ptr);
 	else
+        // null character is buffer end
 		return '\0';
 }
 
-char Scanner::next() {
-	// look at the next char in the input, without consuming
-	if (this->right()) {
-		// get the next character
-		char lookahead = this->peek();
-		// go back
-		this->left();
-		// return this character
-		return lookahead;
-	} else
-		return '\0';
-    
+void Scanner::cache() {
+    // get char and push onto the buffer
+    char c = get_char();
+    this->scan_buf->push_back(c);
 }
 
-bool Scanner::right() {
+bool Scanner::forward() {
 	// move the file pointer to the right by one
 	if (this->file_ptr != this->file_buf_ptr->end()) {
 		// deal with line and column numbers
@@ -461,44 +375,54 @@ bool Scanner::right() {
 			this->line_number++;
 			this->col_number = 1;
 		} else {
-			this->col_number = this->col_number + 1;
+			this->col_number++;
 		}
 		this->file_ptr++;
 		return true;
-	} else
+	} else {
 		return false;
+    }
 }
 
-bool Scanner::left() {
+bool Scanner::rewind() {
 	// move the file pointer to the left by one
 	if (this->file_ptr != this->file_buf_ptr->begin()) {
-		// deal with line and column numbers
-		// (unimplemented)
-		// successful
-		this->file_ptr = this->file_ptr - 1;
+        if (*(this->file_ptr) == '\n') {
+            // deal with the remaining column size
+            this->line_number--;
+            //this->col_number = this->last_newline();
+        } else {
+            this->col_number--;
+        }
+        this->file_ptr--;
 		return true;
-	} else
-		// unsuccessful
+	} else {
 		return false;
+    }
 }
 
-void Scanner::set_line_number(int new_line_number) {
-	// get the line number
-	this->line_number = new_line_number;
-}
-
-void Scanner::set_col_number(int new_col_number) {
-	// get the column number
-	this->col_number = new_col_number;
+unsigned int Scanner::last_newline() {
+    // go to the back until hitting a newline
+    unsigned int num_columns = 1;
+    do {
+        this->rewind();
+        num_columns++;
+    // until we hit the last new line, or file beginning
+    } while (this->get_char() != '\n' &&
+             this->file_ptr != this->file_buf_ptr->begin());
+    
+    // go back to the starting position
+    for (unsigned int i = 1; i < num_columns; i++) {
+        this->forward();
+    }
+    // number of columns back at ya!
+    return num_columns;
 }
 
 void Scanner::load_keyword_machines() {
-    // initialize all FSA for MP keywords
-	this->keyword_machines = shared_ptr<
-    vector<FSMachinePtr>>(new vector<FSMachinePtr>);
-    
 	// get the token type for all keyworded or single char types
-	for (auto i = (int) TokType::MP_SEMI_COLON; i <= (int) TokType::MP_BOOLEAN; i++) {
+	for (auto i = (int) TokType::MP_SEMI_COLON;
+         i <= (int) TokType::MP_BOOLEAN; i++) {
 		
         // create new automata for all types
 		FSMachinePtr new_fa = shared_ptr<
@@ -507,126 +431,146 @@ void Scanner::load_keyword_machines() {
 		
         // build the keyword into the automata
 		new_fa->build_keyword(get_token_info((TokType)i).second);
+        
+        // set priority: keywords are always more important than ids
+        new_fa->set_priority(1);
 		
         // add to the vector of automata
-		this->keyword_machines->push_back(new_fa);
+		this->fsmachines->push_back(new_fa);
 	}
 }
 
 // load automata for scanning valid identifiers
 void Scanner::load_id_machine() {
 	// create the id scan automata
-	this->id_machine = FSMachinePtr(
+	auto id_machine = FSMachinePtr(
     new FiniteAutomataContainer(get_token_info(TokType::MP_ID).first,
     true));
     
 	// detects ids without two underscores
-	this->id_machine->add_state("0", true, false);
-	this->id_machine->add_state("1", false, true);
-	this->id_machine->add_state("2", false, true);
-	this->id_machine->add_state("3", false, false);
-	this->id_machine->add_state("4", false, false);
+	id_machine->add_state("0", true, false);
+	id_machine->add_state("1", false, true);
+	id_machine->add_state("2", false, true);
+	id_machine->add_state("3", false, false);
+	id_machine->add_state("4", false, false);
     
 	// add transitions
-	this->id_machine->add_alphabet("0", "1");
-	this->id_machine->add_alphabet("1", "1");
-	this->id_machine->add_digits("1", "1");
-	this->id_machine->add_transition("1", '_', "4");
-	this->id_machine->add_alphabet("4", "1");
-	this->id_machine->add_digits("4", "1");
+	id_machine->add_alphabet("0", "1");
+	id_machine->add_alphabet("1", "1");
+	id_machine->add_digits("1", "1");
+	id_machine->add_transition("1", '_', "4");
+	id_machine->add_alphabet("4", "1");
+	id_machine->add_digits("4", "1");
     
 	// other part
-	this->id_machine->add_transition("0", '_', "3");
-	this->id_machine->add_alphabet("3", "2");
-	this->id_machine->add_digits("3", "2");
-	this->id_machine->add_alphabet("2", "2");
-	this->id_machine->add_digits("2", "2");
-	this->id_machine->add_transition("2", '_', "3");
+	id_machine->add_transition("0", '_', "3");
+	id_machine->add_alphabet("3", "2");
+	id_machine->add_digits("3", "2");
+	id_machine->add_alphabet("2", "2");
+	id_machine->add_digits("2", "2");
+	id_machine->add_transition("2", '_', "3");
+    
+    // set priority
+    id_machine->set_priority(2);
+    
+    // add to finite machines
+    this->fsmachines->push_back(id_machine);
 }
 
-bool Scanner::check_id_accepted() {
-    // check if the identifier is accepted
-	return this->id_machine->accepted();
-}
-
-void Scanner::step_id(char next) {
-    // step through the identifier FA on char
-	this->id_machine->step(next);
-}
-
-void Scanner::reset_id() {
-    // reset identifier FA
-	this->id_machine->reset();
-}
-
-void Scanner::load_num_automata() {
+void Scanner::load_num_machines() {
 	// create floating point automata for scanning numeric literals
-	this->fltlit_machine = FSMachinePtr(
-    new FiniteAutomataContainer("FLT_LIT", true));
+	auto float_machine = FSMachinePtr(
+    new FiniteAutomataContainer("FLOAT", true));
     
     // add states to this DFA, first and final
-	this->fltlit_machine->add_state("1", true, false);
-	this->fltlit_machine->add_state("2", false, true);
-	this->fltlit_machine->add_state("3", false, false);
-	this->fltlit_machine->add_state("4", false, false);
-	this->fltlit_machine->add_state("5", false, true);
-	this->fltlit_machine->add_digits("1", "1");
-	this->fltlit_machine->add_transition("1", '.', "2");
-	this->fltlit_machine->add_digits("2", "2");
-	this->fltlit_machine->add_transition("2", 'e', "3");
-	this->fltlit_machine->add_transition("2", 'E', "3");
-	this->fltlit_machine->add_transition("3", '+', "4");
-	this->fltlit_machine->add_transition("3", '-', "4");
-	this->fltlit_machine->add_digits("3", "5");
-	this->fltlit_machine->add_digits("4", "5");
+	float_machine->add_state("1", true, false);
+	float_machine->add_state("2", false, true);
+	float_machine->add_state("3", false, false);
+	float_machine->add_state("4", false, false);
+	float_machine->add_state("5", false, true);
+	float_machine->add_digits("1", "1");
+	float_machine->add_transition("1", '.', "2");
+	float_machine->add_digits("2", "2");
+	float_machine->add_transition("2", 'e', "3");
+	float_machine->add_transition("2", 'E', "3");
+	float_machine->add_transition("3", '+', "4");
+	float_machine->add_transition("3", '-', "4");
+	float_machine->add_digits("3", "5");
+	float_machine->add_digits("4", "5");
     
 	// create integer automata
-	this->intlit_machine = FSMachinePtr(
-    new FiniteAutomataContainer("INT_LIT", true));
+	auto integer_machine = FSMachinePtr(
+    new FiniteAutomataContainer("INTEGER", true));
     
     // add states to this DFA
-	this->intlit_machine->add_state("0", true, false);
-	this->intlit_machine->add_state("1", false, true);
-	this->intlit_machine->add_digits("0", "1");
-	this->intlit_machine->add_digits("1", "1");
+	integer_machine->add_state("0", true, false);
+	integer_machine->add_state("1", false, true);
+	integer_machine->add_digits("0", "1");
+	integer_machine->add_digits("1", "1");
     
 	// reset both
-	this->fltlit_machine->reset();
-	this->intlit_machine->reset();
+	float_machine->reset();
+	integer_machine->reset();
+    
+    // set machine priorities
+    float_machine->set_priority(1);
+    integer_machine->set_priority(1);
+    
+    // add both to the finite machines list
+    this->fsmachines->push_back(float_machine);
+    this->fsmachines->push_back(integer_machine);
 }
 
-bool Scanner::check_int_accepted() {
-    // check if int machine accepted
-	return this->intlit_machine->accepted();
-}
-
-void Scanner::step_int(char next) {
-    // step int machine
-	this->intlit_machine->step(next);
-}
-
-void Scanner::reset_int() {
-    // reset int machine
-	this->intlit_machine->reset();
-}
-
-bool Scanner::check_flt_accepted() {
-    // check if float machine accepted
-	return this->fltlit_machine->accepted();
-}
-
-void Scanner::step_flt(char next) {
-    // step float machine
-	this->fltlit_machine->step(next);
-}
-
-void Scanner::reset_flt() {
-    // reset float machine
-	this->fltlit_machine->reset();
+void Scanner::load_strand_machines(unsigned int within) {
+    // comments and strings, take that!
+    // add nested strings and comments feature using within variable
+    auto comment_machine = FSMachinePtr(
+    new FiniteAutomataContainer("COMMENT", true));
+    
+    // add states
+    comment_machine->add_state("0", true, false);
+    comment_machine->add_state("1", false, false);
+    comment_machine->add_state("2", false, true);
+    
+    // add transitions
+    comment_machine->add_transition("0", '{', "1");
+    comment_machine->add_alphabet("1", "1");
+    comment_machine->add_symbols("1", "1");
+    comment_machine->add_digits("1", "1");
+    comment_machine->remove_transition("1", '{');
+    comment_machine->remove_transition("1", '}');
+    comment_machine->add_transition("1", '}', "2");
+    
+    // new machine
+    auto string_machine = FSMachinePtr(
+    new FiniteAutomataContainer("STRING", true));
+    
+    // add states
+    string_machine->add_state("0", true, false);
+    string_machine->add_state("1", false, false);
+    string_machine->add_state("2", false, true);
+    
+    // add transitions
+    string_machine->add_transition("0", '\'', "1");
+    string_machine->add_alphabet("1", "1");
+    string_machine->add_symbols("1", "1");
+    string_machine->add_digits("1", "1");
+    string_machine->remove_transition("1", '\'');
+    string_machine->remove_transition("1", '\'');
+    string_machine->add_transition("1", '\'', "2");
+    
+    // set machine priority
+    comment_machine->set_priority(1);
+    string_machine->set_priority(1);
+    
+    // add the machines to our FSMachines list
+    this->fsmachines->push_back(comment_machine);
+    this->fsmachines->push_back(string_machine);
 }
 
 bool Scanner::isalnum(char next) {
-    // load automata for determining if an input symbol is a letter or digit
+    // load automata for determining if
+    // an input symbol is a letter or digit
 	if (isalpha(next) || isdigit(next))
 		return true;
 	else
@@ -637,7 +581,7 @@ bool Scanner::isnum(char next) {
 	// step over a digit
 	FSMachinePtr is_digit = shared_ptr<
     FiniteAutomataContainer>(
-    new FiniteAutomataContainer("IS_DIGIT", true));
+    new FiniteAutomataContainer("DIGIT", true));
     
     // add states
 	is_digit->add_state("0", true, false);
@@ -651,7 +595,7 @@ bool Scanner::isnum(char next) {
 	is_digit->step(next);
     
 	// determine acceptance
-	if (is_digit->accepted() == true) {
+	if (is_digit->accepting() == true) {
 		return true;
 	} else {
 		return false;
@@ -662,7 +606,7 @@ bool Scanner::isalpha(char next) {
     // step over a letter
 	FSMachinePtr is_letter = shared_ptr<
     FiniteAutomataContainer>(
-    new FiniteAutomataContainer("IS_LETTER", true));
+    new FiniteAutomataContainer("LETTER", true));
     
     // add states
 	is_letter->add_state("0", true, false);
@@ -676,7 +620,7 @@ bool Scanner::isalpha(char next) {
 	is_letter->step(next);
     
 	// determine acceptance
-	if (is_letter->accepted() == true) {
+	if (is_letter->accepting() == true) {
 		return true;
 	} else {
 		return false;
@@ -695,13 +639,13 @@ unsigned int Scanner::get_col_number() {
 
 // remove comments from the list of consumed tokens
 void Scanner::thin_comments() {
-    if (this->consumed_tokens->size() > 0) {
+    if (this->consumed->size() > 0) {
         for (vector<TokenPtr>::iterator i =
-        this->consumed_tokens->begin();
-        i != consumed_tokens->end(); i++)
+        this->consumed->begin();
+        i != consumed->end(); i++)
         {
             if ((*i)->get_token() == MP_COMMENT) {
-                this->consumed_tokens->erase(i);
+                this->consumed->erase(i);
             }
         }
     }
@@ -709,12 +653,12 @@ void Scanner::thin_comments() {
 
 // write tokens to a file
 void Scanner::write_tokens_tof(string filename) {
-	if (this->consumed_tokens->size() > 0) {
+	if (this->consumed->size() > 0) {
 		ofstream file;
 		file.open(filename);
 		for (vector<TokenPtr>::iterator i =
-             this->consumed_tokens->begin();
-             i != this->consumed_tokens->end(); i++) {
+             this->consumed->begin();
+             i != this->consumed->end(); i++) {
 			file << (*(*i)->to_string()) << '\n';
 		}
 		file.close();
@@ -722,13 +666,15 @@ void Scanner::write_tokens_tof(string filename) {
 }
 
 void Scanner::display_tokens() {
-	for (vector<TokenPtr>::iterator i = this->consumed_tokens->begin();
-         i != consumed_tokens->end(); i++) {
-		report_error_lc("Token found", "'" + (*i)->get_lexeme() + "'", (*i)->get_line(), (*i)->get_column());
+	for (vector<TokenPtr>::iterator i = this->consumed->begin();
+         i != consumed->end(); i++) {
+		report_error_lc("Token found", "'"
+                        + (*i)->get_lexeme()
+                        + "'", (*i)->get_line(), (*i)->get_column());
 	}
 }
 
 TokenListPtr Scanner::detach_tokens() {
-	return this->consumed_tokens;
+	return this->consumed;
 }
 

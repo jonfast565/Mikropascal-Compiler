@@ -22,6 +22,8 @@
 #include <fstream>
 #include <stack>
 #include <fstream>
+#include <algorithm>
+#include <locale>
 
 // all C derived includes here
 #include <cassert>

@@ -99,13 +99,11 @@ enum TokType {
 	MP_BRACKET_RIGHT,
 
 	// end of file
-	MP_NULLCHAR,
 	MP_EOF,
 
 	//ignorable
 	MP_COMMENT,
 	MP_RUN_COMMENT,
-	MP_MALFORMED,
 	MP_ERROR
 };
 
@@ -236,8 +234,6 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_BRACKET_RIGHT", "}");
 
 		// others
-	case MP_NULLCHAR:
-		return pair<string, string>("MP_NULLCHAR", "\0");
 	case MP_EOF:
 		return pair<string, string>("MP_EOF", "EOF");
 	case MP_COMMENT:
@@ -254,8 +250,6 @@ static pair<string, string> get_token_info(TokType token) {
 		return pair<string, string>("MP_RUN_STRING", "'");
 	case MP_RUN_COMMENT:
 		return pair<string, string>("MP_RUN_COMMENT", "'");
-	case MP_MALFORMED:
-		return pair<string, string>("MP_MALFORMED", "");
 	case MP_ERROR:
 		return pair<string, string>("MP_ERROR", "");
 	default:
@@ -272,7 +266,7 @@ static TokType get_token_by_name(string name) {
 		}
 	}
 	// error
-	return MP_MALFORMED;
+	return MP_ERROR;
 }
 
 // Token class
@@ -282,10 +276,18 @@ private:
 	unsigned int column;
 	TokType token;
 	string lexeme;
+    string error;
 public:
-	Token(int line, int column, TokType token, string lexeme) :
+	Token(TokType token, string lexeme, unsigned int line, unsigned int column):
 			line(line), column(column), token(token), lexeme(lexeme) {
 	}
+    Token() {
+        this->line = 0;
+        this->column = 0;
+        this->token = MP_ERROR;
+        this->lexeme = "No Token";
+        this->error = "No Error";
+    }
 	virtual ~Token() = default;
 	void set_line(unsigned int line) {
 		this->line = line;
@@ -299,6 +301,9 @@ public:
 	void set_lexeme(string lexeme) {
 		this->lexeme = lexeme;
 	}
+    void set_error(string error_msg) {
+        this->error = error_msg;
+    }
 	unsigned int get_line() {
 		return this->line;
 	}
@@ -311,10 +316,13 @@ public:
 	string get_lexeme() {
 		return this->lexeme;
 	}
+    string get_error() {
+        return this->error;
+    }
+    // wary about this, repeal and replace...
 	shared_ptr<string> to_string() {
 		stringstream ss;
-		if (this->token == TokType::MP_MALFORMED
-				|| this->token == TokType::MP_RUN_COMMENT
+		if (this->token == TokType::MP_RUN_COMMENT
 				|| this->token == TokType::MP_RUN_STRING
 				|| this->token == TokType::MP_ERROR) {
 			ss << std::left << setw(76) << string(this->get_lexeme());

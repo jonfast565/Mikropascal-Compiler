@@ -24,8 +24,13 @@ using StateList = vector<StatePtr>;
 using StateListPtr = shared_ptr<StateList>;
 using StateIterator = StateList::iterator;
 using StateIteratorList = shared_ptr<vector<StateIterator>>;
-using TransitionMap = map<char, StateList::iterator>;
+using TransitionMap = map<char, StateIterator>;
 using TransitionMapPtr = shared_ptr<TransitionMap>;
+using FSMachinePtr = shared_ptr<FiniteAutomataContainer>;
+using FSMachineList = vector<FSMachinePtr>;
+using FSMachineListPtr = shared_ptr<FSMachineList>;
+
+// class type aliases
 
 // class that creates a state in an FA
 class FiniteAutomataState {
@@ -82,7 +87,7 @@ public:
 		this->to_state->insert(pair<char, StateIterator>(on, new_state));
 	}
 	// return the map of character to transitions (iterators to new states)
-	shared_ptr<map<char, StateIterator>> get_transitions() {
+	shared_ptr<TransitionMap> get_transitions() {
 		return this->to_state;
 	}
 	// return a particular transition to another state (iterator)
@@ -116,10 +121,12 @@ private:
 	shared_ptr<vector<StatePtr>> states;
 	StateIterator run_ptr;
 	shared_ptr<vector<StatePtr>> dead_states;
-	// info variables like a machine name
-	// and if a DEAD state exists
+	
+    // info variables like a machine name
+	// and if a dead state exists
 	bool dead_state_exists;
 	string name;
+    unsigned int priority;
 
 	// get an iterator for the first element of the state vector
 	StateIterator get_begin_iter() {
@@ -135,15 +142,19 @@ public:
 	// construct an entire finite automata (ctor)
 	FiniteAutomataContainer(string name) :
 			dead_state_exists(true), name(name) {
-		// create a list of states
+		
+        // create a list of states
 		this->states = shared_ptr<vector<StatePtr>>(new vector<StatePtr>);
 		this->dead_states = shared_ptr<vector<StatePtr>>(new vector<StatePtr>);
-		// automatically create a dead state (hack), that the iterator goes to if a match is not found
+		
+        // automatically create a dead state (hack), that the iterator goes to if a match is not found
 		this->dead_states->push_back(
 				StatePtr(new FiniteAutomataState(false, false, "DEAD")));
-		// move the run pointer to the end state (as for now it is invalid)
+		
+        // move the run pointer to the end state (as for now it is invalid)
 		// this is the equivalent of the pointer in an array of char
 		this->run_ptr = this->states->end();
+        this->priority = 0;
 	}
 
 	// construct an FA with the option of setting if a dead state exists
@@ -157,6 +168,7 @@ public:
 					StatePtr(new FiniteAutomataState(false, false, "DEAD")));
 		}
 		this->run_ptr = this->states->end();
+        this->priority = 0;
 	}
 
 	// destructor clears all loose states
@@ -173,6 +185,16 @@ public:
 	void set_name(string name) {
 		this->name = name;
 	}
+    
+    // FSA priority (for use with a scanner)
+    unsigned int get_priority() {
+        return this->priority;
+    }
+    
+    // FSA priority (for use with a scanner)
+    void set_priority(unsigned int new_priority) {
+        this->priority = new_priority;
+    }
 
 	// add a state to this automata
 	void add_state(string state_name, bool is_initial, bool is_final) {
@@ -226,7 +248,7 @@ public:
 			for (StateIterator i = this->get_begin_iter();
 					i != this->get_end_iter(); ++i) {
 				// iterate through the map
-				for (map<char, StateIterator>::iterator t =
+				for (TransitionMap::iterator t =
 						(*i)->get_transitions()->begin();
 						t != (*i)->get_transitions()->end(); ++t) {
 					// if the removal iterator rem_target is equivalent to any iterator
@@ -392,6 +414,22 @@ public:
 				this->add_transition(first_state, (char) i, second_state);
 		}
 	}
+    
+    void add_symbols(string first_state, string second_state) {
+		// assumes ascii
+		StateIterator first_state_iter = this->get_state(first_state);
+		StateIterator second_state_iter = this->get_state(second_state);
+		if (*first_state_iter != nullptr && *second_state_iter != nullptr) {
+			for (int i = 33; i <= 47; i++)
+				this->add_transition(first_state, (char) i, second_state);
+            for (int i = 58; i <= 64; i++)
+				this->add_transition(first_state, (char) i, second_state);
+            for (int i = 91; i <= 96; i++)
+				this->add_transition(first_state, (char) i, second_state);
+            for (int i = 123; i <= 126; i++)
+				this->add_transition(first_state, (char) i, second_state);
+		}
+    }
 
 	// give a detailed description of this FA
 	void print() {
@@ -411,7 +449,7 @@ public:
 		cout << "Transitions: " << endl;
 		for (StateIterator i = this->get_begin_iter();
 				i != this->get_end_iter(); ++i) {
-			for (map<char, StateIterator>::iterator t =
+			for (TransitionMap::iterator t =
 					(*i)->get_transitions()->begin();
 					t != (*i)->get_transitions()->end(); ++t) {
 				cout << (*i)->get_name() << " -> " << (*(t->second))->get_name()
@@ -422,12 +460,14 @@ public:
 	}
 
 	// determines if this FA has accepted
-	bool accepted() {
+	bool accepting() {
 		// invalid state of the iterator
-		if (this->run_ptr == this->states->end())
+		if (this->run_ptr == this->states->end()) {
 			return false;
+        }
 		else {
-			//else we need to determine if the iterator is on a final state
+			// else we need to determine if
+            // the iterator is on a final state
 			if ((*this->run_ptr)->get_is_final() == true)
 				return true;
 			else
@@ -443,6 +483,16 @@ public:
 					++i)
 				this->step(*i);
 	}
+    
+    // is this FA dead?
+    bool dead() {
+        return (this->run_ptr == this->get_dead_state()) ? true : false;
+    }
+    
+    // is it not dead?
+    bool not_dead() {
+        return (this->run_ptr == this->get_dead_state()) ? false : true;
+    }
 
 	// resets this FA to its initial state
 	void reset() {
@@ -486,6 +536,8 @@ public:
 		int state_counter = 0;
 		string prev_state;
 		string next_state;
+        
+        // create states with zero based names and Q
 		for (unsigned int i = 0; i < keyword.size(); i++) {
 			if (i == 0)
 				this->add_state(to_string(i), true, false);
@@ -493,6 +545,7 @@ public:
 				this->add_state(to_string(i), false, false);
 			state_counter++;
 		}
+        
 		// add final state
 		this->add_state(to_string(state_counter), false, true);
 
@@ -507,5 +560,30 @@ public:
 		}
 	}
 };
+
+// FA comparison (based on priority only)
+inline bool operator ==(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() == b->get_priority()) ? true : false;
+}
+
+inline bool operator >=(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() >= b->get_priority()) ? true : false;
+}
+
+inline bool operator <=(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() <= b->get_priority()) ? true : false;
+}
+
+inline bool operator <(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() < b->get_priority()) ? true : false;
+}
+
+inline bool operator >(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() > b->get_priority()) ? true : false;
+}
+
+inline bool operator !=(FSMachinePtr& a, FSMachinePtr& b) {
+    return (a->get_priority() != b->get_priority()) ? true : false;
+}
 
 #endif
