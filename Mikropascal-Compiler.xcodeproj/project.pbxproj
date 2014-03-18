@@ -27,11 +27,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9E3C259E18D7E3F400DC9CEC /* FiniteAutomata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = FiniteAutomata.hpp; sourceTree = "<group>"; };
 		9ED9F2EC18D7DF6E00C14142 /* Mikropascal-Compiler */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Mikropascal-Compiler"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9ED9F2F818D7DFA900C14142 /* Mikropascal_Compiler.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = Mikropascal_Compiler.1; sourceTree = "<group>"; };
 		9ED9F2F918D7DFA900C14142 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		9ED9F2FB18D7DFA900C14142 /* Driver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Driver.cpp; sourceTree = "<group>"; };
-		9ED9F2FC18D7DFA900C14142 /* FiniteAutomata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = FiniteAutomata.hpp; sourceTree = "<group>"; };
 		9ED9F2FD18D7DFA900C14142 /* Helper.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Helper.hpp; sourceTree = "<group>"; };
 		9ED9F2FE18D7DFA900C14142 /* Input.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Input.cpp; sourceTree = "<group>"; };
 		9ED9F2FF18D7DFA900C14142 /* Input.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = Input.hpp; sourceTree = "<group>"; };
@@ -80,8 +80,8 @@
 		9ED9F2FA18D7DFA900C14142 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				9E3C259E18D7E3F400DC9CEC /* FiniteAutomata.hpp */,
 				9ED9F2FB18D7DFA900C14142 /* Driver.cpp */,
-				9ED9F2FC18D7DFA900C14142 /* FiniteAutomata.hpp */,
 				9ED9F2FD18D7DFA900C14142 /* Helper.hpp */,
 				9ED9F2FE18D7DFA900C14142 /* Input.cpp */,
 				9ED9F2FF18D7DFA900C14142 /* Input.hpp */,
@@ -265,6 +265,7 @@
 				9ED9F2F718D7DF6E00C14142 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
