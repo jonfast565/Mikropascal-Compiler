@@ -15,8 +15,6 @@
 
 #define AUTOMATA_DEBUG 0
 
-namespace SourceMage {
-
 class FiniteAutomataContainer;
 class FiniteAutomataState;
 
@@ -153,6 +151,7 @@ public:
 	FiniteAutomataContainer(string name, bool dead_states_enabled) :
 			dead_state_exists(dead_states_enabled), name(name) {
 		this->states = shared_ptr<vector<StatePtr>>(new vector<StatePtr>);
+        this->dead_states = shared_ptr<vector<StatePtr>>(new vector<StatePtr>);
 		if (dead_state_exists) {
 			this->dead_states->push_back(
 					StatePtr(new FiniteAutomataState(false, false, "DEAD")));
@@ -464,6 +463,22 @@ public:
 		}
 	}
 
+    // returns all variants of a character (upper and lowercase)
+    pair<char, char> all_char_variants(char c) {
+        pair<char, char> char_pair;
+        if (c == toupper(c)) {
+            char_pair.first = c;
+        } else {
+            char_pair.first = toupper(c);
+        }
+        if (c == tolower(c)) {
+            char_pair.second = c;
+        } else {
+            char_pair.second = tolower(c);
+        }
+        return char_pair;
+    }
+    
 	// builds an FA in this container from a keyword
 	void build_keyword(string keyword) {
 		// build single stage dfas for keywords
@@ -483,7 +498,7 @@ public:
 
 		// add transitions
 		for (unsigned int i = 0; i < keyword.size(); i++) {
-			pair<char, char> char_pair = SourceMage::Global::all_char_variants(
+			pair<char, char> char_pair = all_char_variants(
 					keyword[i]);
 			this->add_transition(to_string(i), char_pair.first,
 					to_string(i + 1));
@@ -492,7 +507,5 @@ public:
 		}
 	}
 };
-
-}
 
 #endif

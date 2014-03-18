@@ -34,6 +34,9 @@
 // use the standard namespace
 using namespace std;
 
+// usings
+using StringPtr = shared_ptr<string>;
+
 // defines
 #define DEBUG_OUTPUT 0
 

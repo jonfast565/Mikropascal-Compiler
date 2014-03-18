@@ -88,7 +88,7 @@ int scanner_test(string filename) {
 	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
 	scanner->scan_all();
-	scanner->display_tokens_as_msg();
+	scanner->display_tokens();
 	scanner->write_tokens_tof(string(filename + "-tokens.txt"));
 	cout << "[ End ]" << endl;
 	return 0;
