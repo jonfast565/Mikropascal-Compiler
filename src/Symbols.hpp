@@ -11,81 +11,118 @@
 
 #include "Standard.hpp"
 
-class Symbol;
+class SymProcedure;
+class SymFunction;
+class SymVariable;
+class SymIdentifier;
+class SymLiteral;
+class SymArgument;
+
+// type predecls
+using ArgumentPtr = shared_ptr<SymArgument>;
+using ArgumentList = vector<ArgumentPtr>;
+using ArgumentListPtr = shared_ptr<vector<ArgumentList>>;
+using SymbolPtr = shared_ptr<Symbol>;
+
+// symbol types
+enum SymType {
+	SYM_PROCEDURE,
+	SYM_FUNCTION,
+	SYM_VARIABLE,
+	SYM_IDENTIFIER,
+	SYM_LITERAL
+};
+
+// variable types
+enum VarType {
+	STRING,
+	INTEGER,
+	FLOATING,
+	BOOLEAN
+};
+
+enum LiteralType {
+	STRING_LITERAL,
+	INTEGER_LITERAL,
+	FLOATING_LITERAL
+};
 
 enum PassType {
-    REFERENCE,
-    VALUE,
-    UNDEFPASS
+	VALUE,
+	REFERENCE
 };
 
-enum SymbolType {
-    DATA,
-    FUNCTION,
-    PROCEDURE
+enum Scope {
+	GLOBAL,
+	LOCAL
 };
 
-enum SymbolScope {
-    LOCAL,
-    GLOBAL, //static
-    PARAM
-};
-
-enum DataType {
-    STRING,
-    INTEGER,
-    FLOAT,
-    BOOLEAN
-};
-
-class SymbolTable {
-private:
-    unsigned int current_level;
-    shared_ptr<vector<shared_ptr<Symbol>>> table;
-    shared_ptr<Symbol> current_symbol;
-    
-public:
-    SymbolTable();
-    void add_symbol(shared_ptr<Symbol> new_symbol);
-    void go_into_callable();
-    void return_from_callable();
-    virtual ~SymbolTable() = default;
-};
-
+// symbol class
 class Symbol {
 private:
-    string bound_name;
-    SymbolType symbol_type;
-    SymbolScope symbol_scope;
-    DataType return_type;
-    unsigned int nesting_level;
-    unsigned int parameter_number;
-    shared_ptr<vector<tuple<string, DataType, PassType>>> parameter_names;
-    shared_ptr<SymbolTable> callable;
+	SymType symbol_type;
+	string symbol_name;
+	Scope symbol_scope;
 public:
-    // data
-    Symbol(string bound_name, SymbolScope scope, unsigned int nesting_level);
-    // procedure
-    Symbol(string bound_name,
-           SymbolScope scope,
-           unsigned int nesting_level,
-           shared_ptr<vector<tuple<string, DataType, PassType>>> parameter_names);
-    // function
-    Symbol(string bound_name,
-           SymbolScope scope,
-           unsigned int nesting_level,
-           shared_ptr<vector<tuple<string, DataType, PassType>>> parameter_names,
-           DataType return_type);
-    
-    // getters
-    string get_bound_name();
-    SymbolType get_symbol_type();
-    SymbolScope get_symbol_scope();
-    unsigned int get_nesting_level();
-    unsigned int get_number_parameters();
-    shared_ptr<vector<tuple<string, DataType, PassType>>> get_parameter_names();
-    shared_ptr<SymbolTable> get_callable();
-    virtual ~Symbol() = default;
+	Symbol(string name, SymType type, Scope scope):
+		symbol_name(name), symbol_type(type), symbol_scope(scope){};
+	virtual ~Symbol() = default;
+
+};
+
+class SymProcedure : public Symbol {
+private:
+	ArgumentListPtr argument_list;
+public:
+	SymProcedure(string name, Scope scope): Symbol(name, SYM_PROCEDURE, scope) {
+		this->argument_list = ArgumentListPtr(new ArgumentList());
+	}
+	virtual ~SymProcedure() = default;
+};
+
+class SymFunction : public SymProcedure {
+private:
+	VarType return_type;
+public:
+	SymFunction(string name, VarType return_type, Scope scope): Symbol(name, SYM_FUNCTION, scope),
+	return_type(return_type){};
+	virtual ~SymFunction() = default;
+};
+
+class SymVariable : public Symbol {
+private:
+	VarType variable_type;
+public:
+	SymVariable(string name, VarType type, Scope scope):
+		Symbol(name, SYM_VARIABLE, scope), variable_type(type){};
+	virtual ~SymVariable() = default;
+};
+
+class SymIdentifier : public Symbol {
+private:
+	VarType variable_type;
+public:
+	SymIdentifier(string name, VarType type, Scope scope):
+		Symbol(name, SYM_IDENTIFIER, scope), variable_type(type){};
+	virtual ~SymIdentifier() = default;
+};
+
+class SymLiteral : public Symbol {
+private:
+	LiteralType literal_type;
+public:
+	SymLiteral(string name, LiteralType type, Scope scope):
+	Symbol(name, SYM_LITERAL, scope), literal_type(type){};
+	virtual ~SymIdentifier() = default;
+};
+
+class SymArgument : public SymVariable {
+private:
+	PassType pass_type;
+public:
+	SymArgument(string name, VarType type, Scope scope, PassType pass):
+		SymVariable(name, type, scope), pass_type(pass){}
+	virtual ~SymArgument() = default;
 };
 
 #endif
