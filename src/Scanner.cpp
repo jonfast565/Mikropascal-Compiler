@@ -259,9 +259,8 @@ TokenPtr Scanner::scan_infinite() {
     unsigned int moves = 0;
     // scan until the null character
     while (this->get_char() != '\0') {
-        // cache fp and move to the next character
-        this->run_chain();
-        moves++;
+        // run the buffer
+        this->run_buffer();
         // check if a machine accepted
         if (some_accept()) {
             // if some machine(s) is(are) accepting
@@ -277,7 +276,8 @@ TokenPtr Scanner::scan_infinite() {
             FSMachinePtr accepting = *(this->accepting()->begin());
             string token_name = accepting->get_name();
             // create a token
-            new_token->set_token(get_token_by_name(token_name));
+            TokType this_tok = get_token_by_name(token_name);
+            new_token->set_token(this_tok);
             new_token->set_lexeme(this->contents());
             unsigned int lex_start =
             (unsigned int) new_token->get_lexeme().size() - this->col_number;
@@ -288,6 +288,7 @@ TokenPtr Scanner::scan_infinite() {
             // return new token
             return new_token;
         }
+        moves++;
     }
     // error condition
     // unwind the file pointer back to the first item
@@ -315,8 +316,6 @@ TokenPtr Scanner::scan_infinite() {
 }
 
 TokenPtr Scanner::scan_finite() {
-    // token to build
-    TokenPtr new_token = TokenPtr(new Token());
     // wait until no state machine accepts
     while (!this->none_accept() || this->not_dead()->size() > 0) {
         // check for the null pointed item
@@ -328,12 +327,15 @@ TokenPtr Scanner::scan_finite() {
     }
     // shave off the end of the buffer
     this->shave_chain();
+    // token to build
+    TokenPtr new_token = TokenPtr(new Token());
     // get first high priority accepting machine
     FSMachineListPtr accepting_list = this->accepting();
     FSMachinePtr accepting = *(accepting_list->begin());
     string token_name = accepting->get_name();
     // create a token
-    new_token->set_token(get_token_by_name(token_name));
+    TokType this_tok = get_token_by_name(token_name);
+    new_token->set_token(this_tok);
     new_token->set_lexeme(this->contents());
     unsigned int lex_start =
     (unsigned int) new_token->get_lexeme().size() - this->col_number;
@@ -480,7 +482,7 @@ void Scanner::load_id_machine() {
 void Scanner::load_num_machines() {
 	// create floating point automata for scanning numeric literals
 	auto float_machine = FSMachinePtr(
-    new FiniteAutomataContainer("FLOAT", true));
+    new FiniteAutomataContainer(get_token_info(TokType::MP_FLOAT_LITERAL).first, true));
     
     // add states to this DFA, first and final
 	float_machine->add_state("1", true, false);
@@ -500,7 +502,7 @@ void Scanner::load_num_machines() {
     
 	// create integer automata
 	auto integer_machine = FSMachinePtr(
-    new FiniteAutomataContainer("INTEGER", true));
+    new FiniteAutomataContainer(get_token_info(TokType::MP_INT_LITERAL).first, true));
     
     // add states to this DFA
 	integer_machine->add_state("0", true, false);
@@ -525,7 +527,7 @@ void Scanner::load_strand_machines(unsigned int within) {
     // comments and strings, take that!
     // add nested strings and comments feature using within variable
     auto comment_machine = FSMachinePtr(
-    new FiniteAutomataContainer("COMMENT", true));
+    new FiniteAutomataContainer(get_token_info(TokType::MP_COMMENT).first, true));
     
     // add states
     comment_machine->add_state("0", true, false);
@@ -537,13 +539,14 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_alphabet("1", "1");
     comment_machine->add_symbols("1", "1");
     comment_machine->add_digits("1", "1");
+    comment_machine->add_transition("1", ' ', "1");
     comment_machine->remove_transition("1", '{');
     comment_machine->remove_transition("1", '}');
     comment_machine->add_transition("1", '}', "2");
     
     // new machine
     auto string_machine = FSMachinePtr(
-    new FiniteAutomataContainer("STRING", true));
+    new FiniteAutomataContainer(get_token_info(TokType::MP_STRING_LITERAL).first, true));
     
     // add states
     string_machine->add_state("0", true, false);
@@ -555,6 +558,7 @@ void Scanner::load_strand_machines(unsigned int within) {
     string_machine->add_alphabet("1", "1");
     string_machine->add_symbols("1", "1");
     string_machine->add_digits("1", "1");
+    string_machine->add_transition("1", ' ', "1");
     string_machine->remove_transition("1", '\'');
     string_machine->remove_transition("1", '\'');
     string_machine->add_transition("1", '\'', "2");
