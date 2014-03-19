@@ -51,6 +51,7 @@ void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
         this->goto_parent();
         return;
     } else if (iterable->get_is_epsilon()) {
+        report_msg_type("AST", string("Epsilon found"));
         this->goto_parent();
         return;
     } else {

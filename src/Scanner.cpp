@@ -30,8 +30,8 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
     this->load_strand_machines(100);
     
     // set the line and column numbers to default
-	this->col_number = 1;
-	this->line_number = 1;
+	this->col_number = 1L;
+	this->line_number = 1L;
     
     // put the file pointer on the first character in the buffer
 	this->file_ptr = this->get_begin_fp();
@@ -183,6 +183,17 @@ TokenPtr Scanner::scan_one() {
     // scan for whitespace
     this->skip_whitespace();
     
+    // return EOF on failed scan of
+    // end of file
+    if (this->get_char() == '\0') {
+        TokenPtr new_token = TokenPtr(new Token());
+        new_token->set_token(MP_EOF);
+        new_token->set_lexeme("EOF");
+        new_token->set_line(this->line_number);
+        new_token->set_column(this->col_number);
+        return new_token;
+    }
+    
     // throw a character into the buffer
     this->cache();
     
@@ -270,6 +281,10 @@ TokenPtr Scanner::scan_infinite() {
             }
             // shave chain
             this->shave_chain();
+            // error condition checked
+            if (this->none_accept()) {
+                break;
+            }
             // some will accept, since
             // the condition above satisfies it
             // get first high priority accepting machines
@@ -279,14 +294,22 @@ TokenPtr Scanner::scan_infinite() {
             TokType this_tok = get_token_by_name(token_name);
             new_token->set_token(this_tok);
             new_token->set_lexeme(this->contents());
-            unsigned int lex_start =
-            (unsigned int) new_token->get_lexeme().size() - this->col_number;
+            unsigned long lex_start = this->col_number;
             new_token->set_column(lex_start);
             new_token->set_line(this->line_number);
             // clear buffer
             this->clear_buffer();
             // return new token
+            this->consume(new_token);
             return new_token;
+        } else {
+            this->reset_all_auto();
+            // cache the current token under the fp
+            this->cache();
+            // move the file pointer forward 1
+            this->forward();
+            // run the entire buffer against the automata
+            // individually
         }
         moves++;
     }
@@ -295,23 +318,25 @@ TokenPtr Scanner::scan_infinite() {
     for (unsigned int i = moves; i > 0; i--) {
         this->shave_all();
     }
-    if (this->get_char() == '\'') {
+    if (*this->scan_buf->begin() == '\'') {
         new_token->set_token(MP_RUN_STRING);
-    } else if (this->get_char() == '{') {
+        this->goto_next('\n');
+    } else if (*this->scan_buf->begin() == '{') {
         new_token->set_token(MP_RUN_COMMENT);
+        this->goto_next('\n');
     } else {
         new_token->set_token(MP_ERROR);
     }
     // create the error token
     new_token->set_lexeme(this->contents());
-    unsigned int lex_start =
-    (unsigned int) new_token->get_lexeme().size() - this->col_number;
+    unsigned long lex_start = this->col_number;
     new_token->set_column(lex_start);
     new_token->set_line(this->line_number);
     // hidden error message here? (might be good)
     // clear buffer
     this->clear_buffer();
     // return error token
+    this->consume(new_token);
     return new_token;
 }
 
@@ -337,13 +362,13 @@ TokenPtr Scanner::scan_finite() {
     TokType this_tok = get_token_by_name(token_name);
     new_token->set_token(this_tok);
     new_token->set_lexeme(this->contents());
-    unsigned int lex_start =
-    (unsigned int) new_token->get_lexeme().size() - this->col_number;
+    unsigned long lex_start = this->col_number;
     new_token->set_column(lex_start);
     new_token->set_line(this->line_number);
     // clear buffer
     this->clear_buffer();
     // return new token
+    this->consume(new_token);
     return new_token;
 }
 
@@ -403,7 +428,7 @@ bool Scanner::rewind() {
     }
 }
 
-unsigned int Scanner::last_newline() {
+unsigned long Scanner::last_newline() {
     // go to the back until hitting a newline
     unsigned int num_columns = 1;
     do {
@@ -419,6 +444,14 @@ unsigned int Scanner::last_newline() {
     }
     // number of columns back at ya!
     return num_columns;
+}
+
+void Scanner::goto_next(char c) {
+    // go to the next character specified
+    while(this->get_char() != c) {
+        // go forward
+        this->forward();
+    }
 }
 
 void Scanner::load_keyword_machines() {
@@ -631,12 +664,12 @@ bool Scanner::isalpha(char next) {
 	}
 }
 
-unsigned int Scanner::get_line_number() {
+unsigned long Scanner::get_line_number() {
 	// get the scanning line number
 	return this->line_number;
 }
 
-unsigned int Scanner::get_col_number() {
+unsigned long Scanner::get_col_number() {
 	// get the scanning column number
 	return this->col_number;
 }

@@ -272,27 +272,27 @@ static TokType get_token_by_name(string name) {
 // Token class
 class Token {
 private:
-	unsigned int line;
-	unsigned int column;
+	unsigned long line;
+	unsigned long column;
 	TokType token;
 	string lexeme;
     string error;
 public:
-	Token(TokType token, string lexeme, unsigned int line, unsigned int column):
+	Token(TokType token, string lexeme, unsigned long line, unsigned long column):
 			line(line), column(column), token(token), lexeme(lexeme) {
 	}
     Token() {
-        this->line = 0;
-        this->column = 0;
+        this->line = 1L;
+        this->column = 1L;
         this->token = MP_ERROR;
         this->lexeme = "No Token";
         this->error = "No Error";
     }
 	virtual ~Token() = default;
-	void set_line(unsigned int line) {
+	void set_line(unsigned long line) {
 		this->line = line;
 	}
-	void set_column(unsigned int column) {
+	void set_column(unsigned long column) {
 		this->column = column;
 	}
 	void set_token(TokType token) {
@@ -304,10 +304,10 @@ public:
     void set_error(string error_msg) {
         this->error = error_msg;
     }
-	unsigned int get_line() {
+	unsigned long get_line() {
 		return this->line;
 	}
-	unsigned int get_column() {
+	unsigned long get_column() {
 		return this->column;
 	}
 	TokType get_token() {

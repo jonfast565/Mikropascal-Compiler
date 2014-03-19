@@ -12,13 +12,13 @@
 #include "Standard.hpp"
 
 static string format_error_lc(const string& type, const string& msg,
-                              const unsigned int line, const unsigned int column) {
+                              const unsigned long line, const unsigned long column) {
 	return string("[ " + type + ": " + msg + " @ " +
                   to_string(line) + ":" + to_string(column) + " ]" + '\n');
 }
 
 static void report_error_lc(const string& type, const string& msg,
-                            const unsigned int line, const unsigned int column) {
+                            const unsigned long line, const unsigned long column) {
     cerr << "[ " << type << ": " << msg << " @ " << line << ":" << column << " ]" << endl;
 }
 

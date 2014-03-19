@@ -88,7 +88,7 @@ int scanner_test(string filename) {
 	cout << "[ Scanner Test ]" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 150; i++) {
         TokenPtr t = scanner->scan_one();
         if (t != nullptr) {
             report_msg_type("Token", get_token_info(t->get_token()).first);

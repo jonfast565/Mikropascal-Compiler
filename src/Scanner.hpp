@@ -65,8 +65,8 @@ private:
 	string::iterator get_end_fp();
 	
     // line and column numbers
-	unsigned int line_number;
-	unsigned int col_number;
+	unsigned long line_number;
+	unsigned long col_number;
     
     // scanner internal operations
     TokenPtr scan_infinite();
@@ -98,14 +98,15 @@ public:
     bool forward();
 	bool rewind();
     void cache();
+    void goto_next(char c);
     
     // useful scanning tools
     void skip_whitespace();
     
 	// get line and col numbers
-	unsigned int get_line_number();
-	unsigned int get_col_number();
-    unsigned int last_newline();
+	unsigned long get_line_number();
+	unsigned long get_col_number();
+    unsigned long last_newline();
     
 	// display tokens on the screen
 	void display_tokens();
