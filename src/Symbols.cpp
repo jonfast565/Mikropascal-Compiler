@@ -82,6 +82,7 @@ void SymTable::print_internal(SymbolListPtr level_list) {
                  j != callable_obj->get_argument_list()->end(); j++) {
                 cout << (*j)->get_symbol_name() << endl;
                 cout << (*j)->get_symbol_type() << endl;
+                cout << (*j)->get_pass_type() << endl;
             }
             // print internal list...
             this->print_internal(callable_obj->get_child());
@@ -131,4 +132,8 @@ VarType SymCallable::get_return_type() {
 
 ArgumentListPtr SymCallable::get_argument_list() {
     return this->argument_list;
+}
+
+PassType SymArgument::get_pass_type() {
+    return this->pass_type;
 }

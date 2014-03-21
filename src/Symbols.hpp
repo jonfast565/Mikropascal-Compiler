@@ -140,6 +140,7 @@ public:
 	SymArgument(string name, VarType type, Scope scope, unsigned int nesting_level, PassType pass_type):
     SymData(name, type, scope, nesting_level), pass_type(pass_type){};
 	virtual ~SymArgument() = default;
+    PassType get_pass_type();
     void dyn(){};
 };
 
