@@ -70,6 +70,8 @@ void SymTable::print() {
 void SymTable::print_internal(SymbolListPtr level_list) {
     for (auto i = level_list->begin(); i != level_list->end(); i++) {
         if ((*i)->get_symbol_type() == SYM_CALLABLE) {
+            // print its name and type, and also return type
+            // (void if procedure)
             // print its arguments
             // print internal list...
         } else {
