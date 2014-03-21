@@ -67,7 +67,7 @@ private:
     unsigned int nesting_level;
 public:
 	Symbol(string name, SymType type, Scope scope, unsigned int nesting_level):
-		symbol_name(name), symbol_type(type), symbol_scope(scope), nesting_level(nesting_level){};
+		symbol_type(type), symbol_name(name), symbol_scope(scope), nesting_level(nesting_level){};
 	virtual ~Symbol() = default;
     SymType get_symbol_type();
     string get_symbol_name();
@@ -88,11 +88,13 @@ public:
         this->symbol_list = SymbolListPtr(new SymbolList());
         this->table_iter = this->symbol_list->begin();
         this->last_callable = nullptr;
+        this->nesting_level = 0;
     }
     virtual ~SymTable() = default;
     void add_symbol(SymbolPtr new_symbol);
     void create_callable(string name, VarType return_type, ArgumentListPtr args);
     void create_data(string name, VarType type);
+    ArgumentPtr create_argument(string name, VarType type, PassType pass);
     void go_into();
     void return_from();
     void to_latest();
@@ -102,16 +104,18 @@ public:
 
 class SymCallable : public Symbol {
 private:
-	ArgumentListPtr argument_list;
     VarType return_type;
     SymbolListPtr child;
     SymbolListPtr parent;
+    ArgumentListPtr argument_list;
 public:
-	SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent): Symbol(name, SYM_CALLABLE, scope, nesting_level), parent(parent), return_type(return_type) {
+	SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent):
+		Symbol(name, SYM_CALLABLE, scope, nesting_level), return_type(return_type), parent(parent) {
 		this->argument_list = ArgumentListPtr(new ArgumentList());
         this->child = SymbolListPtr(new SymbolList());
 	}
-    SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent, ArgumentListPtr argument_list): Symbol(name, SYM_CALLABLE, scope, nesting_level), parent(parent), return_type(return_type), argument_list(argument_list) {
+    SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent, ArgumentListPtr argument_list):
+    	Symbol(name, SYM_CALLABLE, scope, nesting_level), return_type(return_type), parent(parent), argument_list(argument_list) {
         this->child = SymbolListPtr(new SymbolList());
 	}
 	virtual ~SymCallable() = default;

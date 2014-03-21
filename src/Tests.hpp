@@ -14,6 +14,7 @@
 #include "Scanner.hpp"
 #include "Parser.hpp"
 #include "Helper.hpp"
+#include "Symbols.hpp"
 
 int automata_keyword_test_cases() {
 	cout << "[ Automata Keyword Tests ]" << endl;
@@ -111,6 +112,21 @@ int parser_test(string filename) {
 	parser->parse_me();
     parser->print_parse();
     cout << "[ End ]" << endl;
+	return 0;
+}
+
+int symbol_test() {
+	shared_ptr<SymTable> symtable = shared_ptr<SymTable>(new SymTable());
+	symtable->create_data("Hello", BOOLEAN);
+	symtable->create_data("World", STRING);
+	ArgumentListPtr p = ArgumentListPtr(new ArgumentList());
+	p->push_back(symtable->create_argument("Hello", BOOLEAN, VALUE));
+	symtable->create_callable("Routine1", STRING, p);
+	symtable->go_into();
+	symtable->create_data("Hello", BOOLEAN);
+	symtable->create_data("World", STRING);
+	symtable->return_from();
+	symtable->print();
 	return 0;
 }
 

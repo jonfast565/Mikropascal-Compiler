@@ -58,6 +58,16 @@ void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr
     this->to_latest();
 }
 
+ArgumentPtr SymTable::create_argument(string name, VarType type, PassType pass) {
+	Scope current_scope;
+	if (this->nesting_level == 0) {
+		current_scope = GLOBAL;
+	} else {
+		current_scope = LOCAL;
+	}
+	return ArgumentPtr(new SymArgument(name, type, current_scope, this->nesting_level, pass));
+}
+
 void SymTable::to_latest() {
     this->table_iter = this->symbol_list->end() - 1;
 }
