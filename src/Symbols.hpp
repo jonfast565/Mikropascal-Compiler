@@ -11,26 +11,26 @@
 
 #include "Standard.hpp"
 
-class SymProcedure;
-class SymFunction;
-class SymVariable;
-class SymIdentifier;
-class SymLiteral;
+class Symbol;
+class SymCallable;
+class SymData;
 class SymArgument;
 
 // type predecls
 using ArgumentPtr = shared_ptr<SymArgument>;
 using ArgumentList = vector<ArgumentPtr>;
-using ArgumentListPtr = shared_ptr<vector<ArgumentList>>;
+using ArgumentListPtr = shared_ptr<ArgumentList>;
 using SymbolPtr = shared_ptr<Symbol>;
+using SymbolList = vector<SymbolPtr>;
+using SymbolListPtr = shared_ptr<SymbolList>;
+using SymbolIterator = SymbolList::iterator;
+using SymCallablePtr = shared_ptr<SymCallable>;
+using SymDataPtr = shared_ptr<SymData>;
 
 // symbol types
 enum SymType {
-	SYM_PROCEDURE,
-	SYM_FUNCTION,
-	SYM_VARIABLE,
-	SYM_IDENTIFIER,
-	SYM_LITERAL
+	SYM_CALLABLE,
+	SYM_DATA
 };
 
 // variable types
@@ -38,7 +38,8 @@ enum VarType {
 	STRING,
 	INTEGER,
 	FLOATING,
-	BOOLEAN
+	BOOLEAN,
+    VOID
 };
 
 enum LiteralType {
@@ -63,66 +64,80 @@ private:
 	SymType symbol_type;
 	string symbol_name;
 	Scope symbol_scope;
+    unsigned int nesting_level;
 public:
-	Symbol(string name, SymType type, Scope scope):
-		symbol_name(name), symbol_type(type), symbol_scope(scope){};
+	Symbol(string name, SymType type, Scope scope, unsigned int nesting_level):
+		symbol_name(name), symbol_type(type), symbol_scope(scope), nesting_level(nesting_level){};
 	virtual ~Symbol() = default;
-
+    SymType get_symbol_type();
+    string get_symbol_name();
+    Scope get_symbol_scope();
+    unsigned int get_nesting_level();
+    virtual void dyn() = 0;
 };
 
-class SymProcedure : public Symbol {
+class SymTable {
+private:
+    SymbolListPtr symbol_list;
+    SymbolIterator table_iter;
+    SymCallablePtr last_callable;
+    unsigned int nesting_level;
+    void print_internal(SymbolListPtr symbol_list);
+public:
+    SymTable() {
+        this->symbol_list = SymbolListPtr(new SymbolList());
+        this->table_iter = this->symbol_list->begin();
+        this->last_callable = nullptr;
+    }
+    virtual ~SymTable() = default;
+    void add_symbol(SymbolPtr new_symbol);
+    void create_callable(string name, VarType return_type, ArgumentListPtr args);
+    void create_data(string name, VarType type);
+    void go_into();
+    void return_from();
+    void to_latest();
+    SymbolIterator position();
+    void print();
+};
+
+class SymCallable : public Symbol {
 private:
 	ArgumentListPtr argument_list;
+    VarType return_type;
+    SymbolListPtr child;
+    SymbolListPtr parent;
 public:
-	SymProcedure(string name, Scope scope): Symbol(name, SYM_PROCEDURE, scope) {
+	SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent): Symbol(name, SYM_CALLABLE, scope, nesting_level), parent(parent), return_type(return_type) {
 		this->argument_list = ArgumentListPtr(new ArgumentList());
+        this->child = SymbolListPtr(new SymbolList());
 	}
-	virtual ~SymProcedure() = default;
+    SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent, ArgumentListPtr argument_list): Symbol(name, SYM_CALLABLE, scope, nesting_level), parent(parent), return_type(return_type), argument_list(argument_list) {
+        this->child = SymbolListPtr(new SymbolList());
+	}
+	virtual ~SymCallable() = default;
+    SymbolIterator return_sub_iterator();
+    SymbolListPtr get_parent();
+    void dyn(){};
 };
 
-class SymFunction : public SymProcedure {
-private:
-	VarType return_type;
-public:
-	SymFunction(string name, VarType return_type, Scope scope): Symbol(name, SYM_FUNCTION, scope),
-	return_type(return_type){};
-	virtual ~SymFunction() = default;
-};
-
-class SymVariable : public Symbol {
+class SymData : public Symbol {
 private:
 	VarType variable_type;
 public:
-	SymVariable(string name, VarType type, Scope scope):
-		Symbol(name, SYM_VARIABLE, scope), variable_type(type){};
-	virtual ~SymVariable() = default;
+	SymData(string name, VarType type, Scope scope, unsigned int nesting_level):
+		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type){};
+	virtual ~SymData() = default;
+    void dyn(){};
 };
 
-class SymIdentifier : public Symbol {
-private:
-	VarType variable_type;
-public:
-	SymIdentifier(string name, VarType type, Scope scope):
-		Symbol(name, SYM_IDENTIFIER, scope), variable_type(type){};
-	virtual ~SymIdentifier() = default;
-};
-
-class SymLiteral : public Symbol {
-private:
-	LiteralType literal_type;
-public:
-	SymLiteral(string name, LiteralType type, Scope scope):
-	Symbol(name, SYM_LITERAL, scope), literal_type(type){};
-	virtual ~SymIdentifier() = default;
-};
-
-class SymArgument : public SymVariable {
+class SymArgument : public SymData {
 private:
 	PassType pass_type;
 public:
-	SymArgument(string name, VarType type, Scope scope, PassType pass):
-		SymVariable(name, type, scope), pass_type(pass){}
+	SymArgument(string name, VarType type, Scope scope, unsigned int nesting_level, PassType pass_type):
+    SymData(name, type, scope, nesting_level), pass_type(pass_type){};
 	virtual ~SymArgument() = default;
+    void dyn(){};
 };
 
 #endif

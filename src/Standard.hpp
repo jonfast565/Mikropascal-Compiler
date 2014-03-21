@@ -24,6 +24,7 @@
 #include <fstream>
 #include <algorithm>
 #include <locale>
+#include <typeinfo>
 
 // all C derived includes here
 #include <cassert>
