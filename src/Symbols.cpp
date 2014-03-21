@@ -70,12 +70,25 @@ void SymTable::print() {
 void SymTable::print_internal(SymbolListPtr level_list) {
     for (auto i = level_list->begin(); i != level_list->end(); i++) {
         if ((*i)->get_symbol_type() == SYM_CALLABLE) {
+            // cast to derived
+            SymCallablePtr callable_obj = static_pointer_cast<SymCallable>(*i);
             // print its name and type, and also return type
+            cout << callable_obj->get_symbol_name() << endl;
+            cout << callable_obj->get_symbol_type() << endl;
+            cout << callable_obj->get_return_type() << endl;
             // (void if procedure)
             // print its arguments
+            for (auto j = callable_obj->get_argument_list()->begin();
+                 j != callable_obj->get_argument_list()->end(); j++) {
+                cout << (*j)->get_symbol_name() << endl;
+                cout << (*j)->get_symbol_type() << endl;
+            }
             // print internal list...
+            this->print_internal(callable_obj->get_child());
         } else {
             // print out the data part
+            cout << (*i)->get_symbol_name() << endl;
+            cout << (*i)->get_symbol_type() << endl;
         }
     }
 }
@@ -106,4 +119,16 @@ SymbolIterator SymCallable::return_sub_iterator() {
 
 SymbolListPtr SymCallable::get_parent() {
     return this->parent;
+}
+
+SymbolListPtr SymCallable::get_child() {
+    return this->child;
+}
+
+VarType SymCallable::get_return_type() {
+    return this->return_type;
+}
+
+ArgumentListPtr SymCallable::get_argument_list() {
+    return this->argument_list;
 }

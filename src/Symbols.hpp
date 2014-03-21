@@ -117,6 +117,9 @@ public:
 	virtual ~SymCallable() = default;
     SymbolIterator return_sub_iterator();
     SymbolListPtr get_parent();
+    SymbolListPtr get_child();
+    VarType get_return_type();
+    ArgumentListPtr get_argument_list();
     void dyn(){};
 };
 
