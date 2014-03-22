@@ -53,7 +53,7 @@ public:
 	void add_move_child(shared_ptr<AbstractNode> child_node);
 	void goto_parent();
 	shared_ptr<AbstractNode> get_current_parent();
-	void display_tree_at(shared_ptr<AbstractNode> iterable);
+	void display_tree_rec();
     void display_tree();
 	virtual ~AbstractTree(){};
 };

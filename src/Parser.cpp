@@ -40,17 +40,17 @@ shared_ptr<AbstractNode> AbstractTree::get_current_parent() {
 void AbstractTree::display_tree() {
     // display tree at the root, which is where it should be
     report_msg("AST Printable Tree");
-    display_tree_at(this->iterable);
+    display_tree_rec();
 }
 
-void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
+void AbstractTree::display_tree_rec() {
     // naturally... recursive
-    if (!iterable->get_is_rule()) {
+    if (!this->iterable->get_is_rule()) {
         // display token information
-        report_msg_type("AST", string("Literal found '" + iterable->get_token()->get_lexeme() + "'"));
+        report_msg_type("AST", string("Literal found '" + this->iterable->get_token()->get_lexeme() + "'"));
         this->goto_parent();
         return;
-    } else if (iterable->get_is_epsilon()) {
+    } else if (this->iterable->get_is_epsilon()) {
         report_msg_type("AST", string("Epsilon found"));
         this->goto_parent();
         return;
@@ -60,11 +60,12 @@ void AbstractTree::display_tree_at(shared_ptr<AbstractNode> iterable) {
         // display rule information
         report_msg_type("AST", get_rule_info(this->iterable->get_parse_type()));
         // go through all nodes at this level
-        for (vector<shared_ptr<AbstractNode>>::iterator i = iterable->get_child_begin();
-             i != iterable->get_child_end(); i++) {
-            display_tree_at(*i);
+        for (vector<shared_ptr<AbstractNode>>::iterator i = this->iterable->get_child_begin();
+             i != this->iterable->get_child_end(); i++) {
+                this->iterable = *i;
+            this->display_tree_rec();
         }
-        return;
+        this->goto_parent();
     }
 }
 
@@ -335,21 +336,17 @@ void Parser::parse_type() {
     this->more_indent();
     this->go_into(TYPE);
 	report_parse("PARSE_TYPE", this->parse_depth);
-	bool integer_match = try_match(MP_INTEGER);
-	bool float_match = try_match(MP_FLOAT);
-	bool string_match = try_match(MP_STRING);
-	bool boolean_match = try_match(MP_BOOLEAN);
-	if (integer_match) {
+	if (try_match(MP_INTEGER)) {
         this->match(MP_INTEGER);
-	} else if (float_match) {
+	} else if (try_match(MP_FLOAT)) {
         this->match(MP_FLOAT);
-	} else if (string_match) {
+	} else if (try_match(MP_STRING)) {
         this->match(MP_STRING);
-	} else if (boolean_match) {
+	} else if (try_match(MP_BOOLEAN)) {
         this->match(MP_BOOLEAN);
 	} else {
 		report_error("Parse Error",
-                     "Syntax is incorrect when matching type.");
+        "Syntax is incorrect when matching type.");
 	}
     this->return_from();
     this->less_indent();
