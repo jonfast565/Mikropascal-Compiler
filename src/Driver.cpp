@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 			report_error("General Error", "Could not open the default hardcoded file.");
 		else {
 			fclose(fp);
-			scanner_test("/Users/jonfast/Desktop/program.pas");
+			symbol_test();
 		}
 		return EXIT_SUCCESS;
 	}

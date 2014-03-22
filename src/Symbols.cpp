@@ -83,23 +83,27 @@ void SymTable::print_internal(SymbolListPtr level_list) {
             // cast to derived
             SymCallablePtr callable_obj = static_pointer_cast<SymCallable>(*i);
             // print its name and type, and also return type
-            cout << callable_obj->get_symbol_name() << endl;
-            cout << callable_obj->get_symbol_type() << endl;
-            cout << callable_obj->get_return_type() << endl;
+            report_msg_type("Routine", callable_obj->get_symbol_name() + ", " +
+                            sym_type_to_string(callable_obj->get_symbol_type()) + ", " +
+                            var_type_to_string(callable_obj->get_return_type()));
             // (void if procedure)
             // print its arguments
             for (auto j = callable_obj->get_argument_list()->begin();
                  j != callable_obj->get_argument_list()->end(); j++) {
-                cout << (*j)->get_symbol_name() << endl;
-                cout << (*j)->get_symbol_type() << endl;
-                cout << (*j)->get_pass_type() << endl;
+                SymArgumentPtr arg_obj = static_pointer_cast<SymArgument>(*j);
+                report_msg_type("Argument", arg_obj->get_symbol_name() + ", " +
+                                sym_type_to_string(arg_obj->get_symbol_type()) + ", " +
+                                var_type_to_string(arg_obj->get_var_type()) + ", " +
+                                pass_type_to_string(arg_obj->get_pass_type()));
             }
             // print internal list...
             this->print_internal(callable_obj->get_child());
         } else {
+            SymDataPtr data_obj = static_pointer_cast<SymData>(*i);
             // print out the data part
-            cout << (*i)->get_symbol_name() << endl;
-            cout << (*i)->get_symbol_type() << endl;
+            report_msg_type("Data", data_obj->get_symbol_name() + ", " +
+                            sym_type_to_string(data_obj->get_symbol_type()) + ", " +
+                            var_type_to_string(data_obj->get_var_type()));
         }
     }
 }
@@ -146,4 +150,8 @@ ArgumentListPtr SymCallable::get_argument_list() {
 
 PassType SymArgument::get_pass_type() {
     return this->pass_type;
+}
+
+VarType SymData::get_var_type() {
+    return this->variable_type;
 }

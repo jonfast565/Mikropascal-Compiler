@@ -10,6 +10,7 @@
 #define symbols_h
 
 #include "Standard.hpp"
+#include "Helper.hpp"
 
 class Symbol;
 class SymCallable;
@@ -26,12 +27,24 @@ using SymbolListPtr = shared_ptr<SymbolList>;
 using SymbolIterator = SymbolList::iterator;
 using SymCallablePtr = shared_ptr<SymCallable>;
 using SymDataPtr = shared_ptr<SymData>;
+using SymArgumentPtr = shared_ptr<SymArgument>;
 
 // symbol types
 enum SymType {
 	SYM_CALLABLE,
 	SYM_DATA
 };
+
+static string sym_type_to_string(SymType type) {
+    switch(type) {
+        case SYM_CALLABLE:
+            return "SYM_CALLABLE";
+        case SYM_DATA:
+            return "SYM_DATA";
+        default:
+            return "";
+    }
+}
 
 // variable types
 enum VarType {
@@ -42,21 +55,76 @@ enum VarType {
     VOID
 };
 
+static string var_type_to_string(VarType type) {
+    switch(type) {
+        case STRING:
+            return "STRING";
+        case INTEGER:
+            return "INTEGER";
+        case FLOATING:
+            return "FLOATING";
+        case BOOLEAN:
+            return "BOOLEAN";
+        case VOID:
+            return "VOID";
+        default:
+            return "";
+    }
+}
+
+// literal types
 enum LiteralType {
 	STRING_LITERAL,
 	INTEGER_LITERAL,
 	FLOATING_LITERAL
 };
 
+static string literal_type_to_string(LiteralType type) {
+    switch(type) {
+        case STRING_LITERAL:
+            return "STRING_LITERAL";
+        case INTEGER_LITERAL:
+            return "INTEGER_LITERAL";
+        case FLOATING_LITERAL:
+            return "FLOATING_LITERAL";
+        default:
+            return "";
+    }
+}
+
+// pass types
 enum PassType {
 	VALUE,
 	REFERENCE
 };
 
+static string pass_type_to_string(PassType type) {
+    switch(type) {
+        case VALUE:
+            return "VALUE";
+        case REFERENCE:
+            return "REFERENCE";
+        default:
+            return "";
+    }
+}
+
+// scoping types
 enum Scope {
 	GLOBAL,
 	LOCAL
 };
+
+static string scope_to_string(Scope type) {
+    switch(type) {
+        case GLOBAL:
+            return "GLOBAL";
+        case LOCAL:
+            return "LOCAL";
+        default:
+            return "";
+    }
+}
 
 // symbol class
 class Symbol {
@@ -134,6 +202,7 @@ public:
 	SymData(string name, VarType type, Scope scope, unsigned int nesting_level):
 		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type){};
 	virtual ~SymData() = default;
+    VarType get_var_type();
     void dyn(){};
 };
 
