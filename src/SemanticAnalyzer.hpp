@@ -28,6 +28,68 @@ public:
     virtual ~CodeBlock() = default;
 };
 
+enum IOAction {
+    IO_READ,
+    IO_WRITE
+};
+
+class IOBlock: public CodeBlock {
+private:
+    SymbolListPtr args;
+    IOAction action;
+public:
+    IOBlock(IOAction action): CodeBlock("IOBlock"), action(action) {
+        this->args = SymbolListPtr(new SymbolList());
+    }
+    virtual ~IOBlock() = default;
+};
+
+enum LoopType {
+    WHILELOOP,
+    FORLOOP
+};
+
+class LoopBlock: public CodeBlock {
+private:
+    LoopType type;
+public:
+    LoopBlock(LoopType type): CodeBlock("LoopBlock"), type(type){};
+    virtual ~LoopBlock() = default;
+};
+
+class ConditionalBlock: public CodeBlock {
+private:
+public:
+    ConditionalBlock();
+    virtual ~ConditionalBlock() = default;
+};
+
+class AssignmentBlock: public CodeBlock {
+private:
+    bool processed;
+public:
+    AssignmentBlock();
+    virtual ~AssignmentBlock() = default;
+    void convert_postfix();
+};
+
+enum ActivationType {
+    PROCEDURE,
+    FUNCTION
+};
+
+class ActivationBlock: public CodeBlock {
+private:
+    SymbolPtr record;
+    ActivationType type;
+public:
+    ActivationBlock(ActivationType type, SymbolPtr record):
+    CodeBlock("ActivationType"), type(type) {
+        this->record = record;
+    }
+    virtual ~ActivationBlock() = default;
+};
+
 class SemanticAnalyzer {
 private:
 	AbstractNodePtr ast;
