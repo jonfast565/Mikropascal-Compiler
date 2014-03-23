@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9EABEBFD18DF79BC00B67CE0 /* SemanticAnalyzer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9EABEBFB18DF79BC00B67CE0 /* SemanticAnalyzer.cpp */; };
 		9ED9F30B18D7DFA900C14142 /* Driver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9ED9F2FB18D7DFA900C14142 /* Driver.cpp */; };
 		9ED9F30C18D7DFA900C14142 /* Input.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9ED9F2FE18D7DFA900C14142 /* Input.cpp */; };
 		9ED9F30D18D7DFA900C14142 /* Parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9ED9F30018D7DFA900C14142 /* Parser.cpp */; };
@@ -28,6 +29,8 @@
 
 /* Begin PBXFileReference section */
 		9E3C259E18D7E3F400DC9CEC /* FiniteAutomata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = FiniteAutomata.hpp; sourceTree = "<group>"; };
+		9EABEBFB18DF79BC00B67CE0 /* SemanticAnalyzer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SemanticAnalyzer.cpp; sourceTree = "<group>"; };
+		9EABEBFC18DF79BC00B67CE0 /* SemanticAnalyzer.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SemanticAnalyzer.hpp; sourceTree = "<group>"; };
 		9ED9F2EC18D7DF6E00C14142 /* Mikropascal-Compiler */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Mikropascal-Compiler"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9ED9F2F818D7DFA900C14142 /* Mikropascal_Compiler.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = Mikropascal_Compiler.1; sourceTree = "<group>"; };
 		9ED9F2F918D7DFA900C14142 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
@@ -80,6 +83,8 @@
 		9ED9F2FA18D7DFA900C14142 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				9EABEBFB18DF79BC00B67CE0 /* SemanticAnalyzer.cpp */,
+				9EABEBFC18DF79BC00B67CE0 /* SemanticAnalyzer.hpp */,
 				9E3C259E18D7E3F400DC9CEC /* FiniteAutomata.hpp */,
 				9ED9F2FB18D7DFA900C14142 /* Driver.cpp */,
 				9ED9F2FD18D7DFA900C14142 /* Helper.hpp */,
@@ -154,6 +159,7 @@
 				9ED9F30C18D7DFA900C14142 /* Input.cpp in Sources */,
 				9ED9F30D18D7DFA900C14142 /* Parser.cpp in Sources */,
 				9ED9F30E18D7DFA900C14142 /* Scanner.cpp in Sources */,
+				9EABEBFD18DF79BC00B67CE0 /* SemanticAnalyzer.cpp in Sources */,
 				9ED9F30F18D7DFA900C14142 /* Symbols.cpp in Sources */,
 				9ED9F30B18D7DFA900C14142 /* Driver.cpp in Sources */,
 			);

@@ -14,7 +14,7 @@
 #include "Tokens.hpp"
 
 class SemanticAnalyzer {
-	AbstractNode tree_root;
+	shared_ptr<AbstractNode> tree_root;
 };
 
 #endif
