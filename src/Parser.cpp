@@ -45,33 +45,38 @@ void AbstractTree::display_tree() {
 
 void AbstractTree::display_tree_rec() {
     // naturally... recursive
-    if (!this->iterable->get_is_rule()) {
-        // display token information
-        report_msg_type("AST", string("Literal found '" + this->iterable->get_token()->get_lexeme() + "'"));
-        this->goto_parent();
-        return;
-    } else if (this->iterable->get_is_epsilon()) {
-        report_msg_type("AST", string("Epsilon found"));
-        this->goto_parent();
-        return;
-    } else {
-        // use a for loop to goto each child with
-        // the iterable pointer
-        // display rule information
-        report_msg_type("AST", get_rule_info(this->iterable->get_parse_type()));
-        // go through all nodes at this level
-        for (vector<shared_ptr<AbstractNode>>::iterator i = this->iterable->get_child_begin();
-             i != this->iterable->get_child_end(); i++) {
-                this->iterable = *i;
-            this->display_tree_rec();
+    shared_ptr<stack<shared_ptr<AbstractNode>>> loop =
+    shared_ptr<stack<shared_ptr<AbstractNode>>>(new stack<shared_ptr<AbstractNode>>);
+    shared_ptr<stack<shared_ptr<AbstractNode>>> reversal =
+    shared_ptr<stack<shared_ptr<AbstractNode>>>(new stack<shared_ptr<AbstractNode>>);
+    loop->push(this->iterable);
+    while (!loop->empty()) {
+        // get the top and pop
+        shared_ptr<AbstractNode> current = loop->top();
+        loop->pop();
+        if (current->get_is_rule()) {
+            report_msg_type("AST Rule", get_rule_info(current->get_parse_type()));
+            for (auto i = current->get_child_begin();
+                 i != current->get_child_end(); i++) {
+                reversal->push(*i);
+            }
+            while(!reversal->empty()) {
+                loop->push(reversal->top());
+                reversal->pop();
+            }
+        } else if (current->get_is_epsilon()) {
+            report_msg("AST Epsilon");
+        } else {
+            report_msg_type("AST Token",
+            get_token_info(current->get_token()->get_token()).first
+            + ": " + current->get_token()->get_lexeme());
         }
-        this->goto_parent();
     }
 }
 
 AbstractNode::AbstractNode() {
 	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
-	this->parse_type = NO_RULE;
+	this->parse_type = ROOT;
 	this->is_root = true;
     this->is_rule = true;
     this->token = nullptr;
@@ -122,7 +127,7 @@ bool AbstractNode::get_is_epsilon() {
 }
 
 ParseType AbstractNode::get_parse_type() {
-	if (this->is_rule == false)
+	if (this->is_rule != false)
 		return this->parse_type;
 	else
 		return NO_RULE;

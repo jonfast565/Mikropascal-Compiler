@@ -74,12 +74,7 @@ public:
 	void parse_me();
 	void match(TokType expected);
 	bool try_match(TokType expected);
-	virtual ~Parser() {
-		if (scanner != nullptr)
-			scanner.reset();
-		if (token_list != nullptr)
-			token_list.reset();
-	}
+	virtual ~Parser() = default;
 	// parse for all Mikropascal non-terminals
 	void parse_system_goal();
 	void parse_program();

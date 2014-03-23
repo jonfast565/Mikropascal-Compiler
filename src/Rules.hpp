@@ -80,7 +80,8 @@ enum ParseType {
 	EOF_RULE,
 	NO_RULE,
 	EPSILON,
-	LITERAL
+	LITERAL,
+    ROOT
 };
 
 // token mapper (except digits, decimal digits, or ids)
@@ -88,6 +89,8 @@ static string get_rule_info(ParseType rule) {
 	switch (rule) {
 	// primitive tokens
 	// parse for all Mikropascal non-terminals
+    case ROOT:
+        return "ROOT";
 	case SYSTEM_GOAL:
 		return "SYSTEM_GOAL";
 	case PROGRAM:
