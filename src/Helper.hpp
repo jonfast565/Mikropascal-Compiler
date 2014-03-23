@@ -39,11 +39,13 @@ static void report_msg_type(const string& type, const string& msg) {
 }
 
 static void report_parse(const string& msg, const unsigned int depth) {
-    cout << "[ ";
-    for (unsigned int i = 0; i < depth; i++) {
-        cout << " ";
+    if (DEBUG_OUTPUT) {
+        cout << "[ ";
+        for (unsigned int i = 0; i < depth; i++) {
+            cout << " ";
+        }
+        cout << msg << " ]" << endl;
     }
-    cout << msg << " ]" << endl;
 }
 
 // returns all variants of a character (upper and lowercase)

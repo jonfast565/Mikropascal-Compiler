@@ -189,33 +189,56 @@ bool Parser::try_match(TokType expected) {
 
 void Parser::match(TokType expected) {
 	if (this->lookahead->get_token() != expected) {
+        // report an error
         this->error_reported = true;
-		report_error_lc("Parse Error",
-                     string(
-                            "Expected "
-                            + get_token_info(expected).first + " but got '"
-                            + get_token_info(this->lookahead->get_token()).first
-                            + "' instead. Fail!"), this->lookahead->get_line(), this->lookahead->get_column());
+        string expect = get_token_info(expected).first;
+        string received = get_token_info(this->lookahead->get_token()).first;
+        unsigned long line = this->lookahead->get_line();
+        unsigned long column = this->lookahead->get_column();
+        
+        // report the error
+		report_error_lc("Parse Error", "Expected "
+                            + expect + " but got '" + received
+                            + "' instead. Fail!", line, column);
+        
         // scan in attempt to find a match?
-        if (this->lookahead->get_token() != TokType::MP_EOF)
+        if (this->lookahead->get_token() != TokType::MP_EOF) {
             // error checking assumes 'off-by-one'
-            this->lookahead = this->scanner->scan_one();
+            this->populate();
+        }
 	} else {
         // add token as a literal to the ast
         this->go_into_lit(this->lookahead);
         this->return_from();
-		// consume the token and get the next
+		
 		if (this->fromList == false) {
             // report a match!
-            report_parse(string("Match: " + get_token_info(expected).first
-                                + ": " + this->lookahead->get_lexeme()), this->parse_depth);
+            report_parse("Match: " + get_token_info(expected).first
+            + ": " + this->lookahead->get_lexeme(), this->parse_depth);
+            
             // get the next token from the dispatcher
-            if (this->lookahead->get_token() != TokType::MP_EOF)
-                this->lookahead = this->scanner->scan_one();
-		} else if (this->fromList == true) {
+            if (this->lookahead->get_token() != TokType::MP_EOF) {
+                this->populate();
+            }
+		} else {
 			// implement this later... with detaching token list
 		}
 	}
+}
+
+void Parser::populate() {
+    // scan and populate token buffer
+    this->lookahead = this->scanner->scan_one();
+    // look for irrelevant tokens
+    if (this->lookahead->get_token() == MP_COMMENT
+        || this->lookahead->get_token() == MP_RUN_COMMENT
+        || this->lookahead->get_token() == MP_RUN_STRING) {
+        while(this->lookahead->get_token() == MP_COMMENT
+              || this->lookahead->get_token() == MP_RUN_COMMENT
+              || this->lookahead->get_token() == MP_RUN_STRING) {
+            this->lookahead = this->scanner->scan_one();
+        }
+    }
 }
 
 void Parser::parse_me() {
@@ -237,10 +260,10 @@ void Parser::parse_system_goal() {
     this->return_from();
     this->less_indent();
     if (!this->error_reported) {
-        report_msg_type("Notice", "Parse was successful!");
+        report_msg_type("Success", "Parse was successful! Awesome.");
     }
     else {
-        report_msg_type("Notice", "Parse failed. Yuck!");
+        report_msg_type("Failure", "Invalid parse. Yuck!");
     }
 }
 
@@ -250,7 +273,7 @@ void Parser::parse_eof() {
 	report_parse("PARSE_EOF", this->parse_depth);
 	bool is_eof = this->try_match(MP_EOF);
 	if (!is_eof) {
-		report_error("Parse Error", "No end-of-file detected. Missing newline at end of file?");
+		report_error("Parse Error", "No end-of-file detected.\nMissing newline at end-of-file?");
 	} else {
         this->match(MP_EOF);
     }
@@ -1167,29 +1190,34 @@ bool Parser::is_relational_operator() {
 	if ((int) lookahead_type <= MP_NOT_EQUAL
         && (int) lookahead_type >= MP_EQUALS) {
 		return true;
-	} else
+	} else {
 		return false;
+    }
 }
 
 bool Parser::is_multiplying_operator() {
 	report_parse("IS_MULTIPLYING_OPERATOR", this->parse_depth);
 	TokType lookahead_type = this->lookahead->get_token();
-	if ((int) lookahead_type <= MP_MOD_KW && (int) lookahead_type >= MP_MULT) {
+	if ((int) lookahead_type <= MP_MOD_KW
+        && (int) lookahead_type >= MP_MULT) {
 		return true;
-	} else if ((int) lookahead_type == MP_AND)
+	} else if ((int) lookahead_type == MP_AND) {
 		return true;
-	else
+    } else {
 		return false;
+    }
 }
 
 bool Parser::is_adding_operator() {
     report_parse("IS_ADDING_OPERATOR", this->parse_depth);
     TokType lookahead_type = this->lookahead->get_token();
-    if ((int) lookahead_type == MP_PLUS || (int) lookahead_type == MP_MINUS ||
-        (int) lookahead_type == MP_OR)
+    if ((int) lookahead_type == MP_PLUS
+        || (int) lookahead_type == MP_MINUS
+        || (int) lookahead_type == MP_OR) {
 		return true;
-	else
+    } else {
 		return false;
+    }
 }
 
 void Parser::more_indent() {
@@ -1206,7 +1234,8 @@ void Parser::next_token() {
 		// get the next token from the dispatcher
 		this->lookahead = this->scanner->scan_one();
 	} else if (this->fromList == true) {
-		// implement this later... with detaching token list
+		// get token list
+        this->lookahead = *this->token_list->begin();
 	}
 }
 
@@ -1224,5 +1253,9 @@ void Parser::go_into_lit(shared_ptr<Token> token) {
 
 void Parser::print_parse() {
     this->program_syntax->display_tree();
+}
+
+AbstractTreePtr Parser::detach_syntax() {
+    return this->program_syntax;
 }
 

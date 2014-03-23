@@ -13,7 +13,7 @@ Input::Input(string filename) {
 	// input constructor
 	// set up line capture (for getting file lines)
     string line;
-	this->lines = shared_ptr<vector<string>>(new vector<string>());
+	this->lines = StringListPtr(new StringList());
     // open file
 	ifstream file_to_compile(filename, ios::binary);
     if (file_to_compile.is_open()) {
@@ -25,8 +25,8 @@ Input::Input(string filename) {
         }
         file_to_compile.close();
     }
-    this->entire_input = shared_ptr<string>(new string(""));
-    for (vector<string>::iterator i = this->lines->begin();
+    this->entire_input = StringPtr(new string(""));
+    for (StringList::iterator i = this->lines->begin();
          i != this->lines->end(); i++) {
         *this->entire_input += (*i);
     }

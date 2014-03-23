@@ -92,13 +92,14 @@ public:
 
 class SemanticAnalyzer {
 private:
-	AbstractNodePtr ast;
+	AbstractTreePtr ast;
     SymbolListPtr symbols;
     bool processed;
 public:
     SemanticAnalyzer();
+    SemanticAnalyzer(AbstractTreePtr program_syntax);
     virtual ~SemanticAnalyzer() = default;
-    void process_ast();
+    void attach_syntax(AbstractTreePtr program_syntax);
     void generate_symbols();
     void generate_blocks();
 };

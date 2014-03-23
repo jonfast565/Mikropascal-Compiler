@@ -56,14 +56,15 @@ class AbstractTree {
 private:
 	AbstractNodePtr root_node;
 	AbstractNodePtr iterable;
+	AbstractNodePtr get_current_parent();
+	void display_tree_rec();
 public:
 	AbstractTree();
 	AbstractTree(AbstractNodePtr root);
-	void add_move_child(AbstractNodePtr child_node);
+    void add_move_child(AbstractNodePtr child_node);
 	void goto_parent();
-	AbstractNodePtr get_current_parent();
-	void display_tree_rec();
     void display_tree();
+    AbstractNodePtr get_root_node();
 	virtual ~AbstractTree(){};
 };
 
@@ -81,6 +82,7 @@ public:
 	Parser(shared_ptr<vector<TokenPtr>> token_list);
 	Parser(shared_ptr<Scanner> scanner);
 	void parse_me();
+    void populate();
 	void match(TokType expected);
 	bool try_match(TokType expected);
 	virtual ~Parser() = default;
@@ -175,6 +177,7 @@ public:
     void go_into(ParseType parse_type);
     void go_into_lit(TokenPtr token);
     void print_parse();
+    AbstractTreePtr detach_syntax();
 };
 
 
