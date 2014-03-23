@@ -15,44 +15,53 @@
 #include "Rules.hpp"
 #include "Symbols.hpp"
 
+class AbstractNode;
+class AbstractTree;
+using AbstractNodePtr = shared_ptr<AbstractNode>;
+using AbstractNodeList = vector<AbstractNodePtr>;
+using AbstractListPtr = shared_ptr<AbstractNodeList>;
+using AbstractNodeStack = stack<AbstractNodePtr>;
+using AbstractStackPtr = shared_ptr<AbstractNodeStack>;
+using AbstractTreePtr = shared_ptr<AbstractTree>;
+
 // AST Stuff
 class AbstractNode {
 private:
     bool is_root;
     bool is_rule;
-    shared_ptr<AbstractNode> parent_node;
-    shared_ptr<vector<shared_ptr<AbstractNode>>> child_nodes;
+    AbstractNodePtr parent_node;
+    AbstractListPtr child_nodes;
     ParseType parse_type;
-    shared_ptr<Token> token;
+    TokenPtr token;
 public:
     AbstractNode();
-    AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type);
+    AbstractNode(AbstractNodePtr parent_node, ParseType parse_type);
     AbstractNode(ParseType parse_type);
-    AbstractNode(shared_ptr<Token> token);
+    AbstractNode(TokenPtr token);
     virtual ~AbstractNode(){};
-    void add_child_node(shared_ptr<AbstractNode> child_node);
+    void add_child_node(AbstractNodePtr child_node);
     void set_is_root(bool is_root);
     bool get_is_root();
     bool get_is_rule();
     bool get_is_epsilon();
     ParseType get_parse_type();
-    shared_ptr<Token> get_token();
-    void set_parent(shared_ptr<AbstractNode> parent_node);
-    shared_ptr<AbstractNode> get_parent();
-    vector<shared_ptr<AbstractNode>>::iterator get_child_begin();
-    vector<shared_ptr<AbstractNode>>::iterator get_child_end();
+    TokenPtr get_token();
+    void set_parent(AbstractNodePtr parent_node);
+    AbstractNodePtr get_parent();
+    AbstractNodeList::iterator get_child_begin();
+    AbstractNodeList::iterator get_child_end();
 };
 
 class AbstractTree {
 private:
-	shared_ptr<AbstractNode> root_node;
-	shared_ptr<AbstractNode> iterable;
+	AbstractNodePtr root_node;
+	AbstractNodePtr iterable;
 public:
 	AbstractTree();
-	AbstractTree(shared_ptr<AbstractNode> root);
-	void add_move_child(shared_ptr<AbstractNode> child_node);
+	AbstractTree(AbstractNodePtr root);
+	void add_move_child(AbstractNodePtr child_node);
 	void goto_parent();
-	shared_ptr<AbstractNode> get_current_parent();
+	AbstractNodePtr get_current_parent();
 	void display_tree_rec();
     void display_tree();
 	virtual ~AbstractTree(){};
@@ -61,15 +70,15 @@ public:
 // Parser Stuff
 class Parser {
 private:
-	shared_ptr<vector<shared_ptr<Token>>> token_list;
+	shared_ptr<vector<TokenPtr>> token_list;
 	shared_ptr<Scanner> scanner;
-	shared_ptr<Token> lookahead;
+	TokenPtr lookahead;
     shared_ptr<AbstractTree> program_syntax;
 	bool fromList;
     bool error_reported;
     unsigned int parse_depth;
 public:
-	Parser(shared_ptr<vector<shared_ptr<Token>>> token_list);
+	Parser(shared_ptr<vector<TokenPtr>> token_list);
 	Parser(shared_ptr<Scanner> scanner);
 	void parse_me();
 	void match(TokType expected);
@@ -164,7 +173,7 @@ public:
     // ast helper methods
     void return_from();
     void go_into(ParseType parse_type);
-    void go_into_lit(shared_ptr<Token> token);
+    void go_into_lit(TokenPtr token);
     void print_parse();
 };
 

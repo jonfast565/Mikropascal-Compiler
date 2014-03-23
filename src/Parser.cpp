@@ -9,16 +9,16 @@
 
 // AST Stuff
 AbstractTree::AbstractTree() {
-	this->root_node = shared_ptr<AbstractNode>(new AbstractNode());
+	this->root_node = AbstractNodePtr(new AbstractNode());
 	this->iterable = this->root_node;
 }
 
-AbstractTree::AbstractTree(shared_ptr<AbstractNode> root) {
+AbstractTree::AbstractTree(AbstractNodePtr root) {
 	this->root_node = root;
 	this->iterable = this->root_node;
 }
 
-void AbstractTree::add_move_child(shared_ptr<AbstractNode> child_node) {
+void AbstractTree::add_move_child(AbstractNodePtr child_node) {
 	this->iterable->add_child_node(child_node);
 	child_node->set_parent(this->iterable);
 	this->iterable = child_node;
@@ -30,7 +30,7 @@ void AbstractTree::goto_parent() {
 	}
 }
 
-shared_ptr<AbstractNode> AbstractTree::get_current_parent() {
+AbstractNodePtr AbstractTree::get_current_parent() {
 	if (this->iterable->get_parent() != nullptr) {
 		return this->iterable->get_parent();
 	}
@@ -45,21 +45,22 @@ void AbstractTree::display_tree() {
 
 void AbstractTree::display_tree_rec() {
     // naturally... recursive
-    shared_ptr<stack<shared_ptr<AbstractNode>>> loop =
-    shared_ptr<stack<shared_ptr<AbstractNode>>>(new stack<shared_ptr<AbstractNode>>);
-    shared_ptr<stack<shared_ptr<AbstractNode>>> reversal =
-    shared_ptr<stack<shared_ptr<AbstractNode>>>(new stack<shared_ptr<AbstractNode>>);
+    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
+    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
     loop->push(this->iterable);
     while (!loop->empty()) {
         // get the top and pop
-        shared_ptr<AbstractNode> current = loop->top();
+        AbstractNodePtr current = loop->top();
         loop->pop();
         if (current->get_is_rule()) {
-            report_msg_type("AST Rule", get_rule_info(current->get_parse_type()));
+            report_msg_type("AST Rule",
+            get_rule_info(current->get_parse_type()));
+            // push on in reverse
             for (auto i = current->get_child_begin();
                  i != current->get_child_end(); i++) {
                 reversal->push(*i);
             }
+            // reverse
             while(!reversal->empty()) {
                 loop->push(reversal->top());
                 reversal->pop();
@@ -75,7 +76,7 @@ void AbstractTree::display_tree_rec() {
 }
 
 AbstractNode::AbstractNode() {
-	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+	this->child_nodes = AbstractListPtr(new AbstractNodeList());
 	this->parse_type = ROOT;
 	this->is_root = true;
     this->is_rule = true;
@@ -83,15 +84,15 @@ AbstractNode::AbstractNode() {
 }
 
 AbstractNode::AbstractNode(ParseType parse_type) {
-	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+	this->child_nodes = AbstractListPtr(new AbstractNodeList());
 	this->parse_type = parse_type;
 	this->is_root = false;
     this->is_rule = true;
     this->token = nullptr;
 }
 
-AbstractNode::AbstractNode(shared_ptr<AbstractNode> parent_node, ParseType parse_type) {
-	this->child_nodes = shared_ptr<vector<shared_ptr<AbstractNode>>>(new vector<shared_ptr<AbstractNode>>);
+AbstractNode::AbstractNode(AbstractNodePtr parent_node, ParseType parse_type) {
+	this->child_nodes = AbstractListPtr(new AbstractNodeList());
 	this->parse_type = parse_type;
 	this->is_root = false;
     this->is_rule = true;
@@ -106,7 +107,7 @@ AbstractNode::AbstractNode(shared_ptr<Token> token) {
     this->token = token;
 }
 
-void AbstractNode::add_child_node(shared_ptr<AbstractNode> child_node) {
+void AbstractNode::add_child_node(AbstractNodePtr child_node) {
 	this->child_nodes->push_back(child_node);
 }
 
@@ -140,11 +141,11 @@ shared_ptr<Token> AbstractNode::get_token() {
         return this->token;
 }
 
-void AbstractNode::set_parent(shared_ptr<AbstractNode> parent_node) {
+void AbstractNode::set_parent(AbstractNodePtr parent_node) {
 	this->parent_node = parent_node;
 }
 
-shared_ptr<AbstractNode> AbstractNode::get_parent() {
+AbstractNodePtr AbstractNode::get_parent() {
 	if (this->parent_node == nullptr) {
 		return nullptr;
 	} else {
@@ -152,20 +153,20 @@ shared_ptr<AbstractNode> AbstractNode::get_parent() {
 	}
 }
 
-vector<shared_ptr<AbstractNode>>::iterator AbstractNode::get_child_begin() {
+AbstractNodeList::iterator AbstractNode::get_child_begin() {
     return this->child_nodes->begin();
 }
 
-vector<shared_ptr<AbstractNode>>::iterator AbstractNode::get_child_end() {
+AbstractNodeList::iterator AbstractNode::get_child_end() {
     return this->child_nodes->end();
 }
 
 // Parser Stuff
-Parser::Parser(shared_ptr<vector<shared_ptr<Token>>> token_list) {
+Parser::Parser(TokenListPtr token_list) {
 	this->token_list = token_list;
 	this->fromList = true;
 	this->parse_depth = 0;
-    this->program_syntax = shared_ptr<AbstractTree>(new AbstractTree());
+    this->program_syntax = AbstractTreePtr(new AbstractTree());
     this->error_reported = false;
 
 }
@@ -175,7 +176,7 @@ Parser::Parser(shared_ptr<Scanner> scanner) {
 	this->scanner = scanner;
 	this->fromList = false;
 	this->parse_depth = 0;
-	this->program_syntax = shared_ptr<AbstractTree>(new AbstractTree());
+	this->program_syntax = AbstractTreePtr(new AbstractTree());
     this->error_reported = false;
 }
 
@@ -206,7 +207,8 @@ void Parser::match(TokType expected) {
 		// consume the token and get the next
 		if (this->fromList == false) {
             // report a match!
-            report_parse(string("Match: " + get_token_info(expected).first + ": " + this->lookahead->get_lexeme()), this->parse_depth);
+            report_parse(string("Match: " + get_token_info(expected).first
+                                + ": " + this->lookahead->get_lexeme()), this->parse_depth);
             // get the next token from the dispatcher
             if (this->lookahead->get_token() != TokType::MP_EOF)
                 this->lookahead = this->scanner->scan_one();
@@ -218,8 +220,8 @@ void Parser::match(TokType expected) {
 
 void Parser::parse_me() {
 	// put the next token in the global buffer
-	// parse the system goal!
 	this->next_token();
+	// parse the system goal!
 	this->parse_system_goal();
 }
 
@@ -228,15 +230,18 @@ void Parser::parse_system_goal() {
     this->go_into(SYSTEM_GOAL);
 	report_parse("PARSE_SYSTEM_GOAL", this->parse_depth);
 	// parse system goal
-    if (this->try_match(MP_PROGRAM))
+    if (this->try_match(MP_PROGRAM)) {
         this->parse_program();
+    }
     this->parse_eof();
     this->return_from();
     this->less_indent();
-    if (!this->error_reported)
+    if (!this->error_reported) {
         report_msg_type("Notice", "Parse was successful!");
-    else
+    }
+    else {
         report_msg_type("Notice", "Parse failed. Yuck!");
+    }
 }
 
 void Parser::parse_eof() {
@@ -1210,11 +1215,11 @@ void Parser::return_from() {
 }
 
 void Parser::go_into(ParseType parse_type) {
-	this->program_syntax->add_move_child(shared_ptr<AbstractNode>(new AbstractNode(parse_type)));
+	this->program_syntax->add_move_child(AbstractNodePtr(new AbstractNode(parse_type)));
 }
 
 void Parser::go_into_lit(shared_ptr<Token> token) {
-    this->program_syntax->add_move_child(shared_ptr<AbstractNode>(new AbstractNode(token)));
+    this->program_syntax->add_move_child(AbstractNodePtr(new AbstractNode(token)));
 }
 
 void Parser::print_parse() {
