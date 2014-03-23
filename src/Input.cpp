@@ -33,28 +33,22 @@ Input::Input(string filename) {
     
 }
 
-Input::~Input() {
-	// destructor
-	lines.reset();
-	entire_input.reset();
-}
-
-shared_ptr<Input> Input::open_file(string filename) {
+InputPtr Input::open_file(string filename) {
 	ifstream test_file(filename, ios::in|ios::binary|ios::ate);
     if (test_file.is_open()) {
         test_file.close();
-        return shared_ptr<Input>(new Input(filename));
+        return InputPtr(new Input(filename));
     }
     else
         return nullptr;
 }
 
-shared_ptr<string> Input::detach_input() {
+StringPtr Input::detach_input() {
 	// copy and return detached input
 	return shared_ptr<string>(new string(*this->entire_input));
 }
 
 void Input::print_input() {
 	// test print input
-	cout << (*this->entire_input) << endl;
+	report_msg_type("Input", *this->entire_input);
 }

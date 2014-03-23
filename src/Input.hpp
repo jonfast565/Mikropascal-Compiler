@@ -11,18 +11,24 @@
 
 // use standard includes
 #include "Standard.hpp"
+#include "Helper.hpp"
+
+class Input;
+using InputPtr = shared_ptr<Input>;
+using StringList = vector<string>;
+using StringListPtr = shared_ptr<StringList>;
 
 // input structure
 class Input {
 private:
 	// input in lines and string
-	shared_ptr<vector<string>> lines;
-	shared_ptr<string> entire_input;
+	StringListPtr lines;
+	StringPtr entire_input;
 	Input(string filename);
 public:
-	virtual ~Input();
-	static shared_ptr<Input> open_file(string filename);
-	shared_ptr<string> detach_input();
+	virtual ~Input() = default;
+	static InputPtr open_file(string filename);
+	StringPtr detach_input();
 	void print_input();
 };
 
