@@ -10,82 +10,30 @@
 
 #include "Standard.hpp"
 #include "Tokens.hpp"
-#include "Scanner.hpp"
 #include "Helper.hpp"
 #include "Rules.hpp"
 #include "Symbols.hpp"
-
-class AbstractNode;
-class AbstractTree;
-using AbstractNodePtr = shared_ptr<AbstractNode>;
-using AbstractNodeList = vector<AbstractNodePtr>;
-using AbstractListPtr = shared_ptr<AbstractNodeList>;
-using AbstractNodeStack = stack<AbstractNodePtr>;
-using AbstractStackPtr = shared_ptr<AbstractNodeStack>;
-using AbstractTreePtr = shared_ptr<AbstractTree>;
-
-// AST Stuff
-class AbstractNode {
-private:
-    bool is_root;
-    bool is_rule;
-    AbstractNodePtr parent_node;
-    AbstractListPtr child_nodes;
-    ParseType parse_type;
-    TokenPtr token;
-public:
-    AbstractNode();
-    AbstractNode(AbstractNodePtr parent_node, ParseType parse_type);
-    AbstractNode(ParseType parse_type);
-    AbstractNode(TokenPtr token);
-    virtual ~AbstractNode(){};
-    void add_child_node(AbstractNodePtr child_node);
-    void set_is_root(bool is_root);
-    bool get_is_root();
-    bool get_is_rule();
-    bool get_is_epsilon();
-    ParseType get_parse_type();
-    TokenPtr get_token();
-    void set_parent(AbstractNodePtr parent_node);
-    AbstractNodePtr get_parent();
-    AbstractNodeList::iterator get_child_begin();
-    AbstractNodeList::iterator get_child_end();
-};
-
-class AbstractTree {
-private:
-	AbstractNodePtr root_node;
-	AbstractNodePtr iterable;
-	AbstractNodePtr get_current_parent();
-	void display_tree_rec();
-public:
-	AbstractTree();
-	AbstractTree(AbstractNodePtr root);
-    void add_move_child(AbstractNodePtr child_node);
-	void goto_parent();
-    void display_tree();
-    AbstractNodePtr get_root_node();
-	virtual ~AbstractTree(){};
-};
+#include "Scanner.hpp"
+#include "SemanticAnalyzer.hpp"
 
 // Parser Stuff
 class Parser {
 private:
-	shared_ptr<vector<TokenPtr>> token_list;
-	shared_ptr<Scanner> scanner;
+	TokenListPtr token_list;
+	ScannerPtr scanner;
 	TokenPtr lookahead;
-    shared_ptr<AbstractTree> program_syntax;
+    SemanticAnalyzerPtr analyzer;
 	bool fromList;
     bool error_reported;
     unsigned int parse_depth;
 public:
-	Parser(shared_ptr<vector<TokenPtr>> token_list);
-	Parser(shared_ptr<Scanner> scanner);
+	Parser(TokenListPtr token_list);
+	Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer);
+	virtual ~Parser() = default;
 	void parse_me();
     void populate();
 	void match(TokType expected);
 	bool try_match(TokType expected);
-	virtual ~Parser() = default;
 	// parse for all Mikropascal non-terminals
 	void parse_system_goal();
 	void parse_program();
@@ -177,7 +125,6 @@ public:
     void go_into(ParseType parse_type);
     void go_into_lit(TokenPtr token);
     void print_parse();
-    AbstractTreePtr detach_syntax();
 };
 
 

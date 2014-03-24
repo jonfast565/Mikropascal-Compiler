@@ -7,177 +7,23 @@
 
 #include "Parser.hpp"
 
-// AST Stuff
-AbstractTree::AbstractTree() {
-	this->root_node = AbstractNodePtr(new AbstractNode());
-	this->iterable = this->root_node;
-}
-
-AbstractTree::AbstractTree(AbstractNodePtr root) {
-	this->root_node = root;
-	this->iterable = this->root_node;
-}
-
-void AbstractTree::add_move_child(AbstractNodePtr child_node) {
-	this->iterable->add_child_node(child_node);
-	child_node->set_parent(this->iterable);
-	this->iterable = child_node;
-}
-
-void AbstractTree::goto_parent() {
-	if (this->iterable->get_parent() != nullptr) {
-		this->iterable = this->iterable->get_parent();
-	}
-}
-
-AbstractNodePtr AbstractTree::get_current_parent() {
-	if (this->iterable->get_parent() != nullptr) {
-		return this->iterable->get_parent();
-	}
-	return nullptr;
-}
-
-void AbstractTree::display_tree() {
-    // display tree at the root, which is where it should be
-    report_msg("AST Printable Tree");
-    display_tree_rec();
-}
-
-void AbstractTree::display_tree_rec() {
-    // naturally... recursive
-    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
-    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
-    loop->push(this->iterable);
-    while (!loop->empty()) {
-        // get the top and pop
-        AbstractNodePtr current = loop->top();
-        loop->pop();
-        if (current->get_is_rule()) {
-            report_msg_type("AST Rule",
-            get_rule_info(current->get_parse_type()));
-            // push on in reverse
-            for (auto i = current->get_child_begin();
-                 i != current->get_child_end(); i++) {
-                reversal->push(*i);
-            }
-            // reverse
-            while(!reversal->empty()) {
-                loop->push(reversal->top());
-                reversal->pop();
-            }
-        } else if (current->get_is_epsilon()) {
-            report_msg("AST Epsilon");
-        } else {
-            report_msg_type("AST Token",
-            get_token_info(current->get_token()->get_token()).first
-            + ": " + current->get_token()->get_lexeme());
-        }
-    }
-}
-
-AbstractNode::AbstractNode() {
-	this->child_nodes = AbstractListPtr(new AbstractNodeList());
-	this->parse_type = ROOT;
-	this->is_root = true;
-    this->is_rule = true;
-    this->token = nullptr;
-}
-
-AbstractNode::AbstractNode(ParseType parse_type) {
-	this->child_nodes = AbstractListPtr(new AbstractNodeList());
-	this->parse_type = parse_type;
-	this->is_root = false;
-    this->is_rule = true;
-    this->token = nullptr;
-}
-
-AbstractNode::AbstractNode(AbstractNodePtr parent_node, ParseType parse_type) {
-	this->child_nodes = AbstractListPtr(new AbstractNodeList());
-	this->parse_type = parse_type;
-	this->is_root = false;
-    this->is_rule = true;
-    this->token = nullptr;
-}
-
-AbstractNode::AbstractNode(shared_ptr<Token> token) {
-    this->child_nodes = nullptr;
-    this->parse_type = LITERAL;
-    this->is_root = false;
-    this->is_rule = false;
-    this->token = token;
-}
-
-void AbstractNode::add_child_node(AbstractNodePtr child_node) {
-	this->child_nodes->push_back(child_node);
-}
-
-void AbstractNode::set_is_root(bool is_root) {
-	this->is_root = is_root;
-}
-
-bool AbstractNode::get_is_root() {
-    return this->is_root;
-}
-
-bool AbstractNode::get_is_rule() {
-    return this->is_rule;
-}
-
-bool AbstractNode::get_is_epsilon() {
-    return (this->parse_type == EPSILON);
-}
-
-ParseType AbstractNode::get_parse_type() {
-	if (this->is_rule != false)
-		return this->parse_type;
-	else
-		return NO_RULE;
-}
-
-shared_ptr<Token> AbstractNode::get_token() {
-    if (is_rule)
-        return nullptr;
-    else
-        return this->token;
-}
-
-void AbstractNode::set_parent(AbstractNodePtr parent_node) {
-	this->parent_node = parent_node;
-}
-
-AbstractNodePtr AbstractNode::get_parent() {
-	if (this->parent_node == nullptr) {
-		return nullptr;
-	} else {
-		return this->parent_node;
-	}
-}
-
-AbstractNodeList::iterator AbstractNode::get_child_begin() {
-    return this->child_nodes->begin();
-}
-
-AbstractNodeList::iterator AbstractNode::get_child_end() {
-    return this->child_nodes->end();
-}
-
 // Parser Stuff
 Parser::Parser(TokenListPtr token_list) {
 	this->token_list = token_list;
 	this->fromList = true;
 	this->parse_depth = 0;
-    this->program_syntax = AbstractTreePtr(new AbstractTree());
     this->error_reported = false;
 
 }
 
 // USE ONLY THIS CONSTRUCTOR FOR NOW!!!!
-Parser::Parser(shared_ptr<Scanner> scanner) {
+Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
 	this->scanner = scanner;
 	this->fromList = false;
 	this->parse_depth = 0;
-	this->program_syntax = AbstractTreePtr(new AbstractTree());
     this->error_reported = false;
+    this->analyzer = analyzer;
+    this->analyzer->attach_syntax(AbstractTreePtr(new AbstractTree()));
 }
 
 bool Parser::try_match(TokType expected) {
@@ -1240,22 +1086,18 @@ void Parser::next_token() {
 }
 
 void Parser::return_from() {
-	this->program_syntax->goto_parent();
+	this->analyzer->get_ast()->goto_parent();
 }
 
 void Parser::go_into(ParseType parse_type) {
-	this->program_syntax->add_move_child(AbstractNodePtr(new AbstractNode(parse_type)));
+	this->analyzer->get_ast()->add_move_child(AbstractNodePtr(new AbstractNode(parse_type)));
 }
 
-void Parser::go_into_lit(shared_ptr<Token> token) {
-    this->program_syntax->add_move_child(AbstractNodePtr(new AbstractNode(token)));
+void Parser::go_into_lit(TokenPtr token) {
+    this->analyzer->get_ast()->add_move_child(AbstractNodePtr(new AbstractNode(token)));
 }
 
 void Parser::print_parse() {
-    this->program_syntax->display_tree();
-}
-
-AbstractTreePtr Parser::detach_syntax() {
-    return this->program_syntax;
+    this->analyzer->get_ast()->display_tree();
 }
 

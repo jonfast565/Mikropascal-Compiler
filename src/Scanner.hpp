@@ -15,6 +15,8 @@
 #include "Helper.hpp"
 
 // makes this easier to read
+class Scanner;
+using ScannerPtr = shared_ptr<Scanner>;
 using ScanBufPtr = shared_ptr<vector<char>>;
 using ScanBuf = vector<char>;
 using TokenPtr = shared_ptr<Token>;

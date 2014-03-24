@@ -15,6 +15,7 @@
 #include "Parser.hpp"
 #include "Helper.hpp"
 #include "Symbols.hpp"
+#include "SemanticAnalyzer.hpp"
 
 int automata_keyword_test_cases() {
 	cout << "[ Automata Keyword Tests ]" << endl;
@@ -108,7 +109,9 @@ int parser_test(string filename) {
 	cout << "[ Parser Test ]" << endl;
 	shared_ptr<Input> input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
-	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner));
+    shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
+    new SemanticAnalyzer());
+	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
 	parser->parse_me();
     parser->print_parse();
     cout << "[ End ]" << endl;
