@@ -149,7 +149,7 @@ public:
 class SemanticAnalyzer {
 private:
 	AbstractTreePtr ast;
-    SymbolListPtr symbols;
+    SymTablePtr symbols;
     bool processed;
 public:
     SemanticAnalyzer();

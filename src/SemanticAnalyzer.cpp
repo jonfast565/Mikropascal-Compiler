@@ -134,7 +134,7 @@ ParseType AbstractNode::get_parse_type() {
 		return NO_RULE;
 }
 
-shared_ptr<Token> AbstractNode::get_token() {
+TokenPtr AbstractNode::get_token() {
     if (is_rule)
         return nullptr;
     else
@@ -161,17 +161,17 @@ AbstractNodeList::iterator AbstractNode::get_child_end() {
     return this->child_nodes->end();
 }
 
-
+// Semantic Analyzer stuff
 SemanticAnalyzer::SemanticAnalyzer() {
     // semantic analyzer and no AST
     this->ast = nullptr;
-    this->symbols = SymbolListPtr(new SymbolList());
+    this->symbols = SymTablePtr(new SymTable());
 }
 
 SemanticAnalyzer::SemanticAnalyzer(AbstractTreePtr program_syntax) {
     // semantic analyzer with AST
     this->ast = program_syntax;
-    this->symbols = SymbolListPtr(new SymbolList());
+    this->symbols = SymTablePtr(new SymTable());
 }
 
 void SemanticAnalyzer::attach_syntax(AbstractTreePtr program_syntax) {
@@ -180,33 +180,7 @@ void SemanticAnalyzer::attach_syntax(AbstractTreePtr program_syntax) {
 }
 
 void SemanticAnalyzer::generate_symbols() {
-    // generate symbols if there's an AST
-    if (this->ast == nullptr) {
-        return;
-    }
-    // stacks
-    AbstractStackPtr iter_stack =
-    AbstractStackPtr(new AbstractNodeStack());
-    AbstractStackPtr reversal_stack =
-    AbstractStackPtr(new AbstractNodeStack());
-    // iterate through each
-    while (!iter_stack->empty()) {
-        // get the top and pop
-        AbstractNodePtr current = iter_stack->top();
-        iter_stack->pop();
-        if (current->get_is_rule()) {
-            // push on in reverse
-            for (auto i = current->get_child_begin();
-                 i != current->get_child_end(); i++) {
-                reversal_stack->push(*i);
-            }
-            // reverse
-            while(!reversal_stack->empty()) {
-                iter_stack->push(reversal_stack->top());
-                reversal_stack->pop();
-            }
-        }
-    }
+    // create the symbol table and associated blocks
 }
 
 AbstractTreePtr SemanticAnalyzer::get_ast() {

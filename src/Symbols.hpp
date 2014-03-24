@@ -16,6 +16,7 @@ class Symbol;
 class SymCallable;
 class SymData;
 class SymArgument;
+class SymTable;
 
 // type predecls
 using ArgumentPtr = shared_ptr<SymArgument>;
@@ -28,6 +29,7 @@ using SymbolIterator = SymbolList::iterator;
 using SymCallablePtr = shared_ptr<SymCallable>;
 using SymDataPtr = shared_ptr<SymData>;
 using SymArgumentPtr = shared_ptr<SymArgument>;
+using SymTablePtr = shared_ptr<SymTable>;
 
 // symbol types
 enum SymType {
