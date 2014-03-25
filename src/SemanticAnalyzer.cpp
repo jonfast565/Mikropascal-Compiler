@@ -44,33 +44,22 @@ void AbstractTree::display_tree() {
 }
 
 void AbstractTree::display_tree_rec() {
-    // naturally... recursive
     AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
-    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
     loop->push(this->iterable);
     while (!loop->empty()) {
-        // get the top and pop
         AbstractNodePtr current = loop->top();
         loop->pop();
+        this->push_children(current, loop);
         if (current->get_is_rule()) {
             report_msg_type("AST Rule",
-                            get_rule_info(current->get_parse_type()));
-            // push on in reverse
-            for (auto i = current->get_child_begin();
-                 i != current->get_child_end(); i++) {
-                reversal->push(*i);
-            }
-            // reverse
-            while(!reversal->empty()) {
-                loop->push(reversal->top());
-                reversal->pop();
-            }
+            get_rule_info(current->get_parse_type()));
+            this->push_children(current, loop);
         } else if (current->get_is_epsilon()) {
             report_msg("AST Epsilon");
         } else {
             report_msg_type("AST Token",
-                            get_token_info(current->get_token()->get_token()).first
-                            + ": " + current->get_token()->get_lexeme());
+            get_token_info(current->get_token()->get_token()).first
+            + ": " + current->get_token()->get_lexeme());
         }
     }
 }
@@ -185,4 +174,52 @@ void SemanticAnalyzer::generate_symbols() {
 
 AbstractTreePtr SemanticAnalyzer::get_ast() {
     return this->ast;
+}
+
+// debug
+CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, CodeActionMethod method, CodeBlockPtr block) {
+    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
+    loop->push(this->ast->get_root_node());
+    while (!loop->empty()) {
+        AbstractNodePtr current = loop->top();
+        loop->pop();
+        // if rule
+        if (current->get_is_rule()) {
+            this->push_children(current, loop);
+            // go to the rule
+            if (current->get_parse_type() == rule) {
+                // clear the stack
+                while(!loop->empty()) {
+                    loop->pop();
+                }
+                // generate the code block
+                return (*method)(current, block);
+            }
+        }
+    }
+    return nullptr;
+}
+
+void SemanticAnalyzer::push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols) {
+    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
+    for (auto i = current_node->get_child_begin();
+         i != current_node->get_child_end(); i++) {
+        reversal->push(*i);
+    }
+    while(!reversal->empty()) {
+        current_symbols->push(reversal->top());
+        reversal->pop();
+    }
+}
+
+void AbstractTree::push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols) {
+    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
+    for (auto i = current_node->get_child_begin();
+         i != current_node->get_child_end(); i++) {
+        reversal->push(*i);
+    }
+    while(!reversal->empty()) {
+        current_symbols->push(reversal->top());
+        reversal->pop();
+    }
 }

@@ -16,6 +16,7 @@
 class AbstractNode;
 class AbstractTree;
 class SemanticAnalyzer;
+class CodeBlock;
 
 using AbstractNodePtr = shared_ptr<AbstractNode>;
 using AbstractNodeList = vector<AbstractNodePtr>;
@@ -25,6 +26,7 @@ using AbstractStackPtr = shared_ptr<AbstractNodeStack>;
 using AbstractTreePtr = shared_ptr<AbstractTree>;
 using SemanticAnalyzerPtr = shared_ptr<SemanticAnalyzer>;
 using TokenPtr = shared_ptr<Token>;
+using CodeBlockPtr = shared_ptr<CodeBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -63,11 +65,13 @@ private:
 public:
 	AbstractTree();
 	AbstractTree(AbstractNodePtr root);
+	virtual ~AbstractTree(){};
+    AbstractNodePtr get_root_node();
     void add_move_child(AbstractNodePtr child_node);
 	void goto_parent();
     void display_tree();
-    AbstractNodePtr get_root_node();
-	virtual ~AbstractTree(){};
+    void push_children(AbstractNodePtr current_node,
+                       AbstractStackPtr current_symbols);
 };
 
 class Generator {
@@ -151,14 +155,18 @@ private:
 	AbstractTreePtr ast;
     SymTablePtr symbols;
     bool processed;
+    typedef CodeBlockPtr (*CodeActionMethod)(AbstractNodePtr, CodeBlockPtr);
 public:
     SemanticAnalyzer();
     SemanticAnalyzer(AbstractTreePtr program_syntax);
     virtual ~SemanticAnalyzer() = default;
+    // debug
+    CodeBlockPtr iterate_to_rule_generate(ParseType rule, CodeActionMethod method, CodeBlockPtr block = nullptr);
+    AbstractTreePtr get_ast();
     void attach_syntax(AbstractTreePtr program_syntax);
+    void push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols);
     void generate_symbols();
     void generate_blocks();
-    AbstractTreePtr get_ast();
 };
 
 #endif
