@@ -1101,3 +1101,7 @@ void Parser::print_parse() {
     this->analyzer->get_ast()->display_tree();
 }
 
+SemanticAnalyzerPtr Parser::get_analyzer() {
+    return this->analyzer;
+}
+

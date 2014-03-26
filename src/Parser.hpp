@@ -125,6 +125,7 @@ public:
     void go_into(ParseType parse_type);
     void go_into_lit(TokenPtr token);
     void print_parse();
+    SemanticAnalyzerPtr get_analyzer();
 };
 
 

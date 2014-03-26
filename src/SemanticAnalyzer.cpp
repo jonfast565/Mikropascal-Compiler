@@ -30,6 +30,10 @@ void AbstractTree::goto_parent() {
 	}
 }
 
+AbstractNodePtr AbstractTree::get_root_node() {
+    return this->iterable;
+}
+
 AbstractNodePtr AbstractTree::get_current_parent() {
 	if (this->iterable->get_parent() != nullptr) {
 		return this->iterable->get_parent();
@@ -40,26 +44,21 @@ AbstractNodePtr AbstractTree::get_current_parent() {
 void AbstractTree::display_tree() {
     // display tree at the root, which is where it should be
     report_msg("AST Printable Tree");
-    display_tree_rec();
-}
-
-void AbstractTree::display_tree_rec() {
     AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
     loop->push(this->iterable);
     while (!loop->empty()) {
         AbstractNodePtr current = loop->top();
         loop->pop();
-        this->push_children(current, loop);
         if (current->get_is_rule()) {
             report_msg_type("AST Rule",
-            get_rule_info(current->get_parse_type()));
+                            get_rule_info(current->get_parse_type()));
             this->push_children(current, loop);
         } else if (current->get_is_epsilon()) {
             report_msg("AST Epsilon");
         } else {
             report_msg_type("AST Token",
-            get_token_info(current->get_token()->get_token()).first
-            + ": " + current->get_token()->get_lexeme());
+                            get_token_info(current->get_token()->get_token()).first
+                            + ": " + current->get_token()->get_lexeme());
         }
     }
 }
@@ -124,10 +123,11 @@ ParseType AbstractNode::get_parse_type() {
 }
 
 TokenPtr AbstractNode::get_token() {
-    if (is_rule)
+    if (is_rule) {
         return nullptr;
-    else
+    } else {
         return this->token;
+    }
 }
 
 void AbstractNode::set_parent(AbstractNodePtr parent_node) {
@@ -177,7 +177,7 @@ AbstractTreePtr SemanticAnalyzer::get_ast() {
 }
 
 // debug
-CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, CodeActionMethod method, CodeBlockPtr block) {
+CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block) {
     AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
     loop->push(this->ast->get_root_node());
     while (!loop->empty()) {
@@ -185,7 +185,6 @@ CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, CodeActi
         loop->pop();
         // if rule
         if (current->get_is_rule()) {
-            this->push_children(current, loop);
             // go to the rule
             if (current->get_parse_type() == rule) {
                 // clear the stack
@@ -193,9 +192,46 @@ CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, CodeActi
                     loop->pop();
                 }
                 // generate the code block
-                return (*method)(current, block);
+                return (this->*method)(current, block);
+            } else {
+                // go deeper
+                this->push_children(current, loop);
             }
         }
+    }
+    return nullptr;
+}
+
+CodeBlockListPtr SemanticAnalyzer::iterate_to_rules_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block) {
+    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
+    CodeBlockListPtr returnables = CodeBlockListPtr(new CodeBlockList);
+    loop->push(this->ast->get_root_node());
+    while (!loop->empty()) {
+        AbstractNodePtr current = loop->top();
+        loop->pop();
+        // if rule
+        if (current->get_is_rule()) {
+            if (current->get_parse_type() == rule) {
+                // generate the code block
+                returnables->push_back((this->*method)(current, block));
+            }
+            // go deeper
+            this->push_children(current, loop);
+        }
+    }
+    return returnables;
+}
+
+CodeBlockPtr SemanticAnalyzer::print_node(AbstractNodePtr printable, CodeBlockPtr node_block) {
+    if (printable->get_is_rule()) {
+        report_msg_type("AST Rule",
+                        get_rule_info(printable->get_parse_type()));
+    } else if (printable->get_is_epsilon()) {
+        report_msg("AST Epsilon");
+    } else {
+        report_msg_type("AST Token",
+                        get_token_info(printable->get_token()->get_token()).first
+                        + ": " + printable->get_token()->get_lexeme());
     }
     return nullptr;
 }
