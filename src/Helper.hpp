@@ -81,4 +81,12 @@ static inline std::string &trim(std::string &s) {
     return ltrim(rtrim(s));
 }
 
+template <class T>
+static inline string conv_string (const T& t)
+{
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
+}
+
 #endif

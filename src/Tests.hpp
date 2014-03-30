@@ -112,10 +112,8 @@ int parser_test(string filename) {
     shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
     new SemanticAnalyzer());
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
-	parser->parse_me();
-    parser->print_parse();
-    cout << endl << "[ Printed ]" << endl << endl;
-    analyzer->print_id_lists();
+	parser->parse();
+    analyzer->get_symtable()->print();
     cout << "[ End ]" << endl;
 	return 0;
 }

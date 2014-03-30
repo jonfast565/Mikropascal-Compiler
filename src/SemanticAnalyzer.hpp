@@ -44,15 +44,15 @@ public:
     AbstractNode(AbstractNodePtr parent_node, ParseType parse_type);
     AbstractNode(ParseType parse_type);
     AbstractNode(TokenPtr token);
-    virtual ~AbstractNode(){};
+    virtual ~AbstractNode() = default;
     void add_child_node(AbstractNodePtr child_node);
     void set_is_root(bool is_root);
+    void set_parent(AbstractNodePtr parent_node);
     bool get_is_root();
     bool get_is_rule();
     bool get_is_epsilon();
     ParseType get_parse_type();
     TokenPtr get_token();
-    void set_parent(AbstractNodePtr parent_node);
     AbstractNodePtr get_parent();
     AbstractNodeList::iterator get_child_begin();
     AbstractNodeList::iterator get_child_end();
@@ -67,27 +67,54 @@ private:
 public:
 	AbstractTree();
 	AbstractTree(AbstractNodePtr root);
-	virtual ~AbstractTree(){};
-    AbstractNodePtr get_root_node();
+	virtual ~AbstractTree() = default;
     void add_move_child(AbstractNodePtr child_node);
 	void goto_parent();
     void display_tree();
     void push_children(AbstractNodePtr current_node,
                        AbstractStackPtr current_symbols);
+    AbstractNodePtr get_root_node();
+};
+
+enum BlockType {
+    GENERIC_BLOCK,
+    PROGRAM_BLOCK,
+    IO_BLOCK,
+    LOOP_BLOCK,
+    CONDITIONAL_BLOCK,
+    ASSIGNMENT_BLOCK,
+    ACTIVATION_BLOCK
 };
 
 class Generator {
 public:
     virtual void generate_pre() = 0;
     virtual void generate_post() = 0;
+    virtual bool validate() = 0;
 };
 
 class CodeBlock: public Generator {
 private:
-    string rule;
+    CodeBlockListPtr block_list;
+    BlockType block_type;
 public:
-    CodeBlock(string rule): rule(rule){};
+    CodeBlock(BlockType block_type): block_type(block_type){
+        this->block_list = CodeBlockListPtr(new CodeBlockList());
+    };
     virtual ~CodeBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
+    void append(CodeBlockPtr block);
+};
+
+class ProgramBlock: public CodeBlock {
+public:
+    ProgramBlock(): CodeBlock(PROGRAM_BLOCK){};
+    virtual ~ProgramBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 enum IOAction {
@@ -100,81 +127,95 @@ private:
     SymbolListPtr args;
     IOAction action;
 public:
-    IOBlock(IOAction action): CodeBlock("IOBlock"), action(action) {
+    IOBlock(IOAction action): CodeBlock(IO_BLOCK), action(action) {
         this->args = SymbolListPtr(new SymbolList());
     }
     virtual ~IOBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 enum LoopType {
     WHILELOOP,
-    FORLOOP
+    FORLOOP,
+    RPTUNLOOP
 };
 
 class LoopBlock: public CodeBlock {
 private:
     LoopType type;
 public:
-    LoopBlock(LoopType type): CodeBlock("LoopBlock"), type(type){};
+    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK), type(type){};
     virtual ~LoopBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 class ConditionalBlock: public CodeBlock {
 private:
 public:
-    ConditionalBlock();
+    ConditionalBlock(): CodeBlock(CONDITIONAL_BLOCK){};
     virtual ~ConditionalBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 class AssignmentBlock: public CodeBlock {
 private:
-    bool processed;
 public:
-    AssignmentBlock();
+    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK){};
     virtual ~AssignmentBlock() = default;
     void convert_postfix();
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 enum ActivationType {
     PROCEDURE,
-    FUNCTION
+    FUNCTION,
+    NO_CALL
+};
+
+enum ActivityType {
+    DEFINITION,
+    CALL
 };
 
 class ActivationBlock: public CodeBlock {
 private:
     SymbolPtr record;
-    ActivationType type;
+    ActivationType activation;
+    ActivityType activity;
 public:
-    ActivationBlock(ActivationType type, SymbolPtr record):
-    CodeBlock("ActivationType"), type(type) {
+    ActivationBlock(ActivationType activation, ActivityType activity, SymbolPtr record):
+    CodeBlock(ACTIVATION_BLOCK), activity(activity), activation(activation) {
         this->record = record;
     }
     virtual ~ActivationBlock() = default;
+    void generate_pre();
+    void generate_post();
+    bool validate();
 };
 
 class SemanticAnalyzer {
 private:
+    // AST for debug
 	AbstractTreePtr ast;
+    // symbols for symbol table
     SymTablePtr symbols;
+    // CondensedST is the tree that generates code
+    CodeBlockPtr condensedst;
+    // if processed correctly, allow generated code
     bool processed;
-    typedef void (SemanticAnalyzer::*SymbolActionMethod)(AbstractNodePtr);
-    typedef CodeBlockPtr (SemanticAnalyzer::*CodeActionMethod)(AbstractNodePtr, CodeBlockPtr);
 public:
     SemanticAnalyzer();
-    SemanticAnalyzer(AbstractTreePtr program_syntax);
     virtual ~SemanticAnalyzer() = default;
-    // debug
-    CodeBlockPtr iterate_to_rule_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block = nullptr);
-    CodeBlockListPtr iterate_to_rules_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block = nullptr);
     AbstractTreePtr get_ast();
-    CodeBlockPtr print_node(AbstractNodePtr printable, CodeBlockPtr node_block);
-    void attach_syntax(AbstractTreePtr program_syntax);
-    void push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols);
-    void generate_symbols();
-    void generate_blocks();
-    void print_id_lists() {
-        this->iterate_to_rules_generate(ASSIGNMENT_STATEMENT, &SemanticAnalyzer::print_node, nullptr);
-    }
+    SymTablePtr get_symtable();
 };
 
 #endif

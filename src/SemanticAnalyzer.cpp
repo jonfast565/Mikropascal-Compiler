@@ -30,6 +30,18 @@ void AbstractTree::goto_parent() {
 	}
 }
 
+void AbstractTree::push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols) {
+    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
+    for (auto i = current_node->get_child_begin();
+         i != current_node->get_child_end(); i++) {
+        reversal->push(*i);
+    }
+    while(!reversal->empty()) {
+        current_symbols->push(reversal->top());
+        reversal->pop();
+    }
+}
+
 AbstractNodePtr AbstractTree::get_root_node() {
     return this->iterable;
 }
@@ -51,14 +63,14 @@ void AbstractTree::display_tree() {
         loop->pop();
         if (current->get_is_rule()) {
             report_msg_type("AST Rule",
-                            get_rule_info(current->get_parse_type()));
+            get_rule_info(current->get_parse_type()));
             this->push_children(current, loop);
         } else if (current->get_is_epsilon()) {
             report_msg("AST Epsilon");
         } else {
             report_msg_type("AST Token",
-                            get_token_info(current->get_token()->get_token()).first
-                            + ": " + current->get_token()->get_lexeme());
+            get_token_info(current->get_token()->get_token()).first
+            + ": " + current->get_token()->get_lexeme());
         }
     }
 }
@@ -150,112 +162,38 @@ AbstractNodeList::iterator AbstractNode::get_child_end() {
     return this->child_nodes->end();
 }
 
+// Code block stuff
+void CodeBlock::append(CodeBlockPtr block) {
+    this->block_list->push_back(block);
+}
+
 // Semantic Analyzer stuff
 SemanticAnalyzer::SemanticAnalyzer() {
-    // semantic analyzer and no AST
-    this->ast = nullptr;
+    this->ast = AbstractTreePtr(new AbstractTree());
     this->symbols = SymTablePtr(new SymTable());
-}
-
-SemanticAnalyzer::SemanticAnalyzer(AbstractTreePtr program_syntax) {
-    // semantic analyzer with AST
-    this->ast = program_syntax;
-    this->symbols = SymTablePtr(new SymTable());
-}
-
-void SemanticAnalyzer::attach_syntax(AbstractTreePtr program_syntax) {
-    // set program syntax
-    this->ast = program_syntax;
-}
-
-void SemanticAnalyzer::generate_symbols() {
-    // create the symbol table and associated blocks
+    this->condensedst = CodeBlockPtr(new CodeBlock(PROGRAM_BLOCK));
 }
 
 AbstractTreePtr SemanticAnalyzer::get_ast() {
     return this->ast;
 }
 
-// debug
-CodeBlockPtr SemanticAnalyzer::iterate_to_rule_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block) {
-    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
-    loop->push(this->ast->get_root_node());
-    while (!loop->empty()) {
-        AbstractNodePtr current = loop->top();
-        loop->pop();
-        // if rule
-        if (current->get_is_rule()) {
-            // go to the rule
-            if (current->get_parse_type() == rule) {
-                // clear the stack
-                while(!loop->empty()) {
-                    loop->pop();
-                }
-                // generate the code block
-                return (this->*method)(current, block);
-            } else {
-                // go deeper
-                this->push_children(current, loop);
-            }
-        }
-    }
-    return nullptr;
+SymTablePtr SemanticAnalyzer::get_symtable() {
+    return this->symbols;
 }
 
-CodeBlockListPtr SemanticAnalyzer::iterate_to_rules_generate(ParseType rule, SemanticAnalyzer::CodeActionMethod method, CodeBlockPtr block) {
-    AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
-    CodeBlockListPtr returnables = CodeBlockListPtr(new CodeBlockList);
-    loop->push(this->ast->get_root_node());
-    while (!loop->empty()) {
-        AbstractNodePtr current = loop->top();
-        loop->pop();
-        // if rule
-        if (current->get_is_rule()) {
-            if (current->get_parse_type() == rule) {
-                // generate the code block
-                returnables->push_back((this->*method)(current, block));
-            }
-            // go deeper
-            this->push_children(current, loop);
-        }
-    }
-    return returnables;
+// Code Block Stuff
+void CodeBlock::generate_pre() {
+    // generate code
 }
 
-CodeBlockPtr SemanticAnalyzer::print_node(AbstractNodePtr printable, CodeBlockPtr node_block) {
-    if (printable->get_is_rule()) {
-        report_msg_type("AST Rule",
-                        get_rule_info(printable->get_parse_type()));
-    } else if (printable->get_is_epsilon()) {
-        report_msg("AST Epsilon");
-    } else {
-        report_msg_type("AST Token",
-                        get_token_info(printable->get_token()->get_token()).first
-                        + ": " + printable->get_token()->get_lexeme());
-    }
-    return nullptr;
+void CodeBlock::generate_post() {
+    // generate code
 }
 
-void SemanticAnalyzer::push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols) {
-    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
-    for (auto i = current_node->get_child_begin();
-         i != current_node->get_child_end(); i++) {
-        reversal->push(*i);
-    }
-    while(!reversal->empty()) {
-        current_symbols->push(reversal->top());
-        reversal->pop();
-    }
+bool CodeBlock::validate() {
+    return true;
 }
 
-void AbstractTree::push_children(AbstractNodePtr current_node, AbstractStackPtr current_symbols) {
-    AbstractStackPtr reversal = AbstractStackPtr(new AbstractNodeStack());
-    for (auto i = current_node->get_child_begin();
-         i != current_node->get_child_end(); i++) {
-        reversal->push(*i);
-    }
-    while(!reversal->empty()) {
-        current_symbols->push(reversal->top());
-        reversal->pop();
-    }
-}
+
+

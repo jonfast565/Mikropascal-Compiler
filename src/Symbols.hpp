@@ -43,8 +43,6 @@ static string sym_type_to_string(SymType type) {
             return "SYM_CALLABLE";
         case SYM_DATA:
             return "SYM_DATA";
-        default:
-            return "";
     }
 }
 
@@ -69,8 +67,6 @@ static string var_type_to_string(VarType type) {
             return "BOOLEAN";
         case VOID:
             return "VOID";
-        default:
-            return "";
     }
 }
 
@@ -89,8 +85,6 @@ static string literal_type_to_string(LiteralType type) {
             return "INTEGER_LITERAL";
         case FLOATING_LITERAL:
             return "FLOATING_LITERAL";
-        default:
-            return "";
     }
 }
 
@@ -106,8 +100,6 @@ static string pass_type_to_string(PassType type) {
             return "VALUE";
         case REFERENCE:
             return "REFERENCE";
-        default:
-            return "";
     }
 }
 
@@ -123,8 +115,6 @@ static string scope_to_string(Scope type) {
             return "GLOBAL";
         case LOCAL:
             return "LOCAL";
-        default:
-            return "";
     }
 }
 
@@ -154,11 +144,10 @@ private:
     unsigned int nesting_level;
     void print_internal(SymbolListPtr symbol_list);
 public:
-    SymTable() {
+    SymTable(): nesting_level(0) {
         this->symbol_list = SymbolListPtr(new SymbolList());
         this->table_iter = this->symbol_list->begin();
         this->last_callable = nullptr;
-        this->nesting_level = 0;
     }
     virtual ~SymTable() = default;
     void add_symbol(SymbolPtr new_symbol);
@@ -168,6 +157,7 @@ public:
     void go_into();
     void return_from();
     void to_latest();
+    unsigned int get_level();
     SymbolIterator position();
     void print();
 };

@@ -8,7 +8,6 @@
 
 #include "Symbols.hpp"
 
-
 void SymTable::add_symbol(SymbolPtr new_symbol) {
     this->symbol_list->push_back(new_symbol);
     this->to_latest();
@@ -26,9 +25,11 @@ void SymTable::go_into() {
 }
 
 void SymTable::return_from() {
-    if (this->last_callable != nullptr)
-        this->table_iter = this->last_callable->get_parent()->end() - 1;
-    this->nesting_level--;
+    if (this->last_callable != nullptr) {
+        this->table_iter = this->last_callable->get_parent()->begin();
+        this->nesting_level--;
+        this->to_latest();
+    }
 }
 
 void SymTable::create_data(string name, VarType type) {
@@ -39,7 +40,7 @@ void SymTable::create_data(string name, VarType type) {
         current_scope = LOCAL;
     }
     SymDataPtr p = SymDataPtr(
-    new SymData(name, type, current_scope, this->nesting_level));
+    new SymData(name, type, current_scope, this->get_level()));
     this->symbol_list->push_back(p);
     this->to_latest();
 }
@@ -65,7 +66,7 @@ ArgumentPtr SymTable::create_argument(string name, VarType type, PassType pass) 
 	} else {
 		current_scope = LOCAL;
 	}
-	return ArgumentPtr(new SymArgument(name, type, current_scope, this->nesting_level, pass));
+	return ArgumentPtr(new SymArgument(name, type, current_scope, this->get_level(), pass));
 }
 
 void SymTable::to_latest() {
@@ -85,7 +86,8 @@ void SymTable::print_internal(SymbolListPtr level_list) {
             // print its name and type, and also return type
             report_msg_type("Routine", callable_obj->get_symbol_name() + ", " +
                             sym_type_to_string(callable_obj->get_symbol_type()) + ", " +
-                            var_type_to_string(callable_obj->get_return_type()));
+                            var_type_to_string(callable_obj->get_return_type())+ ", " +
+                            conv_string(callable_obj->get_nesting_level()));
             // (void if procedure)
             // print its arguments
             for (auto j = callable_obj->get_argument_list()->begin();
@@ -103,9 +105,14 @@ void SymTable::print_internal(SymbolListPtr level_list) {
             // print out the data part
             report_msg_type("Data", data_obj->get_symbol_name() + ", " +
                             sym_type_to_string(data_obj->get_symbol_type()) + ", " +
-                            var_type_to_string(data_obj->get_var_type()));
+                            var_type_to_string(data_obj->get_var_type()) + ", " +
+                            conv_string(data_obj->get_nesting_level()));
         }
     }
+}
+
+unsigned int SymTable::get_level() {
+    return this->nesting_level;
 }
 
 SymbolIterator SymTable::position() {

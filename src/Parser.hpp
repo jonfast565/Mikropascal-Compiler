@@ -19,18 +19,18 @@
 // Parser Stuff
 class Parser {
 private:
-	TokenListPtr token_list;
 	ScannerPtr scanner;
 	TokenPtr lookahead;
+    TokenListPtr symbols;
     SemanticAnalyzerPtr analyzer;
-	bool fromList;
     bool error_reported;
+    bool sym_collect;
+    bool var_skip;
     unsigned int parse_depth;
 public:
-	Parser(TokenListPtr token_list);
 	Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer);
 	virtual ~Parser() = default;
-	void parse_me();
+	void parse();
     void populate();
 	void match(TokType expected);
 	bool try_match(TokType expected);
@@ -110,13 +110,13 @@ public:
 	void parse_identifier();
 	// parse end of file
 	void parse_eof();
-
 	// helper functions
 	bool is_relational_operator();
 	bool is_multiplying_operator();
     bool is_adding_operator();
     // grab the next token from the input stream
 	void next_token();
+    TokenPtr get_token();
     // indent/dedent the output by one level (debug)
     void more_indent();
     void less_indent();
@@ -124,8 +124,11 @@ public:
     void return_from();
     void go_into(ParseType parse_type);
     void go_into_lit(TokenPtr token);
-    void print_parse();
     SemanticAnalyzerPtr get_analyzer();
+    void begin_symbol(bool var_skip);
+    void end_symbol(SymType symbol_type, ActivationType callable_type);
+    void print_sym_buffer();
+    VarType to_var(TokType token_type);
 };
 
 

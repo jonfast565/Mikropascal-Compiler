@@ -7,69 +7,82 @@
 
 #include "Parser.hpp"
 
-// Parser Stuff
-Parser::Parser(TokenListPtr token_list) {
-	this->token_list = token_list;
-	this->fromList = true;
-	this->parse_depth = 0;
-    this->error_reported = false;
-
-}
-
-// USE ONLY THIS CONSTRUCTOR FOR NOW!!!!
 Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
 	this->scanner = scanner;
-	this->fromList = false;
 	this->parse_depth = 0;
     this->error_reported = false;
     this->analyzer = analyzer;
-    this->analyzer->attach_syntax(AbstractTreePtr(new AbstractTree()));
+    this->symbols = TokenListPtr(new TokenList());
+    this->sym_collect = false;
 }
 
 bool Parser::try_match(TokType expected) {
-	if (this->lookahead->get_token() != expected)
+	if (this->lookahead->get_token() != expected) {
 		return false;
-	else
+    } else {
 		return true;
+    }
 }
 
 void Parser::match(TokType expected) {
 	if (this->lookahead->get_token() != expected) {
-        // report an error
+        // get the error information
         this->error_reported = true;
         string expect = get_token_info(expected).first;
         string received = get_token_info(this->lookahead->get_token()).first;
         unsigned long line = this->lookahead->get_line();
         unsigned long column = this->lookahead->get_column();
-        
         // report the error
 		report_error_lc("Parse Error", "Expected "
-                            + expect + " but got '" + received
-                            + "' instead. Fail!", line, column);
-        
+                        + expect + " but got '" + received
+                        + "' instead. Fail!", line, column);
         // scan in attempt to find a match?
         if (this->lookahead->get_token() != TokType::MP_EOF) {
             // error checking assumes 'off-by-one'
             this->populate();
         }
 	} else {
+        if (this->sym_collect) {
+            if (this->var_skip == true) {
+                if ((this->lookahead->get_token() != MP_VAR)
+                    & (this->lookahead->get_token() == MP_ID
+                        || this->lookahead->get_token() == MP_INTEGER
+                        || this->lookahead->get_token() == MP_FLOAT
+                        || this->lookahead->get_token() == MP_STRING
+                        || this->lookahead->get_token() == MP_BOOLEAN)) {
+                    this->symbols->push_back(this->lookahead);
+                }
+            } else {
+                if (this->lookahead->get_token() == MP_VAR
+                       || this->lookahead->get_token() == MP_ID
+                       || this->lookahead->get_token() == MP_INTEGER
+                       || this->lookahead->get_token() == MP_FLOAT
+                       || this->lookahead->get_token() == MP_STRING
+                       || this->lookahead->get_token() == MP_BOOLEAN) {
+                    this->symbols->push_back(this->lookahead);
+                }
+            }
+        }
         // add token as a literal to the ast
         this->go_into_lit(this->lookahead);
         this->return_from();
-		
-		if (this->fromList == false) {
-            // report a match!
-            report_parse("Match: " + get_token_info(expected).first
-            + ": " + this->lookahead->get_lexeme(), this->parse_depth);
-            
-            // get the next token from the dispatcher
-            if (this->lookahead->get_token() != TokType::MP_EOF) {
-                this->populate();
-            }
-		} else {
-			// implement this later... with detaching token list
-		}
+        // report a match!
+        report_parse("Match: " + get_token_info(expected).first
+                     + ": " + this->lookahead->get_lexeme(), this->parse_depth);
+        
+        // get the next token from the dispatcher
+        if (this->lookahead->get_token() != TokType::MP_EOF) {
+            this->populate();
+        }
 	}
+}
+
+void Parser::print_sym_buffer() {
+    // debug the symbol buffer
+    for (auto i = this->symbols->begin(); i != this->symbols->end(); i++) {
+        cout << get_token_info((*i)->get_token()).first << " ";
+    }
+    cout << endl;
 }
 
 void Parser::populate() {
@@ -87,7 +100,7 @@ void Parser::populate() {
     }
 }
 
-void Parser::parse_me() {
+void Parser::parse() {
 	// put the next token in the global buffer
 	this->next_token();
 	// parse the system goal!
@@ -184,8 +197,7 @@ void Parser::parse_variable_declaration_tail() {
     this->more_indent();
     this->go_into(VARIABLE_DECL_TAIL);
 	report_parse("PARSE_VARIABLE_DECL_TAIL", this->parse_depth);
-    if (this->try_match(MP_VAR)) {
-        this->match(MP_VAR);
+    if (this->try_match(MP_ID)) {
         this->parse_variable_declaration();
 		this->match(MP_SEMI_COLON);
 		// recursive so watch out!
@@ -203,10 +215,12 @@ void Parser::parse_variable_declaration_tail() {
 void Parser::parse_variable_declaration() {
     this->more_indent();
     this->go_into(VARIABLE_DECL);
+    this->begin_symbol(true);
 	report_parse("PARSE_VARIABLE_DECL", this->parse_depth);
 	this->parse_identifier_list();
 	this->match(MP_COLON);
 	this->parse_type();
+    this->end_symbol(SYM_DATA, NO_CALL);
     this->return_from();
     this->less_indent();
 }
@@ -225,7 +239,7 @@ void Parser::parse_type() {
         this->match(MP_BOOLEAN);
 	} else {
 		report_error("Parse Error",
-        "Syntax is incorrect when matching type.");
+                     "Syntax is incorrect when matching type.");
 	}
     this->return_from();
     this->less_indent();
@@ -257,6 +271,7 @@ void Parser::parse_procedure_declaration() {
 	this->match(MP_SEMI_COLON);
 	this->parse_block();
 	this->match(MP_SEMI_COLON);
+    this->analyzer->get_symtable()->return_from();
     this->return_from();
     this->less_indent();
 }
@@ -269,6 +284,7 @@ void Parser::parse_function_declaration() {
 	this->match(MP_SEMI_COLON);
 	this->parse_block();
 	this->match(MP_SEMI_COLON);
+    this->analyzer->get_symtable()->return_from();
     this->return_from();
     this->less_indent();
 }
@@ -276,10 +292,13 @@ void Parser::parse_function_declaration() {
 void Parser::parse_procedure_heading() {
     this->more_indent();
     this->go_into(PROCEDURE_HEAD);
+    this->begin_symbol(false);
 	report_parse("PARSE_PROCEDURE_HEADING", this->parse_depth);
 	this->match(MP_PROCEDURE);
 	this->parse_procedure_identifier();
 	this->parse_optional_formal_parameter_list();
+    this->end_symbol(SYM_CALLABLE, PROCEDURE);
+    this->analyzer->get_symtable()->go_into();
     this->return_from();
     this->less_indent();
 }
@@ -287,12 +306,15 @@ void Parser::parse_procedure_heading() {
 void Parser::parse_function_heading() {
     this->more_indent();
     this->go_into(FUNCTION_HEAD);
+    this->begin_symbol(false);
 	report_parse("PARSE_FUNCTION_HEADING", this->parse_depth);
 	this->match(MP_FUNCTION);
 	this->parse_function_identifier();
 	this->parse_optional_formal_parameter_list();
     this->match(MP_COLON);
 	this->parse_type();
+    this->end_symbol(SYM_CALLABLE, FUNCTION);
+    this->analyzer->get_symtable()->go_into();
     this->return_from();
     this->less_indent();
 }
@@ -422,8 +444,7 @@ void Parser::parse_statement() {
     this->more_indent();
     this->go_into(STATEMENT);
 	report_parse("PARSE_STATEMENT", this->parse_depth);
-	// parsing these will be trial and
-	// error, so will have to add things for it?
+    // try matching to all statement types
 	if (this->try_match(MP_READ) || this->try_match(MP_READLN))
 		this->parse_read_statement();
 	else if (this->try_match(MP_WRITE) || this->try_match(MP_WRITELN))
@@ -460,10 +481,12 @@ void Parser::parse_read_statement() {
     this->more_indent();
     this->go_into(READ_STATEMENT);
 	report_parse("PARSE_READ_STATEMENT", this->parse_depth);
-    if (this->try_match(MP_READ))
+    if (this->try_match(MP_READ)) {
         this->match(MP_READ);
-    else if (this->try_match(MP_READLN))
+    }
+    else if (this->try_match(MP_READLN)) {
         this->match(MP_READLN);
+    }
 	this->match(MP_LEFT_PAREN);
 	this->parse_read_parameter();
 	this->parse_read_parameter_tail();
@@ -546,11 +569,9 @@ void Parser::parse_assignment_statement() {
     this->more_indent();
     this->go_into(ASSIGNMENT_STATEMENT);
 	report_parse("PARSE_ASSIGN_STATEMENT", this->parse_depth);
-	if (this->try_match(MP_ID)) {
-		this->parse_variable_identifier();
-		this->match(MP_ASSIGNMENT);
-		this->parse_expression();
-	}
+    this->parse_variable_identifier();
+    this->match(MP_ASSIGNMENT);
+    this->parse_expression();
     this->return_from();
     this->less_indent();
 }
@@ -559,15 +580,11 @@ void Parser::parse_if_statement() {
     this->more_indent();
     this->go_into(IF_STATEMENT);
 	report_parse("PARSE_IF_STATEMENT", this->parse_depth);
-	if (this->try_match(MP_IF)) {
-		this->match(MP_IF);
-		this->parse_boolean_expression();
-		this->match(MP_THEN);
-		this->parse_statement();
-		this->parse_optional_else_part();
-	} else {
-		report_error("Parse Error", "If statement invalid.");
-	}
+    this->match(MP_IF);
+    this->parse_boolean_expression();
+    this->match(MP_THEN);
+    this->parse_statement();
+    this->parse_optional_else_part();
     this->return_from();
     this->less_indent();
 }
@@ -594,16 +611,10 @@ void Parser::parse_repeat_statement() {
     this->more_indent();
     this->go_into(REPEAT_STATEMENT);
 	report_parse("PARSE_REPEAT_STATEMENT", this->parse_depth);
-	if (this->try_match(MP_REPEAT)) {
-		this->match(MP_REPEAT);
-		this->parse_statement_sequence();
-		this->match(MP_UNTIL);
-		this->parse_boolean_expression();
-	} else {
-		// report not the statement we
-		// were looking for
-		report_msg("Weird...");
-	}
+    this->match(MP_REPEAT);
+    this->parse_statement_sequence();
+    this->match(MP_UNTIL);
+    this->parse_boolean_expression();
     this->return_from();
     this->less_indent();
 }
@@ -612,16 +623,10 @@ void Parser::parse_while_statement() {
     this->more_indent();
     this->go_into(WHILE_STATEMENT);
 	report_parse("PARSE_WHILE_STATEMENT", this->parse_depth);
-	if (this->try_match(MP_WHILE)) {
-		this->match(MP_WHILE);
-		this->parse_boolean_expression();
-		this->match(MP_DO);
-		this->parse_statement();
-	} else {
-		// report not the statement we
-		// were looking for
-		report_msg("Weird...");
-	}
+    this->match(MP_WHILE);
+    this->parse_boolean_expression();
+    this->match(MP_DO);
+    this->parse_statement();
     this->return_from();
     this->less_indent();
 }
@@ -630,20 +635,14 @@ void Parser::parse_for_statement() {
     this->more_indent();
     this->go_into(FOR_STATEMENT);
 	report_parse("PARSE_FOR_STATEMENT", this->parse_depth);
-	if (this->try_match(MP_FOR)) {
-		this->match(MP_FOR);
-		this->parse_control_variable();
-		this->match(MP_ASSIGNMENT);
-		this->parse_initial_value();
-		this->parse_step_value();
-		this->parse_final_value();
-		this->match(MP_DO);
-		this->parse_statement();
-	} else {
-		// report not the statement we
-		// were looking for
-		report_msg("Weird...");
-	}
+    this->match(MP_FOR);
+    this->parse_control_variable();
+    this->match(MP_ASSIGNMENT);
+    this->parse_initial_value();
+    this->parse_step_value();
+    this->parse_final_value();
+    this->match(MP_DO);
+    this->parse_statement();
     this->return_from();
     this->less_indent();
 }
@@ -841,7 +840,7 @@ void Parser::parse_adding_operator() {
 		this->match(MP_OR);
 	else {
 		// syntax error!!!!!
-		report_error("Parse Error", "Yuck!!!! Operator not correct.");
+		report_error("Parse Error", "Invalid operator");
 	}
     this->return_from();
     this->less_indent();
@@ -1075,14 +1074,8 @@ void Parser::less_indent() {
 }
 
 void Parser::next_token() {
-	// consume the token and get the next
-	if (this->fromList == false) {
-		// get the next token from the dispatcher
-		this->lookahead = this->scanner->scan_one();
-	} else if (this->fromList == true) {
-		// get token list
-        this->lookahead = *this->token_list->begin();
-	}
+    // get the next token from the dispatcher
+    this->lookahead = this->scanner->scan_one();
 }
 
 void Parser::return_from() {
@@ -1097,11 +1090,122 @@ void Parser::go_into_lit(TokenPtr token) {
     this->analyzer->get_ast()->add_move_child(AbstractNodePtr(new AbstractNode(token)));
 }
 
-void Parser::print_parse() {
-    this->analyzer->get_ast()->display_tree();
-}
-
 SemanticAnalyzerPtr Parser::get_analyzer() {
     return this->analyzer;
 }
 
+TokenPtr Parser::get_token() {
+    return this->lookahead;
+}
+
+void Parser::begin_symbol(bool var_skip) {
+    this->sym_collect = true;
+    this->var_skip = var_skip;
+}
+
+VarType Parser::to_var(TokType token_type) {
+    switch(token_type) {
+        case MP_INTEGER:
+            return INTEGER;
+        case MP_STRING:
+            return STRING;
+        case MP_FLOAT:
+            return FLOATING;
+        case MP_BOOLEAN:
+            return BOOLEAN;
+        default:
+            return VOID;
+    }
+}
+
+void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
+    this->sym_collect = false;
+    // parse symbols into table
+    // debug: this->print_sym_buffer();
+    
+    // get the symbol table
+    SymTablePtr table = this->get_analyzer()->get_symtable();
+    
+    // temporary symbol names
+    vector<string> symbol_names = vector<string>();
+    
+    // symbol iteration
+    TokenList::iterator symbol_iter = this->symbols->begin();
+    TokenList::iterator symbol_end = this->symbols->end();
+    
+    // check to see if the record type is a callable type
+    if (symbol_type == SYM_CALLABLE) {
+        
+        // get the callable info and return type
+        string callable_name = (*this->symbols->begin())->get_lexeme();
+        VarType return_type = VOID;
+        
+        // argument list pointer for addition to callable
+        ArgumentListPtr argument_list = ArgumentListPtr(new ArgumentList());
+        
+        // return type is at end of function symbols
+        if (call_type == FUNCTION) {
+            // end is return type
+            symbol_end = this->symbols->end() - 2;
+            return_type = this->to_var((*(this->symbols->end() - 1))->get_token());
+        } else {
+            // end is just another argument
+            symbol_end = this->symbols->end();
+            if (this->symbols->size() == 1) {
+                // create function or procedure call
+                table->create_callable(callable_name, return_type, argument_list);
+                // reset
+                symbol_names.clear();
+                this->symbols->clear();
+                return;
+            }
+        }
+        // iterate through all of the symbols
+        for (symbol_iter = this->symbols->begin() + 1;
+             symbol_iter != symbol_end + 1; symbol_iter++) {
+            // if we're looking at an ID, get its name
+            if ((*symbol_iter)->get_token() == MP_ID) {
+                // add the symbol lexeme to the list of arguments of the same type
+                symbol_names.push_back((*symbol_iter)->get_lexeme());
+            } else if ((*symbol_iter)->get_token() == MP_VAR) {
+                // do nothing (no functions are pbr at the moment)
+            } else {
+                // assume type
+                VarType var_type = this->to_var((*symbol_iter)->get_token());
+                // turn all symbol names into arguments
+                for (auto it = symbol_names.begin(); it != symbol_names.end(); it++) {
+                    argument_list->push_back(table->create_argument(*it, var_type, VALUE));
+                }
+                // create function or procedure call
+                table->create_callable(callable_name, return_type, argument_list);
+                // reset
+                symbol_names.clear();
+            }
+        }
+        // clear and return
+        this->symbols->clear();
+        return;
+    } else {
+        for (symbol_iter = this->symbols->begin();
+             symbol_iter != this->symbols->end(); symbol_iter++) {
+            if ((*symbol_iter)->get_token() == MP_ID) {
+                // add the symbol lexeme to the list of arguments of the same type
+                symbol_names.push_back((*symbol_iter)->get_lexeme());
+            } else if ((*symbol_iter)->get_token() == MP_VAR) {
+                // do nothing (no functions are pbr at the moment)
+            } else {
+                // assume type
+                VarType var_type = this->to_var((*symbol_iter)->get_token());
+                // turn all symbol names into arguments
+                for (auto it = symbol_names.begin(); it != symbol_names.end(); it++) {
+                    // push back data
+                    table->create_data(*it, var_type);
+                }
+            }
+        }
+        symbol_names.clear();
+    }
+    // clear the symbol buffer
+    this->symbols->clear();
+    return;
+}
