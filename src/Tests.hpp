@@ -114,7 +114,7 @@ int parser_test(string filename) {
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
 	parser->parse();
     analyzer->get_symtable()->print();
-    shared_ptr<vector<SymbolPtr>> s = analyzer->get_symtable()->find("getNumber");
+    shared_ptr<vector<SymbolPtr>> s = analyzer->get_symtable()->find("v");
     cout << "[ End ]" << endl;
 	return 0;
 }

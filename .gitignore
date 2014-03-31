@@ -34,3 +34,7 @@ local.properties
 /Default
 /Debug
 /Release
+
+# XCode ignore UI and breakpoints…
+.xcuserstate
+.xcbkptlist

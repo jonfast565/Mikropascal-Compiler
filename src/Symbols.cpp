@@ -57,13 +57,17 @@ shared_ptr<vector<SymbolPtr>> SymTable::find(string id) {
     while (true) {
         // check to see if we're at the end of the list
         if (glbl_pos == glbl_last) {
-            // pop and set top to previous
-            sym_stack->pop();
-            if (!sym_stack->empty()) {
+            // if stack empty
+            if (sym_stack->empty()) {
+                // no other context to go back to
+                break;
+            } else {
+                // pop and set top to previous
+                glbl_last = sym_stack->top();
+                sym_stack->pop();
                 glbl_pos = sym_stack->top();
                 glbl_pos++;
-            } else {
-                break;
+                sym_stack->pop();
             }
         } else {
             // get a callable obj
@@ -87,7 +91,8 @@ shared_ptr<vector<SymbolPtr>> SymTable::find(string id) {
                 }
                 
                 // get the new start, end for the inner table
-                sym_stack->push(++glbl_pos);
+                sym_stack->push(glbl_pos);
+                sym_stack->push(glbl_last);
                 glbl_pos = callable_obj->return_sub_iterator();
                 glbl_last = callable_obj->return_sub_end_iterator();
                 
@@ -229,6 +234,25 @@ VarType SymCallable::get_return_type() {
 
 ArgumentListPtr SymCallable::get_argument_list() {
     return this->argument_list;
+}
+
+unsigned int SymCallable::get_number_arguments() {
+    unsigned int num_arguments = 0;
+    for (auto i = this->argument_list->begin();
+         i != this->argument_list->end(); i++) {
+        num_arguments++;
+    }
+    return num_arguments;
+}
+
+shared_ptr<vector<VarType>> SymCallable::get_argument_types() {
+    shared_ptr<vector<VarType>> argument_types =
+    shared_ptr<vector<VarType>>(new vector<VarType>);
+    for (auto i = this->argument_list->begin();
+         i != this->argument_list->end(); i++) {
+        argument_types->push_back((*i)->get_var_type());
+    }
+    return argument_types;
 }
 
 PassType SymArgument::get_pass_type() {

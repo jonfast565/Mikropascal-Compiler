@@ -188,15 +188,18 @@ public:
     SymbolListPtr get_child();
     VarType get_return_type();
     ArgumentListPtr get_argument_list();
+    unsigned int get_number_arguments();
+    shared_ptr<vector<VarType>> get_argument_types();
     void dyn(){};
 };
 
 class SymData : public Symbol {
 private:
 	VarType variable_type;
+    string address;
 public:
 	SymData(string name, VarType type, Scope scope, unsigned int nesting_level):
-		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type){};
+		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type), address(""){};
 	virtual ~SymData() = default;
     VarType get_var_type();
     void dyn(){};
