@@ -26,6 +26,7 @@ Parser.hpp/Parser.cpp - A class for parsing a Mikropascal grammar given Mikropas
 Tokens.hpp - A list of Mikropascal tokens and accessors.
 Rules.hpp - A list of tokens and grammar rules and their accessors.
 Symbols.hpp/Symbols.cpp - A symbol table implementation for Mikropascal.
+SemanticAnalyzer.hpp/SemanticAnalyzer.cpp - A semantic analyzer for evaluating scoping, and a code generation facility.
 Structures.hpp - Miscellaneous data structures (if necessary, can be removed).
 Helper.hpp - A list of helper functions for displaying output, errors, etc.
 Tests.hpp - Tests of each class.

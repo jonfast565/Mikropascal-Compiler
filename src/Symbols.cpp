@@ -20,6 +20,8 @@ void SymTable::go_into() {
             this->table_iter = callable_obj->return_sub_iterator();
             this->nesting_level++;
             this->last_callable = callable_obj;
+            this->offset_scope->push(this->max_offset);
+            this->max_offset = 0;
         }
     }
 }
@@ -29,6 +31,9 @@ void SymTable::return_from() {
         this->table_iter = this->last_callable->get_parent()->begin();
         this->nesting_level--;
         this->to_latest();
+        this->last_callable = nullptr;
+        this->max_offset = this->offset_scope->top();
+        this->offset_scope->pop();
     }
 }
 
@@ -101,6 +106,7 @@ shared_ptr<vector<SymbolPtr>> SymTable::find(string id) {
                 if ((*glbl_pos)->get_symbol_name().compare(id) == 0) {
                     sym_ptrs->push_back(*glbl_pos);
                 }
+                
                 // move the iterator forward
                 glbl_pos++;
             }
@@ -117,9 +123,10 @@ void SymTable::create_data(string name, VarType type) {
         current_scope = LOCAL;
     }
     SymDataPtr p = SymDataPtr(
-                              new SymData(name, type, current_scope, this->get_level()));
+    new SymData(name, type, current_scope, this->get_level(), last_callable));
     p->set_address(this->get_level(), this->get_offset());
     this->symbol_list->push_back(p);
+    this->max_offset++;
     this->to_latest();
 }
 
@@ -131,8 +138,8 @@ void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr
         current_scope = LOCAL;
     }
     SymCallablePtr c = SymCallablePtr(new SymCallable(
-                                                      name, current_scope, this->nesting_level, return_type,
-                                                      this->symbol_list, args));
+    name, current_scope, this->nesting_level, return_type,
+    this->symbol_list, args));
     this->symbol_list->push_back(c);
     this->to_latest();
 }
@@ -144,7 +151,7 @@ ArgumentPtr SymTable::create_argument(string name, VarType type, PassType pass) 
 	} else {
 		current_scope = LOCAL;
 	}
-	return ArgumentPtr(new SymArgument(name, type, current_scope, this->get_level(), pass));
+	return ArgumentPtr(new SymArgument(name, type, current_scope, this->get_level(), pass, last_callable));
 }
 
 void SymTable::to_latest() {
@@ -200,6 +207,26 @@ unsigned int SymTable::get_offset() {
 
 SymbolIterator SymTable::position() {
     return this->table_iter;
+}
+
+shared_ptr<vector<SymbolPtr>> SymTable::filter_data(shared_ptr<vector<SymbolPtr>> filterable) {
+    shared_ptr<vector<SymbolPtr>> filtered = shared_ptr<vector<SymbolPtr>>(new vector<SymbolPtr>);
+    for (auto i = filterable->begin(); i != filterable->end(); i++) {
+        if ((*i)->get_symbol_type() == SYM_DATA) {
+            filtered->push_back(*i);
+        }
+    }
+    return filtered;
+}
+
+shared_ptr<vector<SymbolPtr>> SymTable::filter_callable(shared_ptr<vector<SymbolPtr>> filterable) {
+    shared_ptr<vector<SymbolPtr>> filtered = shared_ptr<vector<SymbolPtr>>(new vector<SymbolPtr>);
+    for (auto i = filterable->begin(); i != filterable->end(); i++) {
+        if ((*i)->get_symbol_type() == SYM_CALLABLE) {
+            filtered->push_back(*i);
+        }
+    }
+    return filtered;
 }
 
 SymType Symbol::get_symbol_type() {
@@ -267,6 +294,10 @@ PassType SymArgument::get_pass_type() {
 
 VarType SymData::get_var_type() {
     return this->variable_type;
+}
+
+SymCallablePtr SymData::get_parent_callable() {
+    return this->parent_callable;
 }
 
 void SymData::set_address(unsigned int level, unsigned int offset) {

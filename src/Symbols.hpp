@@ -143,12 +143,14 @@ private:
     SymCallablePtr last_callable;
     unsigned int nesting_level;
     unsigned int max_offset;
+    shared_ptr<stack<unsigned int>> offset_scope;
     void print_internal(SymbolListPtr symbol_list);
 public:
     SymTable(): nesting_level(0), max_offset(0) {
         this->symbol_list = SymbolListPtr(new SymbolList());
         this->table_iter = this->symbol_list->begin();
         this->last_callable = nullptr;
+        this->offset_scope = shared_ptr<stack<unsigned int>>(new stack<unsigned int>);
     }
     virtual ~SymTable() = default;
     void add_symbol(SymbolPtr new_symbol);
@@ -165,6 +167,8 @@ public:
     SymbolIterator position();
     SymbolIterator get_first();
     SymbolIterator get_last();
+    static shared_ptr<vector<SymbolPtr>> filter_data(shared_ptr<vector<SymbolPtr>> filterable);
+    static shared_ptr<vector<SymbolPtr>> filter_callable(shared_ptr<vector<SymbolPtr>> filterable);
 };
 
 class SymCallable : public Symbol {
@@ -198,14 +202,16 @@ public:
 class SymData : public Symbol {
 private:
 	VarType variable_type;
+    SymCallablePtr parent_callable;
     string address;
 public:
-	SymData(string name, VarType type, Scope scope, unsigned int nesting_level):
-		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type), address(""){};
+	SymData(string name, VarType type, Scope scope, unsigned int nesting_level, SymCallablePtr parent_callable):
+		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type), parent_callable(parent_callable), address(""){};
 	virtual ~SymData() = default;
     VarType get_var_type();
     void set_address(unsigned int level, unsigned int offset);
     string get_address();
+    SymCallablePtr get_parent_callable();
     void dyn(){};
 };
 
@@ -213,8 +219,8 @@ class SymArgument : public SymData {
 private:
 	PassType pass_type;
 public:
-	SymArgument(string name, VarType type, Scope scope, unsigned int nesting_level, PassType pass_type):
-    SymData(name, type, scope, nesting_level), pass_type(pass_type){};
+	SymArgument(string name, VarType type, Scope scope, unsigned int nesting_level, PassType pass_type, SymCallablePtr parent_callable):
+    SymData(name, type, scope, nesting_level, parent_callable), pass_type(pass_type){};
 	virtual ~SymArgument() = default;
     PassType get_pass_type();
     void dyn(){};

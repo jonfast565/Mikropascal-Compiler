@@ -97,8 +97,10 @@ class CodeBlock: public Generator {
 private:
     CodeBlockListPtr block_list;
     BlockType block_type;
+    CodeBlockPtr parent_block;
 public:
-    CodeBlock(BlockType block_type): block_type(block_type){
+    CodeBlock(BlockType block_type, CodeBlockPtr parent_block):
+    block_type(block_type), parent_block(parent_block){
         this->block_list = CodeBlockListPtr(new CodeBlockList());
     };
     virtual ~CodeBlock() = default;
@@ -106,11 +108,15 @@ public:
     void generate_post();
     bool validate();
     void append(CodeBlockPtr block);
+    CodeBlockPtr get_parent();
+    CodeBlockPtr set_parent(CodeBlockPtr parent);
+    CodeBlockList::iterator inner_begin();
+    CodeBlockList::iterator inner_end();
 };
 
 class ProgramBlock: public CodeBlock {
 public:
-    ProgramBlock(): CodeBlock(PROGRAM_BLOCK){};
+    ProgramBlock(): CodeBlock(PROGRAM_BLOCK, nullptr){};
     virtual ~ProgramBlock() = default;
     void generate_pre();
     void generate_post();
@@ -127,9 +133,10 @@ private:
     SymbolListPtr args;
     IOAction action;
 public:
-    IOBlock(IOAction action): CodeBlock(IO_BLOCK), action(action) {
+    IOBlock(IOAction action): CodeBlock(IO_BLOCK, nullptr), action(action) {
         this->args = SymbolListPtr(new SymbolList());
     }
+
     virtual ~IOBlock() = default;
     void generate_pre();
     void generate_post();
@@ -146,7 +153,7 @@ class LoopBlock: public CodeBlock {
 private:
     LoopType type;
 public:
-    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK), type(type){};
+    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK, nullptr), type(type){};
     virtual ~LoopBlock() = default;
     void generate_pre();
     void generate_post();
@@ -156,7 +163,7 @@ public:
 class ConditionalBlock: public CodeBlock {
 private:
 public:
-    ConditionalBlock(): CodeBlock(CONDITIONAL_BLOCK){};
+    ConditionalBlock(): CodeBlock(CONDITIONAL_BLOCK, nullptr){};
     virtual ~ConditionalBlock() = default;
     void generate_pre();
     void generate_post();
@@ -166,7 +173,7 @@ public:
 class AssignmentBlock: public CodeBlock {
 private:
 public:
-    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK){};
+    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr){};
     virtual ~AssignmentBlock() = default;
     void convert_postfix();
     void generate_pre();
@@ -192,7 +199,7 @@ private:
     ActivityType activity;
 public:
     ActivationBlock(ActivationType activation, ActivityType activity, SymbolPtr record):
-    CodeBlock(ACTIVATION_BLOCK), activity(activity), activation(activation) {
+    CodeBlock(ACTIVATION_BLOCK, nullptr), activity(activity), activation(activation) {
         this->record = record;
     }
     virtual ~ActivationBlock() = default;
@@ -216,6 +223,13 @@ public:
     virtual ~SemanticAnalyzer() = default;
     AbstractTreePtr get_ast();
     SymTablePtr get_symtable();
+    bool is_scoped_any(string id);
+    bool is_callable_scoped(string callable_id);
+    bool is_data_scoped(string data_id);
+    bool is_data_in_callable(string data_id, string callable_id);
+    void print_symbols();
+    void generate_all();
+    void generate_one(CodeBlockPtr current);
 };
 
 #endif

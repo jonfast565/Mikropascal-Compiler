@@ -111,18 +111,29 @@ void Parser::parse_system_goal() {
     this->more_indent();
     this->go_into(SYSTEM_GOAL);
 	report_parse("PARSE_SYSTEM_GOAL", this->parse_depth);
-	// parse system goal
+	
+    // parse system goal
     if (this->try_match(MP_PROGRAM)) {
         this->parse_program();
     }
     this->parse_eof();
     this->return_from();
     this->less_indent();
+    
+    // determine if there was an error...
     if (!this->error_reported) {
+        // report success
         report_msg_type("Success", "Parse was successful! Awesome.");
+        
+        // generate code
+        this->analyzer->generate_all();
     }
     else {
+        // report failure
         report_msg_type("Failure", "Invalid parse. Yuck!");
+        
+        // terminate the program
+        exit(0);
     }
 }
 
@@ -130,8 +141,9 @@ void Parser::parse_eof() {
     this->more_indent();
     this->go_into(EOF_RULE);
 	report_parse("PARSE_EOF", this->parse_depth);
-	bool is_eof = this->try_match(MP_EOF);
-	if (!is_eof) {
+    
+    // ensure file ends with a newline
+	if (!this->try_match(MP_EOF)) {
 		report_error("Parse Error", "No end-of-file detected.\nMissing newline at end-of-file?");
 	} else {
         this->match(MP_EOF);

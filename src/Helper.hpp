@@ -64,6 +64,10 @@ static pair<char, char> all_char_variants(char c) {
     return char_pair;
 }
 
+static void write_raw(string s) {
+    cout << s << endl;
+}
+
 // trim from start
 static inline std::string &ltrim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));

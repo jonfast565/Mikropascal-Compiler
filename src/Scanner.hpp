@@ -27,14 +27,20 @@ class Scanner {
 private:
 	// finite automata
 	FSMachineListPtr fsmachines;
+    
+    // accept detectors
     bool some_accept();
     bool none_accept();
+    
+    // reset and run commands
     void reset_all_auto();
     void run_all_auto(string input);
+    void run_chain();
+    
+    // accepting machine checks
     FSMachineListPtr not_dead();
     FSMachineListPtr accepting();
     FSMachineListPtr run_buffer();
-    void run_chain();
     
     // loading finite automata
 	void load_keyword_machines();
@@ -54,11 +60,13 @@ private:
 	StringPtr file_buf_ptr;
 	ScanBufPtr scan_buf;
     string contents();
+    void clear_buffer();
+    
+    // shave commands
     void shave_all();
     void shave_buffer();
     void shave_file_ptr();
     void shave_chain();
-    void clear_buffer();
     
     // pointers
 	string::iterator file_ptr;
