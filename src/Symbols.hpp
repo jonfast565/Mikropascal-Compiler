@@ -142,9 +142,10 @@ private:
     SymbolIterator table_iter;
     SymCallablePtr last_callable;
     unsigned int nesting_level;
+    unsigned int max_offset;
     void print_internal(SymbolListPtr symbol_list);
 public:
-    SymTable(): nesting_level(0) {
+    SymTable(): nesting_level(0), max_offset(0) {
         this->symbol_list = SymbolListPtr(new SymbolList());
         this->table_iter = this->symbol_list->begin();
         this->last_callable = nullptr;
@@ -160,6 +161,7 @@ public:
     void print();
     shared_ptr<vector<SymbolPtr>> find(string id);
     unsigned int get_level();
+    unsigned int get_offset();
     SymbolIterator position();
     SymbolIterator get_first();
     SymbolIterator get_last();
@@ -202,6 +204,8 @@ public:
 		Symbol(name, SYM_DATA, scope, nesting_level), variable_type(type), address(""){};
 	virtual ~SymData() = default;
     VarType get_var_type();
+    void set_address(unsigned int level, unsigned int offset);
+    string get_address();
     void dyn(){};
 };
 

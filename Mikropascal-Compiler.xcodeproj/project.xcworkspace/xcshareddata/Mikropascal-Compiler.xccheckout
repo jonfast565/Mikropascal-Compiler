@@ -5,43 +5,34 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>A31C795A-43BD-4174-B830-C0F672CF7087</string>
+	<string>63F6B8B5-7275-45C2-A477-4F8E95550B10</string>
 	<key>IDESourceControlProjectName</key>
 	<string>Mikropascal-Compiler</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>1064DF7F-4CCD-473E-BABD-EBEA671E2D46</key>
-		<string>https://github.com/jonfast565/Mikropascal-Compiler/trunk</string>
+		<key>CF96B7A6-717A-4E34-AE31-83431A9B263E</key>
+		<string>https://github.com/jonfast565/Mikropascal-Compiler.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
 	<string>Mikropascal-Compiler.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>1064DF7F-4CCD-473E-BABD-EBEA671E2D46</key>
+		<key>CF96B7A6-717A-4E34-AE31-83431A9B263E</key>
 		<string>../..</string>
 	</dict>
-	<key>IDESourceControlProjectRepositoryRootDictionary</key>
-	<dict>
-		<key>1064DF7F-4CCD-473E-BABD-EBEA671E2D46</key>
-		<string>https://github.com/jonfast565/Mikropascal-Compiler</string>
-	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>https://github.com/jonfast565/Mikropascal-Compiler/trunk/Mikropascal-Compiler.xcodeproj</string>
+	<string>https://github.com/jonfast565/Mikropascal-Compiler.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>1064DF7F-4CCD-473E-BABD-EBEA671E2D46</string>
+	<string>CF96B7A6-717A-4E34-AE31-83431A9B263E</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
-			<key>IDESourceControlRepositoryBranchesRelativeLocationKey</key>
-			<string>branches</string>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
-			<string>public.vcs.subversion</string>
-			<key>IDESourceControlRepositoryTrunkRelativeLocationKey</key>
-			<string>trunk</string>
+			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>1064DF7F-4CCD-473E-BABD-EBEA671E2D46</string>
+			<string>CF96B7A6-717A-4E34-AE31-83431A9B263E</string>
 			<key>IDESourceControlWCCName</key>
 			<string>Mikropascal-Compiler</string>
 		</dict>

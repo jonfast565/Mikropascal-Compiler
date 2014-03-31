@@ -118,6 +118,7 @@ void SymTable::create_data(string name, VarType type) {
     }
     SymDataPtr p = SymDataPtr(
                               new SymData(name, type, current_scope, this->get_level()));
+    p->set_address(this->get_level(), this->get_offset());
     this->symbol_list->push_back(p);
     this->to_latest();
 }
@@ -163,7 +164,7 @@ void SymTable::print_internal(SymbolListPtr level_list) {
             // print its name and type, and also return type
             report_msg_type("Routine", callable_obj->get_symbol_name() + ", " +
                             sym_type_to_string(callable_obj->get_symbol_type()) + ", " +
-                            var_type_to_string(callable_obj->get_return_type())+ ", " +
+                            var_type_to_string(callable_obj->get_return_type()) + ", " +
                             conv_string(callable_obj->get_nesting_level()));
             // (void if procedure)
             // print its arguments
@@ -183,13 +184,18 @@ void SymTable::print_internal(SymbolListPtr level_list) {
             report_msg_type("Data", data_obj->get_symbol_name() + ", " +
                             sym_type_to_string(data_obj->get_symbol_type()) + ", " +
                             var_type_to_string(data_obj->get_var_type()) + ", " +
-                            conv_string(data_obj->get_nesting_level()));
+                            conv_string(data_obj->get_nesting_level()) + ", " +
+                            conv_string(data_obj->get_address()));
         }
     }
 }
 
 unsigned int SymTable::get_level() {
     return this->nesting_level;
+}
+
+unsigned int SymTable::get_offset() {
+    return this->max_offset;
 }
 
 SymbolIterator SymTable::position() {
@@ -261,4 +267,12 @@ PassType SymArgument::get_pass_type() {
 
 VarType SymData::get_var_type() {
     return this->variable_type;
+}
+
+void SymData::set_address(unsigned int level, unsigned int offset) {
+    this->address = conv_string(offset) + "(D" + conv_string(level) + ")";
+}
+
+string  SymData::get_address() {
+    return this->address;
 }
