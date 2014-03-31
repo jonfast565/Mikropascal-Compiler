@@ -157,9 +157,12 @@ public:
     void go_into();
     void return_from();
     void to_latest();
+    void print();
+    shared_ptr<vector<SymbolPtr>> find(string id);
     unsigned int get_level();
     SymbolIterator position();
-    void print();
+    SymbolIterator get_first();
+    SymbolIterator get_last();
 };
 
 class SymCallable : public Symbol {
@@ -180,6 +183,7 @@ public:
 	}
 	virtual ~SymCallable() = default;
     SymbolIterator return_sub_iterator();
+    SymbolIterator return_sub_end_iterator();
     SymbolListPtr get_parent();
     SymbolListPtr get_child();
     VarType get_return_type();

@@ -32,6 +32,78 @@ void SymTable::return_from() {
     }
 }
 
+SymbolIterator SymTable::get_first() {
+    return this->symbol_list->begin();
+}
+
+SymbolIterator SymTable::get_last() {
+    return this->symbol_list->end();
+}
+
+shared_ptr<vector<SymbolPtr>> SymTable::find(string id) {
+    // get a vector of symbols to return
+    shared_ptr<vector<SymbolPtr>> sym_ptrs =
+    shared_ptr<vector<SymbolPtr>>(new vector<SymbolPtr>);
+    
+    // iterator stack for moving within contexts
+    shared_ptr<stack<SymbolIterator>> sym_stack =
+    shared_ptr<stack<SymbolIterator>>(new stack<SymbolIterator>);
+    
+    // global table last pointer
+    SymbolIterator glbl_pos = this->get_first();
+    SymbolIterator glbl_last = this->get_last();
+    
+    // wait until we're at the end of the table
+    while (true) {
+        // check to see if we're at the end of the list
+        if (glbl_pos == glbl_last) {
+            // pop and set top to previous
+            sym_stack->pop();
+            if (!sym_stack->empty()) {
+                glbl_pos = sym_stack->top();
+                glbl_pos++;
+            } else {
+                break;
+            }
+        } else {
+            // get a callable obj
+            if ((*glbl_pos)->get_symbol_type() == SYM_CALLABLE) {
+                
+                // look at the function name
+                SymCallablePtr callable_obj = static_pointer_cast<SymCallable>(*glbl_pos);
+                if (callable_obj->get_symbol_name().compare(id) == 0) {
+                    sym_ptrs->push_back(callable_obj);
+                }
+                
+                // look at the argument names
+                if (callable_obj->get_argument_list()->size() > 0) {
+                    for (auto i = callable_obj->get_argument_list()->begin();
+                         i != callable_obj->get_argument_list()->end(); i++) {
+                        // push if same as id
+                        if ((*i)->get_symbol_name().compare(id) == 0) {
+                            sym_ptrs->push_back(*i);
+                        }
+                    }
+                }
+                
+                // get the new start, end for the inner table
+                sym_stack->push(++glbl_pos);
+                glbl_pos = callable_obj->return_sub_iterator();
+                glbl_last = callable_obj->return_sub_end_iterator();
+                
+            } else {
+                // glbl_pos == SYM_DATA, not callable
+                if ((*glbl_pos)->get_symbol_name().compare(id) == 0) {
+                    sym_ptrs->push_back(*glbl_pos);
+                }
+                // move the iterator forward
+                glbl_pos++;
+            }
+        }
+    }
+    return sym_ptrs;
+}
+
 void SymTable::create_data(string name, VarType type) {
     Scope current_scope;
     if (nesting_level == 0) {
@@ -40,7 +112,7 @@ void SymTable::create_data(string name, VarType type) {
         current_scope = LOCAL;
     }
     SymDataPtr p = SymDataPtr(
-    new SymData(name, type, current_scope, this->get_level()));
+                              new SymData(name, type, current_scope, this->get_level()));
     this->symbol_list->push_back(p);
     this->to_latest();
 }
@@ -53,8 +125,8 @@ void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr
         current_scope = LOCAL;
     }
     SymCallablePtr c = SymCallablePtr(new SymCallable(
-    name, current_scope, this->nesting_level, return_type,
-    this->symbol_list, args));
+                                                      name, current_scope, this->nesting_level, return_type,
+                                                      this->symbol_list, args));
     this->symbol_list->push_back(c);
     this->to_latest();
 }
@@ -137,6 +209,10 @@ unsigned int Symbol::get_nesting_level() {
 
 SymbolIterator SymCallable::return_sub_iterator() {
     return this->child->begin();
+}
+
+SymbolIterator SymCallable::return_sub_end_iterator() {
+    return this->child->end();
 }
 
 SymbolListPtr SymCallable::get_parent() {
