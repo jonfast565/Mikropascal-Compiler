@@ -14,6 +14,7 @@ Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
     this->analyzer = analyzer;
     this->symbols = TokenListPtr(new TokenList());
     this->sym_collect = false;
+    this->gen_collect = false;
 }
 
 bool Parser::try_match(TokType expected) {
@@ -42,6 +43,7 @@ void Parser::match(TokType expected) {
             this->populate();
         }
 	} else {
+        // if we're collecting symbols
         if (this->sym_collect) {
             if (this->var_skip == true) {
                 if ((this->lookahead->get_token() != MP_VAR)
@@ -62,6 +64,11 @@ void Parser::match(TokType expected) {
                     this->symbols->push_back(this->lookahead);
                 }
             }
+        }
+        // if we're collecting code generation data...
+        if (this->gen_collect) {
+            // feed the token to the code block on top of the analyzer
+            this->get_analyzer()->feed_token(this->lookahead);
         }
         // add token as a literal to the ast
         this->go_into_lit(this->lookahead);
@@ -457,26 +464,52 @@ void Parser::parse_statement() {
     this->go_into(STATEMENT);
 	report_parse("PARSE_STATEMENT", this->parse_depth);
     // try matching to all statement types
-	if (this->try_match(MP_READ) || this->try_match(MP_READLN))
+	if (this->try_match(MP_READ)) {
+        this->begin_generate_io_action(IO_READ, false);
 		this->parse_read_statement();
-	else if (this->try_match(MP_WRITE) || this->try_match(MP_WRITELN))
+        this->end_generate();
+    }
+    else if (this->try_match(MP_READLN)) {
+        this->begin_generate_io_action(IO_READ, true);
+        this->parse_read_statement();
+        this->end_generate();
+    }
+	else if (this->try_match(MP_WRITE)) {
+        this->begin_generate_io_action(IO_WRITE, false);
 		this->parse_write_statement();
-	else if (this->try_match(MP_ID))
+        this->end_generate();
+    }
+    else if (this->try_match(MP_WRITELN)) {
+        this->begin_generate_io_action(IO_WRITE, true);
+        this->parse_write_statement();
+        this->end_generate();
+    }
+	else if (this->try_match(MP_ID)) {
+        this->begin_generate_assignment();
 		this->parse_assignment_statement();
-	else if (this->try_match(MP_IF))
+        this->end_generate();
+    }
+	else if (this->try_match(MP_IF)) {
 		this->parse_if_statement();
-	else if (this->try_match(MP_WHILE))
+    }
+	else if (this->try_match(MP_WHILE)) {
 		this->parse_while_statement();
-	else if (this->try_match(MP_REPEAT))
+    }
+	else if (this->try_match(MP_REPEAT)) {
 		this->parse_repeat_statement();
-	else if (this->try_match(MP_FOR))
+    }
+	else if (this->try_match(MP_FOR)) {
 		this->parse_for_statement();
-	else if (this->try_match(MP_PROCEDURE))
+    }
+	else if (this->try_match(MP_PROCEDURE)) {
 		this->parse_procedure_statement();
-	else if (this->try_match(MP_BEGIN))
+    }
+	else if (this->try_match(MP_BEGIN)) {
 		this->parse_compound_statement();
-	else
+    }
+	else {
 		this->parse_empty_statement();
+    }
     this->return_from();
     this->less_indent();
 }
@@ -1128,6 +1161,25 @@ VarType Parser::to_var(TokType token_type) {
         default:
             return VOID;
     }
+}
+
+void Parser::begin_generate_assignment() {
+    this->get_analyzer()->append_block(CodeBlockPtr(new AssignmentBlock()));
+    this->begin_generate();
+}
+
+void Parser::begin_generate_io_action(IOAction action, bool newline) {
+    this->get_analyzer()->append_block(CodeBlockPtr(new IOBlock(action, newline)));
+    this->begin_generate();
+}
+
+void Parser::begin_generate() {
+    this->gen_collect = true;
+}
+
+void Parser::end_generate() {
+    this->gen_collect = false;
+    this->get_analyzer()->rappel_block();
 }
 
 void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {

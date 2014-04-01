@@ -26,6 +26,8 @@ using AbstractStackPtr = shared_ptr<AbstractNodeStack>;
 using AbstractTreePtr = shared_ptr<AbstractTree>;
 using SemanticAnalyzerPtr = shared_ptr<SemanticAnalyzer>;
 using TokenPtr = shared_ptr<Token>;
+using TokenList = vector<TokenPtr>;
+using TokenListPtr = shared_ptr<TokenList>;
 using CodeBlockPtr = shared_ptr<CodeBlock>;
 using CodeBlockList = vector<CodeBlockPtr>;
 using CodeBlockListPtr = shared_ptr<CodeBlockList>;
@@ -91,25 +93,36 @@ public:
     virtual void generate_pre() = 0;
     virtual void generate_post() = 0;
     virtual bool validate() = 0;
+    virtual void preprocess() = 0;
 };
 
 class CodeBlock: public Generator {
-private:
+protected:
     CodeBlockListPtr block_list;
     BlockType block_type;
+    TokenListPtr unprocessed;
+    SymbolListPtr temp_symbols;
     CodeBlockPtr parent_block;
+    SemanticAnalyzerPtr parent_analyzer;
 public:
     CodeBlock(BlockType block_type, CodeBlockPtr parent_block):
     block_type(block_type), parent_block(parent_block){
         this->block_list = CodeBlockListPtr(new CodeBlockList());
+        this->unprocessed = TokenListPtr(new TokenList());
+        this->parent_analyzer = nullptr;
+        this->temp_symbols = SymbolListPtr(new SymbolList());
     };
     virtual ~CodeBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
+    void catch_token(TokenPtr symbol);
     void append(CodeBlockPtr block);
+    void set_parent(CodeBlockPtr parent);
+    void set_analyzer(SemanticAnalyzerPtr analyzer);
+    SemanticAnalyzerPtr get_analyzer();
     CodeBlockPtr get_parent();
-    CodeBlockPtr set_parent(CodeBlockPtr parent);
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
 };
@@ -120,6 +133,7 @@ public:
     virtual ~ProgramBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
@@ -132,21 +146,22 @@ class IOBlock: public CodeBlock {
 private:
     SymbolListPtr args;
     IOAction action;
+    bool line_terminator;
 public:
-    IOBlock(IOAction action): CodeBlock(IO_BLOCK, nullptr), action(action) {
+    IOBlock(IOAction action, bool newline): CodeBlock(IO_BLOCK, nullptr), action(action), line_terminator(newline) {
         this->args = SymbolListPtr(new SymbolList());
     }
-
     virtual ~IOBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
 enum LoopType {
     WHILELOOP,
     FORLOOP,
-    RPTUNLOOP
+    RPTUNTLLOOP
 };
 
 class LoopBlock: public CodeBlock {
@@ -157,6 +172,7 @@ public:
     virtual ~LoopBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
@@ -167,6 +183,7 @@ public:
     virtual ~ConditionalBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
@@ -178,6 +195,7 @@ public:
     void convert_postfix();
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
@@ -205,6 +223,7 @@ public:
     virtual ~ActivationBlock() = default;
     void generate_pre();
     void generate_post();
+    void preprocess();
     bool validate();
 };
 
@@ -216,8 +235,12 @@ private:
     SymTablePtr symbols;
     // CondensedST is the tree that generates code
     CodeBlockPtr condensedst;
+    // stack of pointer block is effectively the iterator
+    shared_ptr<stack<CodeBlockPtr>> block_stack;
     // if processed correctly, allow generated code
     bool processed;
+    // labels for code generation
+    unsigned int label_count;
 public:
     SemanticAnalyzer();
     virtual ~SemanticAnalyzer() = default;
@@ -230,6 +253,11 @@ public:
     void print_symbols();
     void generate_all();
     void generate_one(CodeBlockPtr current);
+    void feed_token(TokenPtr token);
+    void append_block(CodeBlockPtr new_block);
+    void rappel_block();
+    CodeBlockPtr get_top_block();
+    string generate_label();
 };
 
 #endif

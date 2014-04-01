@@ -162,16 +162,15 @@ AbstractNodeList::iterator AbstractNode::get_child_end() {
     return this->child_nodes->end();
 }
 
-// Code block stuff
-void CodeBlock::append(CodeBlockPtr block) {
-    this->block_list->push_back(block);
-}
-
-// Semantic Analyzer stuff
+// semantic analyzer stuff
 SemanticAnalyzer::SemanticAnalyzer() {
     this->ast = AbstractTreePtr(new AbstractTree());
     this->symbols = SymTablePtr(new SymTable());
     this->condensedst = CodeBlockPtr(new ProgramBlock());
+    this->condensedst->set_analyzer(SemanticAnalyzerPtr(this));
+    this->label_count = 0;
+    this->block_stack = shared_ptr<stack<CodeBlockPtr>>(new stack<CodeBlockPtr>);
+    this->block_stack->push(this->condensedst);
 }
 
 AbstractTreePtr SemanticAnalyzer::get_ast() {
@@ -180,6 +179,12 @@ AbstractTreePtr SemanticAnalyzer::get_ast() {
 
 SymTablePtr SemanticAnalyzer::get_symtable() {
     return this->symbols;
+}
+
+string SemanticAnalyzer::generate_label() {
+    string label = "L" + conv_string(this->label_count);
+    label_count++;
+    return label;
 }
 
 bool SemanticAnalyzer::is_scoped_any(string id) {
@@ -232,6 +237,7 @@ void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
     // iterate through the blocks and
     // generate all code
     // generate pre inner code
+    current->preprocess();
     if (current->validate()) {
         current->generate_pre();
         // get children and visit
@@ -245,6 +251,33 @@ void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
         report_msg_type("Semantic Error", "Block validation failed.");
         exit(0);
     }
+}
+
+void SemanticAnalyzer::append_block(CodeBlockPtr new_block) {
+    if (new_block != nullptr) {
+        // child of top block stack parent
+        this->block_stack->top()->append(new_block);
+        // parent is the top of the block stack
+        new_block->set_parent(this->block_stack->top());
+        // push this block to the stack top
+        this->block_stack->push(new_block);
+        // set this block's analyzer parent if null
+        new_block->set_analyzer(SemanticAnalyzerPtr(this));
+    }
+}
+
+void SemanticAnalyzer::rappel_block() {
+    // pop the block stack back to an earlier block
+    this->block_stack->pop();
+}
+
+CodeBlockPtr SemanticAnalyzer::get_top_block() {
+    // get the block at the top of the stack
+    return this->block_stack->top();
+}
+
+void SemanticAnalyzer::feed_token(TokenPtr token) {
+    this->block_stack->top()->catch_token(token);
 }
 
 bool SemanticAnalyzer::is_data_in_callable(string data_id, string callable_id) {
@@ -315,12 +348,32 @@ void SemanticAnalyzer::print_symbols() {
 }
 
 // Code Block Stuff
+void CodeBlock::append(CodeBlockPtr block) {
+    this->block_list->push_back(block);
+}
+
+void CodeBlock::set_analyzer(SemanticAnalyzerPtr analyzer) {
+    this->parent_analyzer = analyzer;
+}
+
+SemanticAnalyzerPtr CodeBlock::get_analyzer() {
+    return this->parent_analyzer;
+}
+
 void CodeBlock::generate_pre() {
-    // generate no code
+    // generate no code (virtual)
 }
 
 void CodeBlock::generate_post() {
-    // generate no code
+    // generate no code (virtual)
+}
+
+void CodeBlock::catch_token(TokenPtr symbol) {
+    this->unprocessed->push_back(symbol);
+}
+
+void CodeBlock::set_parent(CodeBlockPtr parent) {
+    this->parent_block = parent;
 }
 
 CodeBlockPtr CodeBlock::get_parent() {
@@ -329,6 +382,10 @@ CodeBlockPtr CodeBlock::get_parent() {
 
 bool CodeBlock::validate() {
     return true;
+}
+
+void CodeBlock::preprocess() {
+    // do nothing
 }
 
 CodeBlockList::iterator CodeBlock::inner_begin() {
@@ -342,18 +399,72 @@ CodeBlockList::iterator CodeBlock::inner_end() {
 // Program Block stuff
 void ProgramBlock::generate_pre() {
     // generate program entry point
-    write_raw("PUSH SP D0");
+    write_raw("PUSH SP D0\n");
+    // push begin symbols
+    for (auto i = temp_symbols->begin(); i != temp_symbols->end(); i++) {
+        if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
+            write_raw("PUSH #\"\"");
+        } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
+            write_raw("PUSH #0.0");
+        } else {
+            write_raw("PUSH 0");
+        }
+    }
+    write_raw("\n");
 }
 
 void ProgramBlock::generate_post() {
     // generate program exit point
-    write_raw("HLT");
+    write_raw("HLT\n");
 }
 
 bool ProgramBlock::validate() {
+    // do nothing... it's the program beginning
+    return true;
+}
+
+void ProgramBlock::preprocess() {
+    // get symbols of global vars
+    SymbolListPtr global_vars = this->get_analyzer()->get_symtable()->get_global_vars();
+    // copy into local table
+    for (auto i = global_vars->begin(); i != global_vars->end(); i++) {
+        this->temp_symbols->push_back(*i);
+    }
+}
+
+// Assignment Block stuff
+void AssignmentBlock::generate_pre() {
+
+}
+
+void AssignmentBlock::generate_post() {
+    // generate program exit point
+}
+
+bool AssignmentBlock::validate() {
     // do nothing...
     return true;
 }
 
+void AssignmentBlock::preprocess() {
+    // nothing
+}
 
+// IO Block stuff
+void IOBlock::generate_pre() {
+    // generate program entry point
+}
+
+void IOBlock::generate_post() {
+    // generate program exit point
+}
+
+bool IOBlock::validate() {
+    // do nothing...
+    return true;
+}
+
+void IOBlock::preprocess() {
+    
+}
 

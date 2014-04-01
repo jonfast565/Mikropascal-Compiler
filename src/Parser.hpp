@@ -26,6 +26,7 @@ private:
     bool error_reported;
     bool sym_collect;
     bool var_skip;
+    bool gen_collect;
     unsigned int parse_depth;
 public:
 	Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer);
@@ -128,6 +129,10 @@ public:
     void begin_symbol(bool var_skip);
     void end_symbol(SymType symbol_type, ActivationType callable_type);
     void print_sym_buffer();
+    void begin_generate();
+    void begin_generate_assignment();
+    void begin_generate_io_action(IOAction action, bool newline);
+    void end_generate();
     VarType to_var(TokType token_type);
 };
 

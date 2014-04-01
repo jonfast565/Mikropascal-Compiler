@@ -17,6 +17,7 @@ class SymCallable;
 class SymData;
 class SymArgument;
 class SymTable;
+struct BlockInfo;
 
 // type predecls
 using ArgumentPtr = shared_ptr<SymArgument>;
@@ -161,14 +162,15 @@ public:
     void return_from();
     void to_latest();
     void print();
-    shared_ptr<vector<SymbolPtr>> find(string id);
+    SymbolListPtr find(string id);
+    SymbolListPtr get_global_vars();
     unsigned int get_level();
     unsigned int get_offset();
     SymbolIterator position();
     SymbolIterator get_first();
     SymbolIterator get_last();
-    static shared_ptr<vector<SymbolPtr>> filter_data(shared_ptr<vector<SymbolPtr>> filterable);
-    static shared_ptr<vector<SymbolPtr>> filter_callable(shared_ptr<vector<SymbolPtr>> filterable);
+    static SymbolListPtr filter_data(SymbolListPtr filterable);
+    static SymbolListPtr filter_callable(SymbolListPtr filterable);
 };
 
 class SymCallable : public Symbol {

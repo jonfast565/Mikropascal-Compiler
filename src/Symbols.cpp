@@ -209,8 +209,8 @@ SymbolIterator SymTable::position() {
     return this->table_iter;
 }
 
-shared_ptr<vector<SymbolPtr>> SymTable::filter_data(shared_ptr<vector<SymbolPtr>> filterable) {
-    shared_ptr<vector<SymbolPtr>> filtered = shared_ptr<vector<SymbolPtr>>(new vector<SymbolPtr>);
+SymbolListPtr SymTable::filter_data(SymbolListPtr filterable) {
+    SymbolListPtr filtered = SymbolListPtr(new SymbolList());
     for (auto i = filterable->begin(); i != filterable->end(); i++) {
         if ((*i)->get_symbol_type() == SYM_DATA) {
             filtered->push_back(*i);
@@ -219,10 +219,21 @@ shared_ptr<vector<SymbolPtr>> SymTable::filter_data(shared_ptr<vector<SymbolPtr>
     return filtered;
 }
 
-shared_ptr<vector<SymbolPtr>> SymTable::filter_callable(shared_ptr<vector<SymbolPtr>> filterable) {
-    shared_ptr<vector<SymbolPtr>> filtered = shared_ptr<vector<SymbolPtr>>(new vector<SymbolPtr>);
+SymbolListPtr SymTable::filter_callable(SymbolListPtr filterable) {
+    SymbolListPtr filtered = SymbolListPtr(new SymbolList());
     for (auto i = filterable->begin(); i != filterable->end(); i++) {
         if ((*i)->get_symbol_type() == SYM_CALLABLE) {
+            filtered->push_back(*i);
+        }
+    }
+    return filtered;
+}
+
+SymbolListPtr SymTable::get_global_vars() {
+    SymbolListPtr filtered = SymbolListPtr(new SymbolList());
+    for (auto i = this->get_first(); i != this->get_last(); i++) {
+        if ((*i)->get_symbol_type() == SYM_DATA &&
+            (*i)->get_symbol_scope() == GLOBAL) {
             filtered->push_back(*i);
         }
     }
