@@ -117,7 +117,7 @@ public:
     void generate_post();
     void preprocess();
     bool validate();
-    void catch_token(TokenPtr symbol);
+    virtual void catch_token(TokenPtr symbol);
     void append(CodeBlockPtr block);
     void set_parent(CodeBlockPtr parent);
     void set_analyzer(SemanticAnalyzerPtr analyzer);
@@ -155,6 +155,7 @@ public:
     void generate_pre();
     void generate_post();
     void preprocess();
+    void catch_token(TokenPtr symbol);
     bool validate();
 };
 

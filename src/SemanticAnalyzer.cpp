@@ -464,7 +464,22 @@ bool IOBlock::validate() {
     return true;
 }
 
+void IOBlock::catch_token(TokenPtr token) {
+    // filter by printable items
+    if (token->get_token() == MP_ID
+        || token->get_token() == MP_INT_LITERAL
+        || token->get_token() == MP_STRING_LITERAL
+        || token->get_token() == MP_FLOAT_LITERAL) {
+        this->unprocessed->push_back(token);
+    }
+}
+
 void IOBlock::preprocess() {
-    
+    /*
+    for (auto i = this->unprocessed->begin();
+         i != this->unprocessed->end(); i++) {
+            this->get_analyzer()->get_symtable()->find(*i)
+         }
+     */
 }
 
