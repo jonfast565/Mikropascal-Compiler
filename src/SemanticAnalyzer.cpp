@@ -162,7 +162,7 @@ AbstractNodeList::iterator AbstractNode::get_child_end() {
     return this->child_nodes->end();
 }
 
-// semantic analyzer stuff
+// Semantic analyzer stuff
 SemanticAnalyzer::SemanticAnalyzer() {
     this->ast = AbstractTreePtr(new AbstractTree());
     this->symbols = SymTablePtr(new SymTable());
@@ -182,7 +182,7 @@ SymTablePtr SemanticAnalyzer::get_symtable() {
 }
 
 string SemanticAnalyzer::generate_label() {
-    string label = "L" + conv_string(this->label_count);
+    string label = "L" + conv_string(this->label_count) + ":";
     label_count++;
     return label;
 }
@@ -416,7 +416,7 @@ CodeBlockList::iterator CodeBlock::inner_end() {
 // Program Block stuff
 void ProgramBlock::generate_pre() {
     // generate program entry point
-    write_raw("MOV SP D0\n");
+    write_raw("MOV SP D0");
     // push begin symbols
     for (auto i = temp_symbols->begin(); i != temp_symbols->end(); i++) {
         if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
@@ -427,7 +427,6 @@ void ProgramBlock::generate_pre() {
             write_raw("PUSH #0");
         }
     }
-    write_raw("\n");
 }
 
 void ProgramBlock::generate_post() {
