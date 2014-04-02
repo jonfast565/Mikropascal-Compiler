@@ -326,7 +326,11 @@ SymCallablePtr SymData::get_parent_callable() {
 }
 
 void SymData::set_address(unsigned int level, unsigned int offset) {
-    this->address = conv_string(offset) + "(D" + conv_string(level) + ")";
+    if (offset != 0) {
+        this->address = conv_string(offset) + "(D" + conv_string(level) + ")";
+    } else {
+        this->address = "D" + conv_string(level);
+    }
 }
 
 string SymData::get_address() {

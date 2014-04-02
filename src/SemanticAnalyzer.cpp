@@ -416,7 +416,7 @@ CodeBlockList::iterator CodeBlock::inner_end() {
 // Program Block stuff
 void ProgramBlock::generate_pre() {
     // generate program entry point
-    write_raw("PUSH SP D0\n");
+    write_raw("MOV SP D0\n");
     // push begin symbols
     for (auto i = temp_symbols->begin(); i != temp_symbols->end(); i++) {
         if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
@@ -424,7 +424,7 @@ void ProgramBlock::generate_pre() {
         } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
             write_raw("PUSH #0.0");
         } else {
-            write_raw("PUSH 0");
+            write_raw("PUSH #0");
         }
     }
     write_raw("\n");
