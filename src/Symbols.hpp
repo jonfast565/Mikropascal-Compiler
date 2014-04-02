@@ -168,6 +168,7 @@ public:
     static SymbolListPtr filter_data(SymbolListPtr filterable);
     static SymbolListPtr filter_callable(SymbolListPtr filterable);
     static SymbolListPtr filter_nest_level(SymbolListPtr filterable, unsigned int nest_level);
+    SymbolListPtr data_in_scope_at(string id, unsigned int level);
 };
 
 class SymCallable : public Symbol {

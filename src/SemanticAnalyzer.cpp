@@ -557,8 +557,7 @@ void IOBlock::preprocess() {
          i != this->unprocessed->end(); i++) {
         // assume ids, get lexemes and determine scoping
         if ((*i)->get_token() == MP_ID) {
-            SymbolListPtr filterable_ids = this->get_analyzer()->get_symtable()->find((*i)->get_lexeme());
-            SymbolListPtr filtered_data = SymTable::filter_nest_level(SymTable::filter_data(filterable_ids), this->get_nesting_level());
+            SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at((*i)->get_lexeme(), this->get_nesting_level());
             if (filtered_data->size() == 1) {
                 // just right
                 this->args->push_back(static_pointer_cast<SymData>(*filtered_data->begin()));
