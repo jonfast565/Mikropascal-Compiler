@@ -18,6 +18,7 @@ class SymData;
 class SymArgument;
 class SymTable;
 struct BlockInfo;
+class SymConstant;
 
 // type predecls
 using ArgumentPtr = shared_ptr<SymArgument>;
@@ -29,13 +30,15 @@ using SymbolListPtr = shared_ptr<SymbolList>;
 using SymbolIterator = SymbolList::iterator;
 using SymCallablePtr = shared_ptr<SymCallable>;
 using SymDataPtr = shared_ptr<SymData>;
+using SymConstantPtr = shared_ptr<SymConstant>;
 using SymArgumentPtr = shared_ptr<SymArgument>;
 using SymTablePtr = shared_ptr<SymTable>;
 
 // symbol types
 enum SymType {
 	SYM_CALLABLE,
-	SYM_DATA
+	SYM_DATA,
+    SYM_CONSTANT
 };
 
 static string sym_type_to_string(SymType type) {
@@ -44,6 +47,8 @@ static string sym_type_to_string(SymType type) {
             return "SYM_CALLABLE";
         case SYM_DATA:
             return "SYM_DATA";
+        case SYM_CONSTANT:
+            return "SYM_CONSTANT";
     }
 }
 
@@ -53,7 +58,10 @@ enum VarType {
 	INTEGER,
 	FLOATING,
 	BOOLEAN,
-    VOID
+    VOID,
+    STRING_LITERAL,
+	INTEGER_LITERAL,
+	FLOATING_LITERAL
 };
 
 static string var_type_to_string(VarType type) {
@@ -68,18 +76,6 @@ static string var_type_to_string(VarType type) {
             return "BOOLEAN";
         case VOID:
             return "VOID";
-    }
-}
-
-// literal types
-enum LiteralType {
-	STRING_LITERAL,
-	INTEGER_LITERAL,
-	FLOATING_LITERAL
-};
-
-static string literal_type_to_string(LiteralType type) {
-    switch(type) {
         case STRING_LITERAL:
             return "STRING_LITERAL";
         case INTEGER_LITERAL:
@@ -171,6 +167,7 @@ public:
     SymbolIterator get_last();
     static SymbolListPtr filter_data(SymbolListPtr filterable);
     static SymbolListPtr filter_callable(SymbolListPtr filterable);
+    static SymbolListPtr filter_nest_level(SymbolListPtr filterable, unsigned int nest_level);
 };
 
 class SymCallable : public Symbol {
@@ -214,6 +211,19 @@ public:
     void set_address(unsigned int level, unsigned int offset);
     string get_address();
     SymCallablePtr get_parent_callable();
+    void dyn(){};
+};
+
+class SymConstant : public Symbol {
+private:
+    VarType constant_type;
+    string raw_data;
+public:
+    SymConstant(string data, VarType constant_type) :
+    Symbol(data, SYM_CONSTANT, GLOBAL, 0), raw_data(data),
+    constant_type(constant_type){};
+    VarType get_constant_type();
+    string get_data();
     void dyn(){};
 };
 

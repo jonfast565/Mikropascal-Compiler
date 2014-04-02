@@ -104,6 +104,7 @@ protected:
     SymbolListPtr temp_symbols;
     CodeBlockPtr parent_block;
     SemanticAnalyzerPtr parent_analyzer;
+    bool valid;
 public:
     CodeBlock(BlockType block_type, CodeBlockPtr parent_block):
     block_type(block_type), parent_block(parent_block){
@@ -111,6 +112,7 @@ public:
         this->unprocessed = TokenListPtr(new TokenList());
         this->parent_analyzer = nullptr;
         this->temp_symbols = SymbolListPtr(new SymbolList());
+        this->valid = true;
     };
     virtual ~CodeBlock() = default;
     void generate_pre();
@@ -121,8 +123,10 @@ public:
     void append(CodeBlockPtr block);
     void set_parent(CodeBlockPtr parent);
     void set_analyzer(SemanticAnalyzerPtr analyzer);
+    BlockType get_block_type();
     SemanticAnalyzerPtr get_analyzer();
     CodeBlockPtr get_parent();
+    unsigned int get_nesting_level();
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
 };

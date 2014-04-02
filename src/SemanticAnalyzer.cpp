@@ -352,6 +352,23 @@ void CodeBlock::append(CodeBlockPtr block) {
     this->block_list->push_back(block);
 }
 
+BlockType CodeBlock::get_block_type() {
+    return this->block_type;
+}
+
+unsigned int CodeBlock::get_nesting_level() {
+    CodeBlockPtr parent_block = this->get_parent();
+    unsigned int level_found = 0;
+    while(parent_block != nullptr) {
+        // if inside a function or procedure body
+        if (parent_block->get_block_type() == ACTIVATION_BLOCK) {
+            level_found++;
+        }
+        parent_block = parent_block->get_parent();
+    }
+    return level_found;
+}
+
 void CodeBlock::set_analyzer(SemanticAnalyzerPtr analyzer) {
     this->parent_analyzer = analyzer;
 }
@@ -420,7 +437,7 @@ void ProgramBlock::generate_post() {
 
 bool ProgramBlock::validate() {
     // do nothing... it's the program beginning
-    return true;
+    return this->valid;
 }
 
 void ProgramBlock::preprocess() {
@@ -452,16 +469,77 @@ void AssignmentBlock::preprocess() {
 
 // IO Block stuff
 void IOBlock::generate_pre() {
-    // generate program entry point
+    for (auto i = this->args->begin(); i !=
+         this->args->end(); i++) {
+        if ((*i)->get_symbol_type() != SYM_CONSTANT) {
+            // get the address of the data to be read/written
+            string addr = static_pointer_cast<SymData>(*i)->get_address();
+            // for a read action we will need to know the type
+            if (this->action == IO_READ) {
+                VarType data_type = static_pointer_cast<SymData>(*i)->get_var_type();
+                // can't read a boolean
+                if (data_type == BOOLEAN) {
+                    report_msg_type("Semantic Error", "Boolean cannot be read by VM.");
+                } else if (data_type == INTEGER) {
+                    write_raw("RD " + addr);
+                } else if (data_type == FLOATING) {
+                    write_raw("RDF " + addr);
+                } else {
+                    // assume string
+                    write_raw("RDS " + addr);
+                }
+                // assume print a line terminator if readln or something
+                if (this->line_terminator) {
+                    write_raw("PUSH #\"\n\"");
+                    write_raw("WRT");
+                }
+            } else {
+                // no type necessary, just push and write
+                write_raw("PUSH " + addr);
+                // line terminator determines write call
+                if (this->line_terminator) {
+                    write_raw("WRTLNS");
+                } else {
+                    write_raw("WRTS");
+                }
+            }
+        } else {
+            // is a constant
+            if (this->action == IO_READ) {
+                report_msg_type("Semantic Error", "Constant value cannot be read to variable.");
+            } else {
+                SymConstantPtr constant = static_pointer_cast<SymConstant>(*i);
+                if (constant->get_constant_type() == STRING_LITERAL) {
+                    // remove single quotes, and replace with double
+                    string string_const = constant->get_data();
+                    replace(string_const.begin(), string_const.end(), '\'', '"');
+                    write_raw("PUSH #" + string_const);
+                    if (this->line_terminator) {
+                        write_raw("WRTLNS");
+                    } else {
+                        write_raw("WRTS");
+                    }
+                } else {
+                    // generate numeric stuff
+                    write_raw("PUSH #" + constant->get_data());
+                    if (this->line_terminator) {
+                        write_raw("WRTLNS");
+                    } else {
+                        write_raw("WRTS");
+                    }
+                }
+            }
+        }
+    }
 }
 
 void IOBlock::generate_post() {
-    // generate program exit point
+    // generate nothing (no nesting)
 }
 
 bool IOBlock::validate() {
     // do nothing...
-    return true;
+    return this->valid;
 }
 
 void IOBlock::catch_token(TokenPtr token) {
@@ -475,11 +553,30 @@ void IOBlock::catch_token(TokenPtr token) {
 }
 
 void IOBlock::preprocess() {
-    /*
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
-            this->get_analyzer()->get_symtable()->find(*i)
-         }
-     */
+        // assume ids, get lexemes and determine scoping
+        if ((*i)->get_token() == MP_ID) {
+            SymbolListPtr filterable_ids = this->get_analyzer()->get_symtable()->find((*i)->get_lexeme());
+            SymbolListPtr filtered_data = SymTable::filter_nest_level(SymTable::filter_data(filterable_ids), this->get_nesting_level());
+            if (filtered_data->size() == 1) {
+                // just right
+                this->args->push_back(static_pointer_cast<SymData>(*filtered_data->begin()));
+            } else if (filtered_data->size() > 1) {
+                // too many ids found
+                this->valid = false;
+            } else {
+                // no ids found
+                this->valid = false;
+            }
+        } else if ((*i)->get_token() == MP_STRING_LITERAL) {
+            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), STRING_LITERAL)));
+        } else if ((*i)->get_token() == MP_INT_LITERAL) {
+            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), INTEGER_LITERAL)));
+        } else {
+            // assume float literal
+            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), FLOATING_LITERAL)));
+        }
+    }
 }
 

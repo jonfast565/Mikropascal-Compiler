@@ -229,6 +229,16 @@ SymbolListPtr SymTable::filter_callable(SymbolListPtr filterable) {
     return filtered;
 }
 
+SymbolListPtr SymTable::filter_nest_level(SymbolListPtr filterable, unsigned int nest_level) {
+    SymbolListPtr filtered = SymbolListPtr(new SymbolList());
+    for (auto i = filterable->begin(); i != filterable->end(); i++) {
+        if ((*i)->get_nesting_level() == nest_level) {
+            filtered->push_back(*i);
+        }
+    }
+    return filtered;
+}
+
 SymbolListPtr SymTable::get_global_vars() {
     SymbolListPtr filtered = SymbolListPtr(new SymbolList());
     for (auto i = this->get_first(); i != this->get_last(); i++) {
@@ -315,6 +325,15 @@ void SymData::set_address(unsigned int level, unsigned int offset) {
     this->address = conv_string(offset) + "(D" + conv_string(level) + ")";
 }
 
-string  SymData::get_address() {
+string SymData::get_address() {
     return this->address;
 }
+
+VarType SymConstant::get_constant_type() {
+    return this->constant_type;
+}
+
+string SymConstant::get_data() {
+    return this->raw_data;
+}
+
