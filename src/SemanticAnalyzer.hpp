@@ -129,6 +129,14 @@ public:
     unsigned int get_nesting_level();
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
+    bool check_filter_size(SymbolListPtr filtered);
+    static bool is_operator(SymbolPtr character);
+    static bool is_operand(SymbolPtr character);
+    static bool is_lparen(SymbolPtr character);
+    static bool is_rparen(SymbolPtr character);
+    static int compare_ops(SymbolPtr c1, SymbolPtr c2);
+    static int op_precendence(SymbolPtr c1);
+    void make_cast(VarType v1, VarType v2);
 };
 
 class ProgramBlock: public CodeBlock {
@@ -178,6 +186,7 @@ public:
     void generate_pre();
     void generate_post();
     void preprocess();
+    void catch_token(TokenPtr symbol);
     bool validate();
 };
 
@@ -194,13 +203,16 @@ public:
 
 class AssignmentBlock: public CodeBlock {
 private:
+    SymbolPtr assigner;
 public:
-    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr){};
+    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
+    assigner(nullptr){};
     virtual ~AssignmentBlock() = default;
     void convert_postfix();
     void generate_pre();
     void generate_post();
     void preprocess();
+    void catch_token(TokenPtr symbol);
     bool validate();
 };
 

@@ -61,7 +61,13 @@ enum VarType {
     VOID,
     STRING_LITERAL,
 	INTEGER_LITERAL,
-	FLOATING_LITERAL
+	FLOATING_LITERAL,
+    BOOL_VALUE,
+    ARITH_OPERATOR,
+    RELAT_OPERATOR,
+    COMP_OPERATOR,
+    LPAREN,
+    RPAREN
 };
 
 static string var_type_to_string(VarType type) {
@@ -82,6 +88,18 @@ static string var_type_to_string(VarType type) {
             return "INTEGER_LITERAL";
         case FLOATING_LITERAL:
             return "FLOATING_LITERAL";
+        case BOOL_VALUE:
+            return "BOOL_VALUE";
+        case LPAREN:
+            return "LPAREN";
+        case RPAREN:
+            return "RPAREN";
+        case ARITH_OPERATOR:
+            return "ARITH_OPERATOR";
+        case RELAT_OPERATOR:
+            return "RELAT_OPERATOR";
+        case COMP_OPERATOR:
+            return "COMP_OPERATOR";
     }
 }
 

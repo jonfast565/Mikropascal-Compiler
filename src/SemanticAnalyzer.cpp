@@ -347,6 +347,109 @@ void SemanticAnalyzer::print_symbols() {
     this->symbols->print();
 }
 
+bool CodeBlock::is_operator(SymbolPtr character) {
+    if (character->get_symbol_type() == SYM_CONSTANT) {
+        VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
+        if (op == ARITH_OPERATOR
+            || op == RELAT_OPERATOR
+            || op == COMP_OPERATOR) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CodeBlock::is_operand(SymbolPtr character) {
+    if (character->get_symbol_type() == SYM_CONSTANT) {
+        VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
+        if (op != ARITH_OPERATOR
+            && op != RELAT_OPERATOR
+            && op != COMP_OPERATOR
+            && op != LPAREN
+            && op != RPAREN) {
+            return true;
+        } else {
+            return false;
+        }
+    } else if (character->get_symbol_type() == SYM_DATA) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool CodeBlock::is_lparen(SymbolPtr character) {
+    VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
+    if (op == LPAREN) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool CodeBlock::is_rparen(SymbolPtr character) {
+    VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
+    if (op == RPAREN) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int CodeBlock::compare_ops(SymbolPtr c1, SymbolPtr c2) {
+    if (op_precendence(c1) > op_precendence(c2)) {
+        return 1;
+    } else if (op_precendence(c1) == op_precendence(c2)) {
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+int CodeBlock::op_precendence(SymbolPtr c1) {
+    if (c1 ->get_symbol_type() == SYM_CONSTANT) {
+        VarType op = static_pointer_cast<SymConstant>(c1)->get_constant_type();
+        if (op == LPAREN
+            || op == RPAREN) {
+            return 5;
+        } else if (op == ARITH_OPERATOR) {
+            if (static_pointer_cast<SymConstant>(c1)->get_data() == "*"
+                || static_pointer_cast<SymConstant>(c1)->get_data() == "/") {
+                return 4;
+            } else {
+                return 3;
+            }
+        } else if (op == RELAT_OPERATOR) {
+            return 2;
+        } else if (op == COMP_OPERATOR) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        return -1;
+    }
+}
+
+void CodeBlock::make_cast(VarType v1, VarType v2) {
+    if (v1 != v2) {
+        if ((v1 == INTEGER && v2 == FLOATING)
+            || (v1 == FLOATING && v2 == INTEGER)) {
+            if (v1 == INTEGER) {
+                // cast v2 to v1's type
+                write_raw("CASTSF");
+            } else {
+                // cast v2 to v1's type (float)
+                write_raw("CASTSI");
+            }
+        } else if ((v1 == STRING && (v2 == INTEGER || v2 == FLOATING))
+                   || ((v1 == INTEGER || v1 == FLOATING) && v2 == STRING)) {
+            this->valid = false;
+            report_msg_type("Semantic Error", "Unable to cast operand");
+        }
+    }
+}
+
 // Code Block Stuff
 void CodeBlock::append(CodeBlockPtr block) {
     this->block_list->push_back(block);
@@ -354,6 +457,19 @@ void CodeBlock::append(CodeBlockPtr block) {
 
 BlockType CodeBlock::get_block_type() {
     return this->block_type;
+}
+
+bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
+    if (filtered->size() > 1
+        || filtered->size() == 0) {
+        // too many ids found
+        this->valid = false;
+        report_msg_type("Semantic Error", "Invalid filter size");
+        return false;
+    } else {
+        // correct
+        return true;
+    }
 }
 
 unsigned int CodeBlock::get_nesting_level() {
@@ -427,6 +543,7 @@ void ProgramBlock::generate_pre() {
             write_raw("PUSH #0");
         }
     }
+    write_raw("");
 }
 
 void ProgramBlock::generate_post() {
@@ -450,20 +567,159 @@ void ProgramBlock::preprocess() {
 
 // Assignment Block stuff
 void AssignmentBlock::generate_pre() {
-
+    VarType old_type = VOID;
+    //generate assignment code straight up
+    for (auto i = this->temp_symbols->begin();
+         i != this->temp_symbols->end(); i++) {
+        if ((*i)->get_symbol_type() == SYM_DATA) {
+            SymDataPtr d = static_pointer_cast<SymData>(*i);
+            if (i == this->temp_symbols->begin()) {
+                old_type = d->get_var_type();
+            }
+            write_raw("PUSH " + d->get_address());
+            // make_cast(old_type, d->get_var_type());
+            old_type = static_pointer_cast<SymData>(*i)->get_var_type();
+        } else {
+            SymConstantPtr c = static_pointer_cast<SymConstant>(*i);
+            if (i == this->temp_symbols->begin()) {
+                old_type = c->get_constant_type();
+            }
+            if (c->get_constant_type() == BOOL_VALUE) {
+                // not implemented
+            } else if (c->get_constant_type() == FLOATING_LITERAL) {
+                write_raw("PUSH #" + c->get_data());
+                // make_cast(old_type, c->get_constant_type());
+                old_type = FLOATING;
+            } else if (c->get_constant_type() == INTEGER_LITERAL) {
+                write_raw("PUSH #" + c->get_data());
+                // make_cast(old_type, c->get_constant_type());
+                old_type = INTEGER;
+            } else if (c->get_constant_type() == STRING_LITERAL) {
+                // remove single quotes, and replace with double
+                string string_const = c->get_data();
+                replace(string_const.begin(), string_const.end(), '\'', '"');
+                write_raw("PUSH #" + string_const);
+                // make_cast(old_type, c->get_constant_type());
+                old_type = STRING;
+            } else if (c->get_constant_type() == ARITH_OPERATOR) {
+                if (c->get_data().compare("+") == 0) {
+                    write_raw("ADDS");
+                } else if (c->get_data().compare("-") == 0) {
+                    write_raw("SUBS");
+                } else if (c->get_data().compare("*") == 0) {
+                    write_raw("MULS");
+                } else if (c->get_data().compare("/") == 0) {
+                    write_raw("DIVS");
+                }
+            }
+        }
+    }
 }
 
 void AssignmentBlock::generate_post() {
-    // generate program exit point
+    // pop into assigner
+    write_raw("POP " + static_pointer_cast<SymData>(this->assigner)->get_address());
+    write_raw("");
 }
 
 bool AssignmentBlock::validate() {
     // do nothing...
-    return true;
+    return this->valid;
 }
 
 void AssignmentBlock::preprocess() {
-    // nothing
+    bool first_id = true;
+    for (auto i = this->unprocessed->begin();
+         i != this->unprocessed->end(); i++) {
+        if ((*i)->get_token() == MP_ID) {
+            SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at((*i)->get_lexeme(), this->get_nesting_level());
+            if (this->check_filter_size(filtered_data)) {
+                if (first_id == true) {
+                    // just right
+                    this->assigner = static_pointer_cast<SymData>(*filtered_data->begin());
+                    first_id = false;
+                } else {
+                    // just right
+                    this->temp_symbols->push_back(static_pointer_cast<SymData>(*filtered_data->begin()));
+                }
+            } else {
+                // filter size incorrect
+                this->valid = false;
+            }
+        } else if ((*i)->get_token() == MP_INT_LITERAL) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), INTEGER_LITERAL)));
+        } else if ((*i)->get_token() == MP_STRING_LITERAL) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), STRING_LITERAL)));
+        } else if ((*i)->get_token() == MP_FLOAT_LITERAL) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), FLOATING_LITERAL)));
+        } else if ((*i)->get_token() == MP_TRUE
+                   || (*i)->get_token() == MP_FALSE) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), BOOL_VALUE)));
+        } else if ((*i)->get_token() == MP_LEFT_PAREN) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), LPAREN)));
+        } else if ((*i)->get_token() == MP_RIGHT_PAREN) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), RPAREN)));
+        } else if ((*i)->get_token() == MP_PLUS
+                   || (*i)->get_token() == MP_MINUS
+                   || (*i)->get_token() == MP_MULT
+                   || (*i)->get_token() == MP_DIV
+                   || (*i)->get_token() == MP_DIV_KW
+                   || (*i)->get_token() == MP_MOD_KW) {
+            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), ARITH_OPERATOR)));
+        } else if ((*i)->get_token() == MP_ASSIGNMENT) {
+            // skip
+        } else {
+            report_msg_type("Semantic Error", "Symbol type is not valid in assignment");
+            this->valid = false;
+        }
+    }
+    // convert to postifx
+    convert_postfix();
+}
+
+void AssignmentBlock::convert_postfix() {
+    // data structs
+    shared_ptr<stack<SymbolPtr>> op_stack = shared_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
+    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
+    
+    // go through the infix symbols
+    for (auto i = this->temp_symbols->begin(); i !=
+         this->temp_symbols->end(); i++) {
+        if (is_operand(*i)) {
+            unpostfix_symbols->push_back(*i);
+        } else if (is_operator(*i)) {
+            while (!op_stack->empty()
+                   && !is_lparen(op_stack->top())
+                   && compare_ops(*i, op_stack->top()) <= 0) {
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+            op_stack->push(*i);
+        } else if (is_lparen(*i)) {
+            op_stack->push(*i);
+        } else if (is_rparen(*i)) {
+            while (!op_stack->empty()) {
+                if (is_lparen(op_stack->top())) {
+                    op_stack->pop();
+                    break;
+                }
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+        }
+    }
+    
+    while(!op_stack->empty()) {
+        unpostfix_symbols->push_back(op_stack->top());
+        op_stack->pop();
+    }
+    
+    // set the temp symbols as the postfix stuff
+    this->temp_symbols = unpostfix_symbols;
+}
+
+void AssignmentBlock::catch_token(TokenPtr symbol) {
+    this->unprocessed->push_back(symbol);
 }
 
 // IO Block stuff
@@ -534,6 +790,7 @@ void IOBlock::generate_pre() {
 
 void IOBlock::generate_post() {
     // generate nothing (no nesting)
+    write_raw("");
 }
 
 bool IOBlock::validate() {
