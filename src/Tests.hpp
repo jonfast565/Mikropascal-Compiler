@@ -113,33 +113,33 @@ int parser_test(string filename) {
     new SemanticAnalyzer());
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
 	parser->parse();
-    parser->get_analyzer()->is_data_in_callable("v", "getNumber4");
     cout << "[ End ]" << endl;
 	return 0;
 }
 
-int symbol_test() {
-	shared_ptr<SymTable> symtable = shared_ptr<SymTable>(new SymTable());
-	symtable->create_data("Hello", BOOLEAN);
-	symtable->create_data("World", STRING);
-	ArgumentListPtr p = ArgumentListPtr(new ArgumentList());
-	p->push_back(symtable->create_argument("Hello", BOOLEAN, VALUE));
-	symtable->create_callable("Routine1", STRING, p);
-	symtable->go_into();
-	symtable->create_data("Hello", BOOLEAN);
-	symtable->create_data("World", STRING);
-	symtable->return_from();
-	symtable->print();
+int symbol_test(string filename) {
+	cout << "[ Symbol Table Test ]" << endl;
+	shared_ptr<Input> input = Input::open_file(filename);
+	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
+    shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
+                                                                         new SemanticAnalyzer());
+	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
+	parser->parse();
+    parser->get_analyzer()->print_symbols();
+    cout << "[ End ]" << endl;
 	return 0;
 }
 
 int compile_chain(string filename) {
+    cout << "[ Compiling... ]" << endl;
    	shared_ptr<Input> input = Input::open_file(filename);
 	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
     shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
                                                                          new SemanticAnalyzer());
 	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
 	parser->parse();
+    parser->produce_code();
+    cout << "[ End ]" << endl;
     return 0;
 }
 

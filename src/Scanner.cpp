@@ -293,7 +293,9 @@ TokenPtr Scanner::scan_infinite() {
             // create a token
             TokType this_tok = get_token_by_name(token_name);
             new_token->set_token(this_tok);
-            new_token->set_lexeme(this->contents());
+            string contents = this->contents();
+            contents = to_lower(contents);
+            new_token->set_lexeme(contents);
             unsigned long lex_start = this->col_number;
             new_token->set_column(lex_start);
             new_token->set_line(this->line_number);
@@ -328,7 +330,9 @@ TokenPtr Scanner::scan_infinite() {
         new_token->set_token(MP_ERROR);
     }
     // create the error token
-    new_token->set_lexeme(this->contents());
+    string contents = this->contents();
+    contents = to_lower(contents);
+    new_token->set_lexeme(contents);
     unsigned long lex_start = this->col_number;
     new_token->set_column(lex_start);
     new_token->set_line(this->line_number);
@@ -361,7 +365,9 @@ TokenPtr Scanner::scan_finite() {
     // create a token
     TokType this_tok = get_token_by_name(token_name);
     new_token->set_token(this_tok);
-    new_token->set_lexeme(this->contents());
+    string contents = this->contents();
+    contents = to_lower(contents);
+    new_token->set_lexeme(contents);
     unsigned long lex_start = this->col_number;
     new_token->set_column(lex_start);
     new_token->set_line(this->line_number);

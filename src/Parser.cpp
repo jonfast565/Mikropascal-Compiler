@@ -131,9 +131,6 @@ void Parser::parse_system_goal() {
     if (!this->error_reported) {
         // report success
         report_msg_type("Success", "Parse was successful! Awesome.");
-        
-        // generate code
-        this->analyzer->generate_all();
     }
     else {
         // report failure
@@ -141,6 +138,15 @@ void Parser::parse_system_goal() {
         
         // terminate the program
         exit(0);
+    }
+}
+
+void Parser::produce_code() {
+    // generate code
+    if (this->error_reported == false){
+        this->analyzer->generate_all();
+    } else {
+        report_msg_type("Impossible", "Parse failed, code cannot be generated");
     }
 }
 
@@ -1170,6 +1176,21 @@ void Parser::begin_generate_assignment() {
 
 void Parser::begin_generate_io_action(IOAction action, bool newline) {
     this->get_analyzer()->append_block(CodeBlockPtr(new IOBlock(action, newline)));
+    this->begin_generate();
+}
+
+void Parser::begin_generate_loop(LoopType loop) {
+    //this->get_analyzer()->append_block(CodeBlockPtr(new LoopBlock(loop)));
+    this->begin_generate();
+}
+
+void Parser::begin_generate_if() {
+    //this->get_analyzer()->append_block(CodeBlockPtr(new ConditionalBlock()));
+    this->begin_generate();
+}
+
+void Parser::begin_generate_opt_else() {
+    //this->get_analyzer()->append_block(CodeBlockPtr(new ConditionalBlock()));
     this->begin_generate();
 }
 

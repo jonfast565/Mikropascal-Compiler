@@ -585,7 +585,13 @@ void AssignmentBlock::generate_pre() {
                 old_type = c->get_constant_type();
             }
             if (c->get_constant_type() == BOOL_VALUE) {
-                // not implemented
+                if (c->get_data().compare("true")) {
+                    // integer alias
+                    write_raw("PUSH #1");
+                } else {
+                    // integer alias not
+                    write_raw("PUSH #0");
+                }
             } else if (c->get_constant_type() == FLOATING_LITERAL) {
                 write_raw("PUSH #" + c->get_data());
                 // make_cast(old_type, c->get_constant_type());
@@ -610,6 +616,10 @@ void AssignmentBlock::generate_pre() {
                     write_raw("MULS");
                 } else if (c->get_data().compare("/") == 0) {
                     write_raw("DIVS");
+                } else if (c->get_data().compare("div") == 0) {
+                    write_raw("DIVS");
+                } else if (c->get_data().compare("mod") == 0) {
+                    write_raw("MODS");
                 }
             }
         }
@@ -682,7 +692,7 @@ void AssignmentBlock::convert_postfix() {
     shared_ptr<stack<SymbolPtr>> op_stack = shared_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
     SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
     
-    // go through the infix symbols
+    // shunting yard
     for (auto i = this->temp_symbols->begin(); i !=
          this->temp_symbols->end(); i++) {
         if (is_operand(*i)) {
@@ -708,7 +718,6 @@ void AssignmentBlock::convert_postfix() {
             }
         }
     }
-    
     while(!op_stack->empty()) {
         unpostfix_symbols->push_back(op_stack->top());
         op_stack->pop();
@@ -761,7 +770,7 @@ void IOBlock::generate_pre() {
         } else {
             // is a constant
             if (this->action == IO_READ) {
-                report_msg_type("Semantic Error", "Constant value cannot be read to variable.");
+                report_msg_type("Semantic Error", "Constant value cannot be read to variable?");
             } else {
                 SymConstantPtr constant = static_pointer_cast<SymConstant>(*i);
                 if (constant->get_constant_type() == STRING_LITERAL) {
@@ -833,5 +842,28 @@ void IOBlock::preprocess() {
             this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), FLOATING_LITERAL)));
         }
     }
+}
+
+void LoopBlock::generate_pre() {
+    
+}
+
+void LoopBlock::generate_post() {
+    
+}
+
+void LoopBlock::preprocess() {
+    this->cond_label = this->parent_analyzer->generate_label();
+    this->body_label = this->parent_analyzer->generate_label();
+    this->exit_label = this->parent_analyzer->generate_label();
+}
+
+void LoopBlock::catch_token(TokenPtr symbol) {
+    if (this->type == FORLOOP)
+    this->unprocessed->push_back(symbol);
+}
+
+bool LoopBlock::validate() {
+    return 0;
 }
 

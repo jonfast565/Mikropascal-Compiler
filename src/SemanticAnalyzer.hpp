@@ -129,6 +129,7 @@ public:
     unsigned int get_nesting_level();
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
+    SymbolPtr translate(TokenPtr token);
     bool check_filter_size(SymbolListPtr filtered);
     static bool is_operator(SymbolPtr character);
     static bool is_operand(SymbolPtr character);
@@ -180,8 +181,17 @@ enum LoopType {
 class LoopBlock: public CodeBlock {
 private:
     LoopType type;
+    string cond_label;
+    string body_label;
+    string exit_label;
+    bool condition_hit;
 public:
-    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK, nullptr), type(type){};
+    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK, nullptr), type(type){
+        this->cond_label = "";
+        this->body_label = "";
+        this->exit_label = "";
+        this->condition_hit = false;
+    };
     virtual ~LoopBlock() = default;
     void generate_pre();
     void generate_post();
