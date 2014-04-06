@@ -88,6 +88,13 @@ enum BlockType {
     ACTIVATION_BLOCK
 };
 
+enum InstructionType {
+    MOV,
+    PUSH,
+    POP,
+    HLT
+};
+
 class Generator {
 public:
     virtual void generate_pre() = 0;
@@ -126,10 +133,10 @@ public:
     BlockType get_block_type();
     SemanticAnalyzerPtr get_analyzer();
     CodeBlockPtr get_parent();
-    unsigned int get_nesting_level();
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
     SymbolPtr translate(TokenPtr token);
+    unsigned int get_nesting_level();
     bool check_filter_size(SymbolListPtr filtered);
     static bool is_operator(SymbolPtr character);
     static bool is_operand(SymbolPtr character);
@@ -137,7 +144,9 @@ public:
     static bool is_rparen(SymbolPtr character);
     static int compare_ops(SymbolPtr c1, SymbolPtr c2);
     static int op_precendence(SymbolPtr c1);
-    void make_cast(VarType v1, VarType v2);
+    void emit(InstructionType ins, vector<string> operands);
+    VarType make_cast(VarType v1, VarType v2);
+    VarType generate_expr(SymbolListPtr expr_list);
 };
 
 class ProgramBlock: public CodeBlock {
@@ -214,9 +223,10 @@ public:
 class AssignmentBlock: public CodeBlock {
 private:
     SymbolPtr assigner;
+    VarType expr_type;
 public:
     AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
-    assigner(nullptr){};
+    assigner(nullptr), expr_type(VOID){};
     virtual ~AssignmentBlock() = default;
     void convert_postfix();
     void generate_pre();

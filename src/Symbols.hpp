@@ -62,12 +62,24 @@ enum VarType {
     STRING_LITERAL,
 	INTEGER_LITERAL,
 	FLOATING_LITERAL,
-    BOOL_VALUE,
-    ARITH_OPERATOR,
-    RELAT_OPERATOR,
-    COMP_OPERATOR,
+    BOOLEAN_LITERAL_T,
+    BOOLEAN_LITERAL_F,
     LPAREN,
-    RPAREN
+    RPAREN,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    AND,
+    OR,
+    NOT,
+    IEQ,
+    ILT,
+    IGT,
+    ILE,
+    IGE,
+    INE,
 };
 
 static string var_type_to_string(VarType type) {
@@ -88,20 +100,64 @@ static string var_type_to_string(VarType type) {
             return "INTEGER_LITERAL";
         case FLOATING_LITERAL:
             return "FLOATING_LITERAL";
-        case BOOL_VALUE:
-            return "BOOL_VALUE";
+        case BOOLEAN_LITERAL_T:
+            return "TRUE";
+        case BOOLEAN_LITERAL_F:
+            return "FALSE";
         case LPAREN:
             return "LPAREN";
         case RPAREN:
             return "RPAREN";
-        case ARITH_OPERATOR:
-            return "ARITH_OPERATOR";
-        case RELAT_OPERATOR:
-            return "RELAT_OPERATOR";
-        case COMP_OPERATOR:
-            return "COMP_OPERATOR";
+        case ADD:
+            return "ADD";
+        case SUB:
+            return "SUB";
+        case MUL:
+            return "MUL";
+        case DIV:
+            return "DIV";
+        case MOD:
+            return "MOD";
+        case AND:
+            return "AND";
+        case OR:
+            return "OR";
+        case NOT:
+            return "NOT";
+        case IEQ:
+            return "EQUAL";
+        case ILT:
+            return "LESS_THAN";
+        case IGT:
+            return "GREATER_THAN";
+        case ILE:
+            return "LESS_THAN_EQ";
+        case IGE:
+            return "GREATER_THAN_EQ";
+        case INE:
+            return "NOT_EQUAL";
     }
 }
+
+// operator validation functor
+struct OPERATOR {
+    OPERATOR(VarType op): op(op){}
+    bool operator()() {
+        if (op == ADD || op == SUB
+            || op == MUL || op == DIV
+            || op == MOD || op == AND
+            || op == OR || op == NOT
+            || op == IEQ || op == ILT
+            || op == IGT || op == ILE
+            || op == IGE || op == INE) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+private:
+    VarType op;
+};
 
 // pass types
 enum PassType {

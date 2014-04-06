@@ -350,9 +350,7 @@ void SemanticAnalyzer::print_symbols() {
 bool CodeBlock::is_operator(SymbolPtr character) {
     if (character->get_symbol_type() == SYM_CONSTANT) {
         VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
-        if (op == ARITH_OPERATOR
-            || op == RELAT_OPERATOR
-            || op == COMP_OPERATOR) {
+        if (OPERATOR(op)()) {
             return true;
         }
     }
@@ -362,9 +360,7 @@ bool CodeBlock::is_operator(SymbolPtr character) {
 bool CodeBlock::is_operand(SymbolPtr character) {
     if (character->get_symbol_type() == SYM_CONSTANT) {
         VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
-        if (op != ARITH_OPERATOR
-            && op != RELAT_OPERATOR
-            && op != COMP_OPERATOR
+        if (!OPERATOR(op)()
             && op != LPAREN
             && op != RPAREN) {
             return true;
@@ -411,43 +407,53 @@ int CodeBlock::op_precendence(SymbolPtr c1) {
         VarType op = static_pointer_cast<SymConstant>(c1)->get_constant_type();
         if (op == LPAREN
             || op == RPAREN) {
-            return 5;
-        } else if (op == ARITH_OPERATOR) {
-            if (static_pointer_cast<SymConstant>(c1)->get_data() == "*"
-                || static_pointer_cast<SymConstant>(c1)->get_data() == "/") {
-                return 4;
-            } else {
-                return 3;
-            }
-        } else if (op == RELAT_OPERATOR) {
+            return 4;
+        } else if (op == NOT) {
+            return 3;
+        } else if (op == DIV || op == MUL
+                   || op == MOD || op == AND) {
             return 2;
-        } else if (op == COMP_OPERATOR) {
+        } else if (op == ADD || op == SUB
+                   || op == OR) {
             return 1;
-        } else {
+        } else if (op == IEQ || op == INE
+                   || op == ILT || op == ILE
+                   || op == IGT || op == IGE) {
             return 0;
+        } else {
+            return -1;
         }
     } else {
         return -1;
     }
 }
 
-void CodeBlock::make_cast(VarType v1, VarType v2) {
+VarType CodeBlock::make_cast(VarType v1, VarType v2) {
     if (v1 != v2) {
-        if ((v1 == INTEGER && v2 == FLOATING)
-            || (v1 == FLOATING && v2 == INTEGER)) {
-            if (v1 == INTEGER) {
-                // cast v2 to v1's type
-                write_raw("CASTSF");
-            } else {
-                // cast v2 to v1's type (float)
-                write_raw("CASTSI");
-            }
+        if (v1 == INTEGER && v2 == FLOATING) {
+            // cast back to integer
+            write_raw("CASTSI");
+            return INTEGER;
+        } else if (v1 == FLOATING && v2 == INTEGER) {
+            // cast back to floating
+            write_raw("CASTSF");
+            return FLOATING;
         } else if ((v1 == STRING && (v2 == INTEGER || v2 == FLOATING))
-                   || ((v1 == INTEGER || v1 == FLOATING) && v2 == STRING)) {
+                   || ((v1 == INTEGER || v1 == FLOATING) && v2 == STRING)
+                   || (v1 == VOID || v2 == VOID)) {
             this->valid = false;
-            report_msg_type("Semantic Error", "Unable to cast operand");
+            report_msg_type("Semantic Error", "Unable to cast "
+                            + var_type_to_string(v1)
+                            + " to " + var_type_to_string(v2));
+            return VOID;
+        } else {
+            // fine
+            return v2;
         }
+    } else {
+        return v2;
     }
+    return VOID;
 }
 
 // Code Block Stuff
@@ -521,12 +527,176 @@ void CodeBlock::preprocess() {
     // do nothing
 }
 
+// generates an expression
+// returns its last type
+VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
+    // generate expr (get first operand type)
+    VarType expr_type = static_pointer_cast<SymData>(*expr_list->begin())->get_var_type();
+    for (auto i = expr_list->begin();
+         i != expr_list->end(); i++) {
+        if (expr_type == VOID) {
+            // error condition
+            this->valid = false;
+            break;
+        }
+        if ((*i)->get_symbol_type() == SYM_DATA) {
+            SymDataPtr d = static_pointer_cast<SymData>(*i);
+            write_raw("PUSH " + d->get_address());
+            expr_type = make_cast(expr_type, d->get_var_type());
+        } else {
+            SymConstantPtr c = static_pointer_cast<SymConstant>(*i);
+            if (i == this->temp_symbols->begin()) {
+                expr_type = c->get_constant_type();
+            }
+            if (c->get_constant_type() == BOOLEAN_LITERAL_T) {
+                // integer alias
+                write_raw("PUSH #1");
+            } else if (c->get_constant_type() == BOOLEAN_LITERAL_F) {
+                // integer alias not
+                write_raw("PUSH #0");
+            } else if (c->get_constant_type() == FLOATING_LITERAL) {
+                write_raw("PUSH #" + c->get_data());
+                expr_type = make_cast(expr_type, FLOATING);
+            } else if (c->get_constant_type() == INTEGER_LITERAL) {
+                write_raw("PUSH #" + c->get_data());
+                expr_type = make_cast(expr_type, INTEGER);
+            } else if (c->get_constant_type() == STRING_LITERAL) {
+                // remove single quotes, and replace with double
+                string string_const = c->get_data();
+                replace(string_const.begin(), string_const.end(), '\'', '"');
+                write_raw("PUSH #" + string_const);
+                expr_type = make_cast(expr_type, STRING);
+            } else if (c->get_constant_type() == ADD) {
+                if (expr_type == INTEGER)
+                    write_raw("ADDS");
+                else if (expr_type == FLOATING)
+                    write_raw("ADDSF");
+            } else if (c->get_constant_type() == SUB) {
+                if (expr_type == INTEGER)
+                    write_raw("SUBS");
+                else if (expr_type == FLOATING)
+                    write_raw("SUBSF");
+            } else if (c->get_constant_type() == MUL) {
+                if (expr_type == INTEGER)
+                    write_raw("MULS");
+                else if (expr_type == FLOATING)
+                    write_raw("MULSF");
+            } else if (c->get_constant_type() == DIV) {
+                if (expr_type == INTEGER)
+                    write_raw("DIVS");
+                else if (expr_type == FLOATING)
+                    write_raw("DIVSF");
+            } else if (c->get_constant_type() == MOD) {
+                write_raw("MODS");
+            } else if (c->get_constant_type() == AND) {
+                write_raw("ANDS");
+            } else if (c->get_constant_type() == OR) {
+                write_raw("ORS");
+            } else if (c->get_constant_type() == NOT) {
+                write_raw("NOTS");
+            } else if (c->get_constant_type() == IEQ) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPEQS");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPEQSF");
+            } else if (c->get_constant_type() == IGT) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPGTS");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPGTSF");
+            } else if (c->get_constant_type() == IGE) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPGES");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPGESF");
+            } else if (c->get_constant_type() == ILT) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPLTS");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPLTSF");
+            } else if (c->get_constant_type() == ILE) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPLES");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPLESF");
+            } else if (c->get_constant_type() == INE) {
+                if (expr_type == INTEGER)
+                    write_raw("CMPNES");
+                else if (expr_type == FLOATING)
+                    write_raw("CMPNESF");
+            }
+        }
+    }
+    return expr_type;
+}
+
 CodeBlockList::iterator CodeBlock::inner_begin() {
     return this->block_list->begin();
 }
 
 CodeBlockList::iterator CodeBlock::inner_end() {
     return this->block_list->end();
+}
+
+SymbolPtr CodeBlock::translate(TokenPtr token) {
+    if (token->get_token() == MP_ID) {
+        SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at(token->get_lexeme(), this->get_nesting_level());
+        if (this->check_filter_size(filtered_data)) {
+            return *filtered_data->begin();
+        } else {
+            return nullptr;
+        }
+    } else if (token->get_token() == MP_INT_LITERAL) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), INTEGER_LITERAL));
+    } else if (token->get_token() == MP_STRING_LITERAL) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), STRING_LITERAL));
+    } else if (token->get_token() == MP_FLOAT_LITERAL) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), FLOATING_LITERAL));
+    } else if (token->get_token() == MP_TRUE) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_T));
+    } else if (token->get_token() == MP_FALSE) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_F));
+    } else if (token->get_token() == MP_LEFT_PAREN) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), LPAREN));
+    } else if (token->get_token() == MP_RIGHT_PAREN) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), RPAREN));
+    } else if (token->get_token() == MP_PLUS) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), ADD));
+    } else if (token->get_token() == MP_MINUS) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), SUB));
+    } else if (token->get_token() == MP_MULT) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), MUL));
+    } else if (token->get_token() == MP_DIV) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+    } else if (token->get_token() == MP_DIV_KW) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+    } else if (token->get_token() == MP_MOD_KW) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), MOD));
+    } else if (token->get_token() == MP_AND) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), AND));
+    } else if (token->get_token() == MP_OR) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), OR));
+    } else if (token->get_token() == MP_NOT) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), NOT));
+    } else if (token->get_token() == MP_LESSTHAN) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), ILT));
+    } else if (token->get_token() == MP_EQUALS) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), IEQ));
+    } else if (token->get_token() == MP_LESSTHAN_EQUALTO) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), ILE));
+    } else if (token->get_token() == MP_GREATERTHAN) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), IGT));
+    } else if (token->get_token() == MP_GREATERTHAN_EQUALTO) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), IGE));
+    } else if (token->get_token() == MP_NOT_EQUAL) {
+        return SymbolPtr(new SymConstant(token->get_lexeme(), INE));
+    } else {
+        return nullptr;
+    }
+}
+
+void CodeBlock::emit(InstructionType ins, vector<string> operands) {
+    // does nothing yet
 }
 
 // Program Block stuff
@@ -567,68 +737,14 @@ void ProgramBlock::preprocess() {
 
 // Assignment Block stuff
 void AssignmentBlock::generate_pre() {
-    VarType old_type = VOID;
-    //generate assignment code straight up
-    for (auto i = this->temp_symbols->begin();
-         i != this->temp_symbols->end(); i++) {
-        if ((*i)->get_symbol_type() == SYM_DATA) {
-            SymDataPtr d = static_pointer_cast<SymData>(*i);
-            if (i == this->temp_symbols->begin()) {
-                old_type = d->get_var_type();
-            }
-            write_raw("PUSH " + d->get_address());
-            // make_cast(old_type, d->get_var_type());
-            old_type = static_pointer_cast<SymData>(*i)->get_var_type();
-        } else {
-            SymConstantPtr c = static_pointer_cast<SymConstant>(*i);
-            if (i == this->temp_symbols->begin()) {
-                old_type = c->get_constant_type();
-            }
-            if (c->get_constant_type() == BOOL_VALUE) {
-                if (c->get_data().compare("true")) {
-                    // integer alias
-                    write_raw("PUSH #1");
-                } else {
-                    // integer alias not
-                    write_raw("PUSH #0");
-                }
-            } else if (c->get_constant_type() == FLOATING_LITERAL) {
-                write_raw("PUSH #" + c->get_data());
-                // make_cast(old_type, c->get_constant_type());
-                old_type = FLOATING;
-            } else if (c->get_constant_type() == INTEGER_LITERAL) {
-                write_raw("PUSH #" + c->get_data());
-                // make_cast(old_type, c->get_constant_type());
-                old_type = INTEGER;
-            } else if (c->get_constant_type() == STRING_LITERAL) {
-                // remove single quotes, and replace with double
-                string string_const = c->get_data();
-                replace(string_const.begin(), string_const.end(), '\'', '"');
-                write_raw("PUSH #" + string_const);
-                // make_cast(old_type, c->get_constant_type());
-                old_type = STRING;
-            } else if (c->get_constant_type() == ARITH_OPERATOR) {
-                if (c->get_data().compare("+") == 0) {
-                    write_raw("ADDS");
-                } else if (c->get_data().compare("-") == 0) {
-                    write_raw("SUBS");
-                } else if (c->get_data().compare("*") == 0) {
-                    write_raw("MULS");
-                } else if (c->get_data().compare("/") == 0) {
-                    write_raw("DIVS");
-                } else if (c->get_data().compare("div") == 0) {
-                    write_raw("DIVS");
-                } else if (c->get_data().compare("mod") == 0) {
-                    write_raw("MODS");
-                }
-            }
-        }
-    }
+    this->expr_type = this->generate_expr(this->temp_symbols);
 }
 
 void AssignmentBlock::generate_post() {
     // pop into assigner
-    write_raw("POP " + static_pointer_cast<SymData>(this->assigner)->get_address());
+    SymDataPtr post_assigner = static_pointer_cast<SymData>(this->assigner);
+    make_cast(this->expr_type, post_assigner->get_var_type());
+    write_raw("POP " + post_assigner->get_address());
     write_raw("");
 }
 
@@ -641,46 +757,14 @@ void AssignmentBlock::preprocess() {
     bool first_id = true;
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
-        if ((*i)->get_token() == MP_ID) {
-            SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at((*i)->get_lexeme(), this->get_nesting_level());
-            if (this->check_filter_size(filtered_data)) {
-                if (first_id == true) {
-                    // just right
-                    this->assigner = static_pointer_cast<SymData>(*filtered_data->begin());
-                    first_id = false;
-                } else {
-                    // just right
-                    this->temp_symbols->push_back(static_pointer_cast<SymData>(*filtered_data->begin()));
-                }
-            } else {
-                // filter size incorrect
-                this->valid = false;
-            }
-        } else if ((*i)->get_token() == MP_INT_LITERAL) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), INTEGER_LITERAL)));
-        } else if ((*i)->get_token() == MP_STRING_LITERAL) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), STRING_LITERAL)));
-        } else if ((*i)->get_token() == MP_FLOAT_LITERAL) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), FLOATING_LITERAL)));
-        } else if ((*i)->get_token() == MP_TRUE
-                   || (*i)->get_token() == MP_FALSE) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), BOOL_VALUE)));
-        } else if ((*i)->get_token() == MP_LEFT_PAREN) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), LPAREN)));
-        } else if ((*i)->get_token() == MP_RIGHT_PAREN) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), RPAREN)));
-        } else if ((*i)->get_token() == MP_PLUS
-                   || (*i)->get_token() == MP_MINUS
-                   || (*i)->get_token() == MP_MULT
-                   || (*i)->get_token() == MP_DIV
-                   || (*i)->get_token() == MP_DIV_KW
-                   || (*i)->get_token() == MP_MOD_KW) {
-            this->temp_symbols->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), ARITH_OPERATOR)));
+        if (first_id == true
+            && (*i)->get_token() == MP_ID) {
+            this->assigner = this->translate(*i);
+            first_id = false;
         } else if ((*i)->get_token() == MP_ASSIGNMENT) {
-            // skip
+            continue;
         } else {
-            report_msg_type("Semantic Error", "Symbol type is not valid in assignment");
-            this->valid = false;
+            this->temp_symbols->push_back(this->translate(*i));
         }
     }
     // convert to postifx
@@ -752,11 +836,6 @@ void IOBlock::generate_pre() {
                     // assume string
                     write_raw("RDS " + addr);
                 }
-                // assume print a line terminator if readln or something
-                if (this->line_terminator) {
-                    write_raw("PUSH #\"\n\"");
-                    write_raw("WRT");
-                }
             } else {
                 // no type necessary, just push and write
                 write_raw("PUSH " + addr);
@@ -820,27 +899,7 @@ void IOBlock::catch_token(TokenPtr token) {
 void IOBlock::preprocess() {
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
-        // assume ids, get lexemes and determine scoping
-        if ((*i)->get_token() == MP_ID) {
-            SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at((*i)->get_lexeme(), this->get_nesting_level());
-            if (filtered_data->size() == 1) {
-                // just right
-                this->args->push_back(static_pointer_cast<SymData>(*filtered_data->begin()));
-            } else if (filtered_data->size() > 1) {
-                // too many ids found
-                this->valid = false;
-            } else {
-                // no ids found
-                this->valid = false;
-            }
-        } else if ((*i)->get_token() == MP_STRING_LITERAL) {
-            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), STRING_LITERAL)));
-        } else if ((*i)->get_token() == MP_INT_LITERAL) {
-            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), INTEGER_LITERAL)));
-        } else {
-            // assume float literal
-            this->args->push_back(SymbolPtr(new SymConstant((*i)->get_lexeme(), FLOATING_LITERAL)));
-        }
+        this->args->push_back(this->translate(*i));
     }
 }
 
@@ -859,7 +918,6 @@ void LoopBlock::preprocess() {
 }
 
 void LoopBlock::catch_token(TokenPtr symbol) {
-    if (this->type == FORLOOP)
     this->unprocessed->push_back(symbol);
 }
 
