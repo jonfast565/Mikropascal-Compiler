@@ -322,12 +322,15 @@ TokenPtr Scanner::scan_infinite() {
     }
     if (*this->scan_buf->begin() == '\'') {
         new_token->set_token(MP_RUN_STRING);
+        new_token->set_error("There is a run on string here");
         this->goto_next('\n');
     } else if (*this->scan_buf->begin() == '{') {
         new_token->set_token(MP_RUN_COMMENT);
+        new_token->set_error("There is a run on comment here");
         this->goto_next('\n');
     } else {
         new_token->set_token(MP_ERROR);
+        new_token->set_error("There is an unreconized token here");
     }
     // create the error token
     string contents = this->contents();
@@ -337,6 +340,8 @@ TokenPtr Scanner::scan_infinite() {
     new_token->set_column(lex_start);
     new_token->set_line(this->line_number);
     // hidden error message here? (might be good)
+    report_error_lc("Scan Error", new_token->get_error() + contents,
+                    this->line_number, this->col_number);
     // clear buffer
     this->clear_buffer();
     // return error token

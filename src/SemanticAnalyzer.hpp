@@ -17,6 +17,9 @@ class AbstractNode;
 class AbstractTree;
 class SemanticAnalyzer;
 class CodeBlock;
+class AssignmentBlock;
+class ConditionalBlock;
+
 
 using AbstractNodePtr = shared_ptr<AbstractNode>;
 using AbstractNodeList = vector<AbstractNodePtr>;
@@ -31,6 +34,7 @@ using TokenListPtr = shared_ptr<TokenList>;
 using CodeBlockPtr = shared_ptr<CodeBlock>;
 using CodeBlockList = vector<CodeBlockPtr>;
 using CodeBlockListPtr = shared_ptr<CodeBlockList>;
+using AssignmentBlockPtr = shared_ptr<AssignmentBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -224,15 +228,18 @@ class AssignmentBlock: public CodeBlock {
 private:
     SymbolPtr assigner;
     VarType expr_type;
+    bool expr_only;
 public:
-    AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
-    assigner(nullptr), expr_type(VOID){};
+    AssignmentBlock(bool expr_only): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
+    assigner(nullptr), expr_type(VOID), expr_only(expr_only){};
     virtual ~AssignmentBlock() = default;
     void generate_pre();
     void generate_post();
     void preprocess();
     void catch_token(TokenPtr symbol);
     bool validate();
+    SymbolPtr get_assigner();
+    VarType get_expr_type();
 };
 
 enum ActivationType {

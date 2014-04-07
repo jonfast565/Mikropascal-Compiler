@@ -801,6 +801,9 @@ bool AssignmentBlock::validate() {
 
 void AssignmentBlock::preprocess() {
     bool first_id = true;
+    if (this->expr_only) {
+        first_id = false;
+    }
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
         if (first_id == true
@@ -819,6 +822,14 @@ void AssignmentBlock::preprocess() {
 
 void AssignmentBlock::catch_token(TokenPtr symbol) {
     this->unprocessed->push_back(symbol);
+}
+
+SymbolPtr AssignmentBlock::get_assigner() {
+    return this->assigner;
+}
+
+VarType AssignmentBlock::get_expr_type() {
+    return this->expr_type;
 }
 
 // IO Block stuff
@@ -905,7 +916,7 @@ void IOBlock::catch_token(TokenPtr token) {
 void IOBlock::preprocess() {
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
-            this->args->push_back(this->translate(*i));
+        this->args->push_back(this->translate(*i));
     }
 }
 
@@ -923,10 +934,32 @@ void LoopBlock::generate_pre() {
         write_raw("BR " + this->exit_label);
         write_raw(this->body_label + ":\n");
     } else if (this->type == FORLOOP) {
-        // this doesn't work yet
+        // parse the assignment
+        // process the assignment
+        AssignmentBlockPtr assignment = AssignmentBlockPtr(new AssignmentBlock(false));
+        assignment->set_analyzer(this->parent_analyzer);
+        for (auto i = 0; i < 3; i++) {
+            assignment->catch_token((*this->unprocessed)[i]);
+        }
+        // generate its code
+        assignment->preprocess();
+        assignment->generate_pre();
+        assignment->generate_post();
+        // generate the condition label
         write_raw(this->cond_label + ":\n");
-        // condition
-        write_raw("\nBRTS " + this->body_label);
+        // process the ordinal expression
+        AssignmentBlockPtr ordinal_expr = AssignmentBlockPtr(new AssignmentBlock(true));
+        ordinal_expr->set_analyzer(this->parent_analyzer);
+        for (auto i = 4; i < this->unprocessed->size(); i++) {
+            ordinal_expr->catch_token((*this->unprocessed)[i]);
+        }
+        // get the comparison components for the ordinal expr
+        ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "=", -1, -1)));
+        ordinal_expr->catch_token((*this->unprocessed)[0]);
+        // generate its code
+        ordinal_expr->preprocess();
+        ordinal_expr->generate_pre();
+        write_raw("\nBRFS " + this->body_label);
         write_raw("BR " + this->exit_label + "\n");
         write_raw(this->body_label + ":\n");
     }
@@ -947,6 +980,31 @@ void LoopBlock::generate_post() {
         write_raw("BR " + this->cond_label);
         write_raw(this->exit_label + ":\n");
     } else if (this->type == FORLOOP) {
+        // get the incrementer token
+        TokenPtr incrementer = (*this->unprocessed)[3];
+        if (incrementer->get_token() == MP_TO) {
+            // generate an incrementer
+            AssignmentBlockPtr inc = AssignmentBlockPtr(new AssignmentBlock(false));
+            inc->set_analyzer(this->parent_analyzer);
+            inc->catch_token((*this->unprocessed)[0]);
+            inc->catch_token((*this->unprocessed)[0]);
+            inc->catch_token(TokenPtr(new Token(MP_PLUS, "+", -1, -1)));
+            inc->catch_token(TokenPtr(new Token(MP_INT_LITERAL, "1", -1, -1)));
+            inc->preprocess();
+            inc->generate_pre();
+            inc->generate_post();
+        } else if (incrementer->get_token() == MP_DOWNTO) {
+            // generate a decrementer
+            AssignmentBlockPtr dec = AssignmentBlockPtr(new AssignmentBlock(false));
+            dec->set_analyzer(this->parent_analyzer);
+            dec->catch_token((*this->unprocessed)[0]);
+            dec->catch_token((*this->unprocessed)[0]);
+            dec->catch_token(TokenPtr(new Token(MP_MINUS, "-", -1, -1)));
+            dec->catch_token(TokenPtr(new Token(MP_INT_LITERAL, "1", -1, -1)));
+            dec->preprocess();
+            dec->generate_pre();
+            dec->generate_post();
+        }
         write_raw("BR " + this->cond_label + "\n");
         write_raw(this->exit_label + ":\n");
     }
@@ -956,11 +1014,15 @@ void LoopBlock::preprocess() {
     this->cond_label = this->parent_analyzer->generate_label();
     this->body_label = this->parent_analyzer->generate_label();
     this->exit_label = this->parent_analyzer->generate_label();
-    for (auto i = this->unprocessed->begin();
-         i != this->unprocessed->end(); i++) {
-        this->temp_symbols->push_back(this->translate(*i));
+    if (this->type == WHILELOOP
+        || this->type == RPTUNTLLOOP) {
+        // process the boolean statement
+        for (auto i = this->unprocessed->begin();
+             i != this->unprocessed->end(); i++) {
+            this->temp_symbols->push_back(this->translate(*i));
+        }
+        this->convert_postfix();
     }
-    this->convert_postfix();
 }
 
 void LoopBlock::catch_token(TokenPtr symbol) {
@@ -969,8 +1031,6 @@ void LoopBlock::catch_token(TokenPtr symbol) {
         && symbol->get_token() != MP_UNTIL
         && symbol->get_token() != MP_DO
         && symbol->get_token() != MP_FOR
-        && symbol->get_token() != MP_TO
-        && symbol->get_token() != MP_DOWNTO
         && symbol->get_token() != MP_BEGIN
         && symbol->get_token() != MP_END
         && symbol->get_token() != MP_SEMI_COLON) {

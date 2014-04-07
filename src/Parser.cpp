@@ -509,7 +509,9 @@ void Parser::parse_statement() {
         this->end_generate();
     }
 	else if (this->try_match(MP_FOR)) {
+        this->begin_generate_loop(FORLOOP);
 		this->parse_for_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_PROCEDURE)) {
 		this->parse_procedure_statement();
@@ -1174,7 +1176,7 @@ VarType Parser::to_var(TokType token_type) {
 }
 
 void Parser::begin_generate_assignment() {
-    this->get_analyzer()->append_block(CodeBlockPtr(new AssignmentBlock()));
+    this->get_analyzer()->append_block(CodeBlockPtr(new AssignmentBlock(false)));
     this->begin_generate();
 }
 
