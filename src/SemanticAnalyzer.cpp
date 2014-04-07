@@ -1078,10 +1078,22 @@ void ConditionalBlock::generate_pre() {
                         "Conditional expression doesn't evaluate to boolean value.");
     }
     write_raw("\nBRFS " + this->body_label);
+    if (this->connected != nullptr) {
+        ConditionalBlockPtr if_else_block = static_pointer_cast<ConditionalBlock>(this->connected);
+        if (if_else_block->get_conditional_type() == COND_ELSE) {
+            write_raw("\nBR " + this->else_label);
+        } else {
+            write_raw("\nBR " + this->exit_label);
+        }
+    } else {
+        write_raw("");
+    }
 }
 
 void ConditionalBlock::generate_post() {
-    
+    if (this->connected != nullptr) {
+        
+    }
 }
 
 void ConditionalBlock::set_connected(ConditionalBlockPtr connected) {
