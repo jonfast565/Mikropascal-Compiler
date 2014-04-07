@@ -35,6 +35,7 @@ using CodeBlockPtr = shared_ptr<CodeBlock>;
 using CodeBlockList = vector<CodeBlockPtr>;
 using CodeBlockListPtr = shared_ptr<CodeBlockList>;
 using AssignmentBlockPtr = shared_ptr<AssignmentBlock>;
+using ConditionalBlockPtr = shared_ptr<ConditionalBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -213,15 +214,42 @@ public:
     bool validate();
 };
 
+enum CondType {
+    COND_IF,
+    COND_ELSE
+};
+
 class ConditionalBlock: public CodeBlock {
 private:
+    ConditionalBlockPtr connected;
+    CondType cond;
+    string body_label;
+    string else_label;
+    string exit_label;
 public:
-    ConditionalBlock(): CodeBlock(CONDITIONAL_BLOCK, nullptr){};
+    ConditionalBlock(CondType cond): CodeBlock(CONDITIONAL_BLOCK, nullptr),
+    connected(nullptr), cond(cond){
+        this->body_label = "";
+        this->else_label = "";
+        this->exit_label = "";
+    };
+    ConditionalBlock(ConditionalBlockPtr connected, CondType cond): CodeBlock(CONDITIONAL_BLOCK, nullptr),
+    connected(connected), cond(cond){
+        this->body_label = "";
+        this->else_label = "";
+        this->exit_label = "";
+    };
     virtual ~ConditionalBlock() = default;
     void generate_pre();
     void generate_post();
     void preprocess();
+    void catch_token(TokenPtr symbol);
     bool validate();
+    CondType get_conditional_type();
+    void set_else_label(string else_label);
+    void generate_exit_label();
+    string get_exit_label();
+    void set_connected(ConditionalBlockPtr connected);
 };
 
 class AssignmentBlock: public CodeBlock {

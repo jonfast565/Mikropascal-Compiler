@@ -1042,3 +1042,68 @@ bool LoopBlock::validate() {
     return true;
 }
 
+// Conditionals
+void ConditionalBlock::catch_token(TokenPtr symbol) {
+    if (symbol->get_token() != MP_IF
+        && symbol->get_token() != MP_THEN
+        && symbol->get_token() != MP_ELSE) {
+        this->unprocessed->push_back(symbol);
+    }
+}
+
+void ConditionalBlock::preprocess() {
+    if (this->cond == COND_IF) {
+        this->body_label = this->parent_analyzer->generate_label();
+        this->exit_label = this->parent_analyzer->generate_label();
+        if (this->connected != nullptr) {
+            ConditionalBlockPtr else_block = static_pointer_cast<ConditionalBlock>(this->connected);
+            if (else_block->get_conditional_type() == COND_ELSE) {
+                else_block->set_else_label(this->exit_label);
+                else_block->generate_exit_label();
+            }
+        }
+    }
+    for (auto i = this->unprocessed->begin();
+         i != this->unprocessed->end(); i++) {
+        this->temp_symbols->push_back(this->translate(*i));
+    }
+    this->convert_postfix();
+}
+
+void ConditionalBlock::generate_pre() {
+    // generate condition
+    VarType result = this->generate_expr(this->temp_symbols);
+    if (result != BOOLEAN) {
+        report_msg_type("Semantic Error",
+                        "Conditional expression doesn't evaluate to boolean value.");
+    }
+    write_raw("\nBRFS " + this->body_label);
+}
+
+void ConditionalBlock::generate_post() {
+    
+}
+
+void ConditionalBlock::set_connected(ConditionalBlockPtr connected) {
+    this->connected = connected;
+}
+
+bool ConditionalBlock::validate() {
+    return true;
+}
+
+CondType ConditionalBlock::get_conditional_type() {
+    return this->cond;
+}
+
+void ConditionalBlock::set_else_label(string else_label) {
+    this->else_label = else_label;
+}
+
+void ConditionalBlock::generate_exit_label() {
+    this->exit_label = this->parent_analyzer->generate_label();
+}
+
+string ConditionalBlock::get_exit_label() {
+    return this->exit_label;
+}

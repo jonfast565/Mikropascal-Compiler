@@ -637,11 +637,19 @@ void Parser::parse_if_statement() {
     this->more_indent();
     this->go_into(IF_STATEMENT);
 	report_parse("PARSE_IF_STATEMENT", this->parse_depth);
+    ConditionalBlockPtr cond_if = this->begin_generate_if();
     this->match(MP_IF);
     this->parse_boolean_expression();
     this->match(MP_THEN);
     this->parse_statement();
-    this->parse_optional_else_part();
+    this->end_generate();
+    if (this->try_match(MP_ELSE)) {
+        ConditionalBlockPtr cond_else = this->begin_generate_opt_else();
+        cond_else->set_connected(cond_if);
+        cond_if->set_connected(cond_else);
+        this->parse_optional_else_part();
+        this->end_generate();
+    }
     this->return_from();
     this->less_indent();
 }
@@ -1190,14 +1198,18 @@ void Parser::begin_generate_loop(LoopType loop) {
     this->begin_generate();
 }
 
-void Parser::begin_generate_if() {
-    //this->get_analyzer()->append_block(CodeBlockPtr(new ConditionalBlock()));
+ConditionalBlockPtr Parser::begin_generate_if() {
+    ConditionalBlockPtr cond_block = ConditionalBlockPtr(new ConditionalBlock(COND_IF));
+    this->get_analyzer()->append_block(cond_block);
     this->begin_generate();
+    return cond_block;
 }
 
-void Parser::begin_generate_opt_else() {
-    //this->get_analyzer()->append_block(CodeBlockPtr(new ConditionalBlock()));
+ConditionalBlockPtr Parser::begin_generate_opt_else() {
+    ConditionalBlockPtr cond_block = ConditionalBlockPtr(new ConditionalBlock(COND_ELSE));
+    this->get_analyzer()->append_block(cond_block);
     this->begin_generate();
+    return cond_block;
 }
 
 void Parser::begin_generate() {
