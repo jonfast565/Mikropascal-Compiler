@@ -182,7 +182,7 @@ SymTablePtr SemanticAnalyzer::get_symtable() {
 }
 
 string SemanticAnalyzer::generate_label() {
-    string label = "L" + conv_string(this->label_count) + ":";
+    string label = "L" + conv_string(this->label_count);
     label_count++;
     return label;
 }
@@ -527,6 +527,46 @@ void CodeBlock::preprocess() {
     // do nothing
 }
 
+void CodeBlock::convert_postfix() {
+    // data structs
+    shared_ptr<stack<SymbolPtr>> op_stack = shared_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
+    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
+    
+    // shunting yard
+    for (auto i = this->temp_symbols->begin(); i !=
+         this->temp_symbols->end(); i++) {
+        if (is_operand(*i)) {
+            unpostfix_symbols->push_back(*i);
+        } else if (is_operator(*i)) {
+            while (!op_stack->empty()
+                   && !is_lparen(op_stack->top())
+                   && compare_ops(*i, op_stack->top()) <= 0) {
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+            op_stack->push(*i);
+        } else if (is_lparen(*i)) {
+            op_stack->push(*i);
+        } else if (is_rparen(*i)) {
+            while (!op_stack->empty()) {
+                if (is_lparen(op_stack->top())) {
+                    op_stack->pop();
+                    break;
+                }
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+        }
+    }
+    while(!op_stack->empty()) {
+        unpostfix_symbols->push_back(op_stack->top());
+        op_stack->pop();
+    }
+    
+    // set the temp symbols as the postfix stuff
+    this->temp_symbols = unpostfix_symbols;
+}
+
 // generates an expression
 // returns its last type
 VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
@@ -599,31 +639,37 @@ VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
                     write_raw("CMPEQS");
                 else if (expr_type == FLOATING)
                     write_raw("CMPEQSF");
+                expr_type = BOOLEAN;
             } else if (c->get_constant_type() == IGT) {
                 if (expr_type == INTEGER)
                     write_raw("CMPGTS");
                 else if (expr_type == FLOATING)
                     write_raw("CMPGTSF");
+                expr_type = BOOLEAN;
             } else if (c->get_constant_type() == IGE) {
                 if (expr_type == INTEGER)
                     write_raw("CMPGES");
                 else if (expr_type == FLOATING)
                     write_raw("CMPGESF");
+                expr_type = BOOLEAN;
             } else if (c->get_constant_type() == ILT) {
                 if (expr_type == INTEGER)
                     write_raw("CMPLTS");
                 else if (expr_type == FLOATING)
                     write_raw("CMPLTSF");
+                expr_type = BOOLEAN;
             } else if (c->get_constant_type() == ILE) {
                 if (expr_type == INTEGER)
                     write_raw("CMPLES");
                 else if (expr_type == FLOATING)
                     write_raw("CMPLESF");
+                expr_type = BOOLEAN;
             } else if (c->get_constant_type() == INE) {
                 if (expr_type == INTEGER)
                     write_raw("CMPNES");
                 else if (expr_type == FLOATING)
                     write_raw("CMPNESF");
+                expr_type = BOOLEAN;
             }
         }
     }
@@ -771,46 +817,6 @@ void AssignmentBlock::preprocess() {
     convert_postfix();
 }
 
-void AssignmentBlock::convert_postfix() {
-    // data structs
-    shared_ptr<stack<SymbolPtr>> op_stack = shared_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
-    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
-    
-    // shunting yard
-    for (auto i = this->temp_symbols->begin(); i !=
-         this->temp_symbols->end(); i++) {
-        if (is_operand(*i)) {
-            unpostfix_symbols->push_back(*i);
-        } else if (is_operator(*i)) {
-            while (!op_stack->empty()
-                   && !is_lparen(op_stack->top())
-                   && compare_ops(*i, op_stack->top()) <= 0) {
-                unpostfix_symbols->push_back(op_stack->top());
-                op_stack->pop();
-            }
-            op_stack->push(*i);
-        } else if (is_lparen(*i)) {
-            op_stack->push(*i);
-        } else if (is_rparen(*i)) {
-            while (!op_stack->empty()) {
-                if (is_lparen(op_stack->top())) {
-                    op_stack->pop();
-                    break;
-                }
-                unpostfix_symbols->push_back(op_stack->top());
-                op_stack->pop();
-            }
-        }
-    }
-    while(!op_stack->empty()) {
-        unpostfix_symbols->push_back(op_stack->top());
-        op_stack->pop();
-    }
-    
-    // set the temp symbols as the postfix stuff
-    this->temp_symbols = unpostfix_symbols;
-}
-
 void AssignmentBlock::catch_token(TokenPtr symbol) {
     this->unprocessed->push_back(symbol);
 }
@@ -899,29 +905,80 @@ void IOBlock::catch_token(TokenPtr token) {
 void IOBlock::preprocess() {
     for (auto i = this->unprocessed->begin();
          i != this->unprocessed->end(); i++) {
-        this->args->push_back(this->translate(*i));
+            this->args->push_back(this->translate(*i));
     }
 }
 
 void LoopBlock::generate_pre() {
-    
+    if (this->type == RPTUNTLLOOP) {
+        write_raw(this->body_label + ":\n");
+    } else if (this->type == WHILELOOP) {
+        write_raw(this->cond_label + ":\n");
+        VarType result = this->generate_expr(this->temp_symbols);
+        if (result != BOOLEAN) {
+            report_msg_type("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.");
+        }
+        write_raw("\nBRTS " + this->body_label);
+        write_raw("BR " + this->exit_label);
+        write_raw(this->body_label + ":\n");
+    } else if (this->type == FORLOOP) {
+        // this doesn't work yet
+        write_raw(this->cond_label + ":\n");
+        // condition
+        write_raw("\nBRTS " + this->body_label);
+        write_raw("BR " + this->exit_label + "\n");
+        write_raw(this->body_label + ":\n");
+    }
 }
 
 void LoopBlock::generate_post() {
-    
+    if (this->type == RPTUNTLLOOP) {
+        write_raw(this->cond_label + ":\n");
+        VarType result = this->generate_expr(this->temp_symbols);
+        if (result != BOOLEAN) {
+            report_msg_type("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.");
+        }
+        write_raw("\nBRFS " + this->body_label);
+        write_raw("BR " + this->exit_label + "\n");
+        write_raw(this->exit_label + ":\n");
+    } else if (this->type == WHILELOOP) {
+        write_raw("BR " + this->cond_label);
+        write_raw(this->exit_label + ":\n");
+    } else if (this->type == FORLOOP) {
+        write_raw("BR " + this->cond_label + "\n");
+        write_raw(this->exit_label + ":\n");
+    }
 }
 
 void LoopBlock::preprocess() {
     this->cond_label = this->parent_analyzer->generate_label();
     this->body_label = this->parent_analyzer->generate_label();
     this->exit_label = this->parent_analyzer->generate_label();
+    for (auto i = this->unprocessed->begin();
+         i != this->unprocessed->end(); i++) {
+        this->temp_symbols->push_back(this->translate(*i));
+    }
+    this->convert_postfix();
 }
 
 void LoopBlock::catch_token(TokenPtr symbol) {
-    this->unprocessed->push_back(symbol);
+    if (symbol->get_token() != MP_WHILE
+        && symbol->get_token() != MP_REPEAT
+        && symbol->get_token() != MP_UNTIL
+        && symbol->get_token() != MP_DO
+        && symbol->get_token() != MP_FOR
+        && symbol->get_token() != MP_TO
+        && symbol->get_token() != MP_DOWNTO
+        && symbol->get_token() != MP_BEGIN
+        && symbol->get_token() != MP_END
+        && symbol->get_token() != MP_SEMI_COLON) {
+        this->unprocessed->push_back(symbol);
+    }
 }
 
 bool LoopBlock::validate() {
-    return 0;
+    return true;
 }
 

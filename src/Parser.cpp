@@ -14,7 +14,7 @@ Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
     this->analyzer = analyzer;
     this->symbols = TokenListPtr(new TokenList());
     this->sym_collect = false;
-    this->gen_collect = false;
+    this->gen_collect = shared_ptr<stack<int>>(new stack<int>);
 }
 
 bool Parser::try_match(TokType expected) {
@@ -66,7 +66,7 @@ void Parser::match(TokType expected) {
             }
         }
         // if we're collecting code generation data...
-        if (this->gen_collect) {
+        if (!this->gen_collect->empty()) {
             // feed the token to the code block on top of the analyzer
             this->get_analyzer()->feed_token(this->lookahead);
         }
@@ -499,10 +499,14 @@ void Parser::parse_statement() {
 		this->parse_if_statement();
     }
 	else if (this->try_match(MP_WHILE)) {
+        this->begin_generate_loop(WHILELOOP);
 		this->parse_while_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_REPEAT)) {
+        this->begin_generate_loop(RPTUNTLLOOP);
 		this->parse_repeat_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_FOR)) {
 		this->parse_for_statement();
@@ -1180,7 +1184,7 @@ void Parser::begin_generate_io_action(IOAction action, bool newline) {
 }
 
 void Parser::begin_generate_loop(LoopType loop) {
-    //this->get_analyzer()->append_block(CodeBlockPtr(new LoopBlock(loop)));
+    this->get_analyzer()->append_block(CodeBlockPtr(new LoopBlock(loop)));
     this->begin_generate();
 }
 
@@ -1195,11 +1199,11 @@ void Parser::begin_generate_opt_else() {
 }
 
 void Parser::begin_generate() {
-    this->gen_collect = true;
+    this->gen_collect->push(0);
 }
 
 void Parser::end_generate() {
-    this->gen_collect = false;
+    this->gen_collect->pop();
     this->get_analyzer()->rappel_block();
 }
 

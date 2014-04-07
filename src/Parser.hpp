@@ -26,7 +26,7 @@ private:
     bool error_reported;
     bool sym_collect;
     bool var_skip;
-    bool gen_collect;
+    shared_ptr<stack<int>> gen_collect;
     unsigned int parse_depth;
 public:
 	Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer);

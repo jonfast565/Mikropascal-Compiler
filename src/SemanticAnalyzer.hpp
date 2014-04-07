@@ -144,6 +144,7 @@ public:
     static bool is_rparen(SymbolPtr character);
     static int compare_ops(SymbolPtr c1, SymbolPtr c2);
     static int op_precendence(SymbolPtr c1);
+    void convert_postfix();
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);
@@ -193,13 +194,12 @@ private:
     string cond_label;
     string body_label;
     string exit_label;
-    bool condition_hit;
 public:
-    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK, nullptr), type(type){
+    LoopBlock(LoopType type): CodeBlock(LOOP_BLOCK, nullptr),
+    type(type) {
         this->cond_label = "";
         this->body_label = "";
         this->exit_label = "";
-        this->condition_hit = false;
     };
     virtual ~LoopBlock() = default;
     void generate_pre();
@@ -228,7 +228,6 @@ public:
     AssignmentBlock(): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
     assigner(nullptr), expr_type(VOID){};
     virtual ~AssignmentBlock() = default;
-    void convert_postfix();
     void generate_pre();
     void generate_post();
     void preprocess();
