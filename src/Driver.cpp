@@ -9,10 +9,13 @@
 #include "Tests.hpp"
 
 string get_console_input() {
-    string input;
+    string input, first;
     cout << "> ";
     cin >> input;
-    return input;
+    istringstream stream_s(input);
+    stream_s >> first;
+    cin.clear(); cin.ignore(INT_MAX,'\n');
+    return first;
 }
 
 int main(int argc, char* argv[]) {
@@ -76,7 +79,7 @@ int main(int argc, char* argv[]) {
             // get input and control
             cout << "> ";
             cin >> control_char;
-            cin.clear();
+            cin.clear(); cin.ignore(INT_MAX,'\n');
             control_char = toupper(control_char);
         } while (control_char != 'C');
 	} else {
