@@ -20,17 +20,17 @@
 int automata_keyword_test_cases() {
 	cout << "[ Automata Keyword Tests ]" << endl;
 	shared_ptr<FiniteAutomataContainer> while_dfa = shared_ptr<
-			FiniteAutomataContainer>(
-			new FiniteAutomataContainer("MP_WHILE", true));
+    FiniteAutomataContainer>(
+                             new FiniteAutomataContainer("MP_WHILE", true));
 	while_dfa->build_keyword("while");
 	while_dfa->print();
-
+    
 	// accepts or rejects?
 	vector<string> test_strings = { "while", "xxxxxwhile", "whilethewavescrash",
-			"somewhile" };
+        "somewhile" };
 	string accept_string;
 	for (vector<string>::iterator i = test_strings.begin();
-			i != test_strings.end(); i++) {
+         i != test_strings.end(); i++) {
 		while_dfa->run(*i);
 		accept_string = while_dfa->accepting() ? "Accepted." : "Rejected.";
 		cout << accept_string << endl;
@@ -42,11 +42,11 @@ int automata_keyword_test_cases() {
 
 int automata_test_cases() {
 	cout << "[ Automata Tests ]" << endl;
-
+    
 	// try out a DFA
 	shared_ptr<FiniteAutomataContainer> while_dfa = shared_ptr<
-			FiniteAutomataContainer>(
-			new FiniteAutomataContainer("WHILE Token", true));
+    FiniteAutomataContainer>(
+                             new FiniteAutomataContainer("WHILE Token", true));
 	while_dfa->add_state("q0", true, false);
 	while_dfa->add_state("q1", false, false);
 	while_dfa->add_state("q2", false, false);
@@ -61,19 +61,19 @@ int automata_test_cases() {
 	while_dfa->add_transition("q3", 'l', "q4");
 	while_dfa->add_transition("q4", 'e', "q5");
 	while_dfa->print();
-
+    
 	// accepts or rejects?
 	vector<string> test_strings = { "while", "xxxxxwhile", "whilethewavescrash",
-			"somewhile" };
+        "somewhile" };
 	string accept_string;
 	for (vector<string>::iterator i = test_strings.begin();
-			i != test_strings.end(); i++) {
+         i != test_strings.end(); i++) {
 		while_dfa->run(*i);
 		accept_string = while_dfa->accepting() ? "Accepted." : "Rejected.";
 		cout << accept_string << endl;
 		while_dfa->reset();
 	}
-
+    
 	cout << "[ End ]" << endl;
 	return 0;
 }
@@ -89,18 +89,20 @@ int input_test_cases(string path) {
 int scanner_test(string filename) {
 	cout << "[ Scanner Test ]" << endl;
 	shared_ptr<Input> test_input = Input::open_file(filename);
-	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
-	for (int i = 0; i < 150; i++) {
-        TokenPtr t = scanner->scan_one();
-        if (t != nullptr) {
-            report_msg_type("Token", get_token_info(t->get_token()).first);
-            report_msg_type("Lexeme", t->get_lexeme());
-        } else {
-            report_error("Scan Error", "Token returned was nil");
-        }
+    if (test_input != nullptr) {
+        shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(test_input));
+        TokenPtr t;
+        do {
+            t = scanner->scan_one();
+            if (t == nullptr) {
+                report_error("Scan Error", "Token returned was invalid");
+            }
+        } while (t->get_token() != MP_EOF);
+        scanner->display_tokens();
+        scanner->write_tokens_tof(string(filename + "-tokens.txt"));
+    } else {
+        return -1;
     }
-	scanner->display_tokens();
-	scanner->write_tokens_tof(string(filename + "-tokens.txt"));
 	cout << "[ End ]" << endl;
 	return 0;
 }
@@ -108,11 +110,14 @@ int scanner_test(string filename) {
 int parser_test(string filename) {
 	cout << "[ Parser Test ]" << endl;
 	shared_ptr<Input> input = Input::open_file(filename);
-	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
-    shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
-    new SemanticAnalyzer());
-	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
-	parser->parse();
+    if (input != nullptr) {
+        shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
+        shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
+                                                                         new SemanticAnalyzer());
+        shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
+        parser->parse();
+        parser->get_analyzer()->get_ast()->display_tree();
+    }
     cout << "[ End ]" << endl;
 	return 0;
 }
@@ -120,12 +125,14 @@ int parser_test(string filename) {
 int symbol_test(string filename) {
 	cout << "[ Symbol Table Test ]" << endl;
 	shared_ptr<Input> input = Input::open_file(filename);
-	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
-    shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
+    if (input != nullptr) {
+        shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
+        shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
                                                                          new SemanticAnalyzer());
-	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
-	parser->parse();
-    parser->get_analyzer()->print_symbols();
+        shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
+        parser->parse();
+        parser->get_analyzer()->print_symbols();
+    }
     cout << "[ End ]" << endl;
 	return 0;
 }
@@ -133,12 +140,18 @@ int symbol_test(string filename) {
 int compile_chain(string filename) {
     cout << "[ Compiling... ]" << endl;
    	shared_ptr<Input> input = Input::open_file(filename);
-	shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
-    shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
-                                                                         new SemanticAnalyzer());
-	shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
-	parser->parse();
-    parser->produce_code();
+    if (input != nullptr) {
+        shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
+        shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
+                                                                             new SemanticAnalyzer());
+        shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
+        parser->parse();
+        cout << endl;
+        parser->produce_code();
+        report_msg_type("Success", "Compilation terminated successfully");
+    } else {
+        return -1;
+    }
     cout << "[ End ]" << endl;
     return 0;
 }

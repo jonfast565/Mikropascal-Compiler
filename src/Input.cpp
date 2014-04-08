@@ -35,17 +35,19 @@ Input::Input(string filename) {
 
 InputPtr Input::open_file(string filename) {
 	ifstream test_file(filename, ios::in|ios::binary|ios::ate);
-    if (test_file.is_open()) {
+    if (test_file.is_open() && test_file.good()) {
         test_file.close();
         return InputPtr(new Input(filename));
     }
-    else
+    else {
+        report_msg_type("Invalid File Path", "Check to ensure path is correct");
         return nullptr;
+    }
 }
 
 StringPtr Input::detach_input() {
 	// copy and return detached input
-	return shared_ptr<string>(new string(*this->entire_input));
+    return StringPtr(new string(*this->entire_input));
 }
 
 void Input::print_input() {

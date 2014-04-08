@@ -135,12 +135,6 @@ public:
     void append(CodeBlockPtr block);
     void set_parent(CodeBlockPtr parent);
     void set_analyzer(SemanticAnalyzerPtr analyzer);
-    BlockType get_block_type();
-    SemanticAnalyzerPtr get_analyzer();
-    CodeBlockPtr get_parent();
-    CodeBlockList::iterator inner_begin();
-    CodeBlockList::iterator inner_end();
-    SymbolPtr translate(TokenPtr token);
     unsigned int get_nesting_level();
     bool check_filter_size(SymbolListPtr filtered);
     static bool is_operator(SymbolPtr character);
@@ -153,6 +147,12 @@ public:
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);
+    BlockType get_block_type();
+    SemanticAnalyzerPtr get_analyzer();
+    CodeBlockPtr get_parent();
+    CodeBlockList::iterator inner_begin();
+    CodeBlockList::iterator inner_end();
+    SymbolPtr translate(TokenPtr token);
 };
 
 class ProgramBlock: public CodeBlock {
@@ -312,6 +312,7 @@ private:
     bool processed;
     // labels for code generation
     unsigned int label_count;
+    // file for writing stuff
 public:
     SemanticAnalyzer();
     virtual ~SemanticAnalyzer() = default;

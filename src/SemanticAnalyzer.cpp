@@ -55,20 +55,20 @@ AbstractNodePtr AbstractTree::get_current_parent() {
 
 void AbstractTree::display_tree() {
     // display tree at the root, which is where it should be
-    report_msg("AST Printable Tree");
+    report_msg("Printable AST: ");
     AbstractStackPtr loop = AbstractStackPtr(new AbstractNodeStack());
     loop->push(this->iterable);
     while (!loop->empty()) {
         AbstractNodePtr current = loop->top();
         loop->pop();
-        if (current->get_is_rule()) {
+        if (current->get_is_rule() && !current->get_is_rule()) {
             report_msg_type("AST Rule",
                             get_rule_info(current->get_parse_type()));
             this->push_children(current, loop);
         } else if (current->get_is_epsilon()) {
             report_msg("AST Epsilon");
         } else {
-            report_msg_type("AST Token",
+            report_msg_type("AST Match",
                             get_token_info(current->get_token()->get_token()).first
                             + ": " + current->get_token()->get_lexeme());
         }
@@ -1094,6 +1094,9 @@ void ConditionalBlock::generate_pre() {
                 // if there's an else part, jump on false to else
                 write_raw("BR " + extender->else_label + "\n");
             }
+        } else {
+            // beginning of if statement with no else
+            write_raw("BR " + this->exit_label + "\n");
         }
         // begin the if body part with a label
         write_raw(this->body_label + ":\n");
@@ -1119,6 +1122,9 @@ void ConditionalBlock::generate_post() {
                 // write the exit label
                 write_raw(extender->else_label + ":\n");
             }
+        } else {
+            // end of if statement with no else
+            write_raw(this->exit_label + ":\n");
         }
     }
 }
