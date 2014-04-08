@@ -1046,7 +1046,10 @@ bool LoopBlock::validate() {
 void ConditionalBlock::catch_token(TokenPtr symbol) {
     if (symbol->get_token() != MP_IF
         && symbol->get_token() != MP_THEN
-        && symbol->get_token() != MP_ELSE) {
+        && symbol->get_token() != MP_ELSE
+        && symbol->get_token() != MP_BEGIN
+        && symbol->get_token() != MP_END
+        && symbol->get_token() != MP_SEMI_COLON) {
         this->unprocessed->push_back(symbol);
     }
 }
@@ -1071,28 +1074,47 @@ void ConditionalBlock::preprocess() {
 }
 
 void ConditionalBlock::generate_pre() {
-    // generate condition
-    VarType result = this->generate_expr(this->temp_symbols);
-    if (result != BOOLEAN) {
-        report_msg_type("Semantic Error",
-                        "Conditional expression doesn't evaluate to boolean value.");
-    }
-    write_raw("\nBRFS " + this->body_label);
-    if (this->connected != nullptr) {
-        ConditionalBlockPtr if_else_block = static_pointer_cast<ConditionalBlock>(this->connected);
-        if (if_else_block->get_conditional_type() == COND_ELSE) {
-            write_raw("\nBR " + this->else_label);
-        } else {
-            write_raw("\nBR " + this->exit_label);
+    // generate condition if
+    if (this->get_conditional_type() == COND_IF) {
+        VarType result = this->generate_expr(this->temp_symbols);
+        if (result != BOOLEAN) {
+            report_msg_type("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.");
         }
-    } else {
-        write_raw("");
+        // true, jump to the body
+        write_raw("\nBRTS " + this->body_label);
+        if (this->connected != nullptr) {
+            ConditionalBlockPtr extender = static_pointer_cast<ConditionalBlock>(this->connected);
+            if (extender->get_conditional_type() == COND_ELSE) {
+                // if there's an else part, jump on false to else
+                write_raw("BR " + extender->else_label + "\n");
+            }
+        }
+        // begin the if body part with a label
+        write_raw(this->body_label + ":\n");
     }
 }
 
 void ConditionalBlock::generate_post() {
-    if (this->connected != nullptr) {
-        
+    // generate the final condition
+    if (this->cond == COND_ELSE) {
+        // if there's an else statement...
+        // break from previous if statement to exit
+        write_raw("BR " + this->exit_label + "\n");
+        // write an exit label (end of the if statement)
+        // beginning of the else statement
+        write_raw(this->exit_label + ":\n");
+    } else if (this->cond == COND_IF) {
+        if (this->connected != nullptr) {
+            // if there is an else statement
+            ConditionalBlockPtr extender = static_pointer_cast<ConditionalBlock>(this->connected);
+            if (extender->get_conditional_type() == COND_ELSE) {
+                // at the end of the else, branch to the exit
+                write_raw("BR " + extender->exit_label + "\n");
+                // write the exit label
+                write_raw(extender->else_label + ":\n");
+            }
+        }
     }
 }
 
