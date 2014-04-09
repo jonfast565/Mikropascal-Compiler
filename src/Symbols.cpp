@@ -254,6 +254,10 @@ SymbolListPtr SymTable::data_in_scope_at(string id, unsigned int level) {
     return SymTable::filter_nest_level(SymTable::filter_data(this->find(id)), level);
 }
 
+SymCallablePtr SymTable::get_last_callable() {
+    return this->last_callable;
+}
+
 SymType Symbol::get_symbol_type() {
     return this->symbol_type;
 }

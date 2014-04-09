@@ -17,7 +17,6 @@ class SymCallable;
 class SymData;
 class SymArgument;
 class SymTable;
-struct BlockInfo;
 class SymConstant;
 
 // type predecls
@@ -243,6 +242,7 @@ public:
     static SymbolListPtr filter_callable(SymbolListPtr filterable);
     static SymbolListPtr filter_nest_level(SymbolListPtr filterable, unsigned int nest_level);
     SymbolListPtr data_in_scope_at(string id, unsigned int level);
+    SymCallablePtr get_last_callable();
 };
 
 class SymCallable : public Symbol {

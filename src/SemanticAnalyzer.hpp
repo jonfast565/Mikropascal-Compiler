@@ -19,7 +19,7 @@ class SemanticAnalyzer;
 class CodeBlock;
 class AssignmentBlock;
 class ConditionalBlock;
-
+class ActivationBlock;
 
 using AbstractNodePtr = shared_ptr<AbstractNode>;
 using AbstractNodeList = vector<AbstractNodePtr>;
@@ -36,6 +36,7 @@ using CodeBlockList = vector<CodeBlockPtr>;
 using CodeBlockListPtr = shared_ptr<CodeBlockList>;
 using AssignmentBlockPtr = shared_ptr<AssignmentBlock>;
 using ConditionalBlockPtr = shared_ptr<ConditionalBlock>;
+using ActivationBlockPtr = shared_ptr<ActivationBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -90,7 +91,8 @@ enum BlockType {
     LOOP_BLOCK,
     CONDITIONAL_BLOCK,
     ASSIGNMENT_BLOCK,
-    ACTIVATION_BLOCK
+    ACTIVATION_BLOCK,
+    FP_DECL_BLOCK
 };
 
 enum InstructionType {
@@ -106,6 +108,7 @@ public:
     virtual void generate_post() = 0;
     virtual bool validate() = 0;
     virtual void preprocess() = 0;
+    virtual ~Generator() = default;
 };
 
 class CodeBlock: public Generator {
@@ -127,9 +130,9 @@ public:
         this->valid = true;
     };
     virtual ~CodeBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
     bool validate();
     virtual void catch_token(TokenPtr symbol);
     void append(CodeBlockPtr block);
@@ -264,7 +267,6 @@ public:
     void generate_pre();
     void generate_post();
     void preprocess();
-    void catch_token(TokenPtr symbol);
     bool validate();
     SymbolPtr get_assigner();
     VarType get_expr_type();
@@ -281,17 +283,35 @@ enum ActivityType {
     CALL
 };
 
+class FPDeclBlock: public CodeBlock {
+private:
+    string program_section;
+    bool jump_around;
+public:
+    FPDeclBlock(bool jump_around): CodeBlock(FP_DECL_BLOCK, nullptr),
+    jump_around(jump_around) {
+        this->program_section = "";
+    }
+    virtual ~FPDeclBlock(){}
+    void generate_pre();
+    void generate_post();
+    void preprocess();
+    bool validate();
+};
+
 class ActivationBlock: public CodeBlock {
 private:
-    SymbolPtr record;
+    SymCallablePtr record;
     ActivationType activation;
     ActivityType activity;
+    string begin_label;
 public:
-    ActivationBlock(ActivationType activation, ActivityType activity, SymbolPtr record):
+    ActivationBlock(ActivationType activation, ActivityType activity, SymCallablePtr record):
     CodeBlock(ACTIVATION_BLOCK, nullptr), activity(activity), activation(activation) {
         this->record = record;
+        this->begin_label = "";
     }
-    virtual ~ActivationBlock() = default;
+    virtual ~ActivationBlock(){};
     void generate_pre();
     void generate_post();
     void preprocess();

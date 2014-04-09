@@ -142,8 +142,8 @@ TokenPtr AbstractNode::get_token() {
     }
 }
 
-void AbstractNode::set_parent(AbstractNodePtr parent_node) {
-	this->parent_node = parent_node;
+void AbstractNode::set_parent(AbstractNodePtr new_parent_node) {
+	this->parent_node = new_parent_node;
 }
 
 AbstractNodePtr AbstractNode::get_parent() {
@@ -329,8 +329,8 @@ bool SemanticAnalyzer::is_data_in_callable(string data_id, string callable_id) {
             // ensure the data item is not global
             if (owner_callable != nullptr) {
                 // get the first callable and check for name similarity
-                for (auto i = callables->begin(); i != callables->end(); i++) {
-                    if ((*i)->get_symbol_name().compare(owner_callable->get_symbol_name()) == 0) {
+                for (auto j = callables->begin(); j != callables->end(); j++) {
+                    if ((*j)->get_symbol_name().compare(owner_callable->get_symbol_name()) == 0) {
                         // it's there
                         return true;
                     }
@@ -479,14 +479,14 @@ bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
 }
 
 unsigned int CodeBlock::get_nesting_level() {
-    CodeBlockPtr parent_block = this->get_parent();
+    CodeBlockPtr temp_parent_block = CodeBlockPtr(this);
     unsigned int level_found = 0;
-    while(parent_block != nullptr) {
+    while(temp_parent_block != nullptr) {
         // if inside a function or procedure body
-        if (parent_block->get_block_type() == ACTIVATION_BLOCK) {
+        if (temp_parent_block->get_block_type() == ACTIVATION_BLOCK) {
             level_found++;
         }
-        parent_block = parent_block->get_parent();
+        temp_parent_block = parent_block->get_parent();
     }
     return level_found;
 }
@@ -808,7 +808,8 @@ void AssignmentBlock::preprocess() {
          i != this->unprocessed->end(); i++) {
         if (first_id == true
             && (*i)->get_token() == MP_ID) {
-            this->assigner = this->translate(*i);
+            TokenPtr p = *i;
+            this->assigner = this->translate(p);
             first_id = false;
         } else if ((*i)->get_token() == MP_ASSIGNMENT) {
             continue;
@@ -818,10 +819,6 @@ void AssignmentBlock::preprocess() {
     }
     // convert to postifx
     convert_postfix();
-}
-
-void AssignmentBlock::catch_token(TokenPtr symbol) {
-    this->unprocessed->push_back(symbol);
 }
 
 SymbolPtr AssignmentBlock::get_assigner() {
@@ -1129,8 +1126,8 @@ void ConditionalBlock::generate_post() {
     }
 }
 
-void ConditionalBlock::set_connected(ConditionalBlockPtr connected) {
-    this->connected = connected;
+void ConditionalBlock::set_connected(ConditionalBlockPtr new_connected) {
+    this->connected = new_connected;
 }
 
 bool ConditionalBlock::validate() {
@@ -1141,8 +1138,8 @@ CondType ConditionalBlock::get_conditional_type() {
     return this->cond;
 }
 
-void ConditionalBlock::set_else_label(string else_label) {
-    this->else_label = else_label;
+void ConditionalBlock::set_else_label(string new_else_label) {
+    this->else_label = new_else_label;
 }
 
 void ConditionalBlock::generate_exit_label() {
@@ -1151,4 +1148,54 @@ void ConditionalBlock::generate_exit_label() {
 
 string ConditionalBlock::get_exit_label() {
     return this->exit_label;
+}
+
+// FP Decl part block
+void FPDeclBlock::generate_pre() {
+    write_raw("BR " + this->program_section + "\n");
+}
+
+void FPDeclBlock::generate_post() {
+    write_raw("" + this->program_section + ":");
+}
+
+void FPDeclBlock::preprocess() {
+    this->program_section = this->parent_analyzer->generate_label();
+}
+
+bool FPDeclBlock::validate() {
+    if (this->parent_analyzer == nullptr
+        || this->program_section.compare("") == 0) {
+        this->valid = false;
+        return false;
+    } else {
+        this->valid = true;
+        return true;
+    }
+}
+
+// Activation block types (body and call)
+void ActivationBlock::generate_pre() {
+    // do nothing at the moment
+    write_raw(this->begin_label + ":");
+}
+
+void ActivationBlock::generate_post() {
+    write_raw("RET");
+}
+
+void ActivationBlock::preprocess() {
+    // get a label if declaration
+    this->begin_label = this->parent_analyzer->generate_label();
+}
+
+bool ActivationBlock::validate() {
+    if (this->parent_analyzer != nullptr
+        && this->record != nullptr) {
+        this->valid = true;
+        return true;
+    } else {
+        this->valid = false;
+        return false;
+    }
 }

@@ -99,7 +99,6 @@ int scanner_test(string filename) {
             }
         } while (t->get_token() != MP_EOF);
         scanner->display_tokens();
-        scanner->write_tokens_tof(string(filename + "-tokens.txt"));
     } else {
         return -1;
     }

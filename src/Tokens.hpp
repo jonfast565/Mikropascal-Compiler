@@ -288,7 +288,7 @@ public:
         this->lexeme = "No Token";
         this->error = "No Error";
     }
-	virtual ~Token() = default;
+	virtual ~Token() {};
 	void set_line(unsigned long line) {
 		this->line = line;
 	}

@@ -13,6 +13,7 @@ Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
     this->error_reported = false;
     this->analyzer = analyzer;
     this->symbols = TokenListPtr(new TokenList());
+    this->symbols->reserve(100);
     this->sym_collect = false;
     this->gen_collect = shared_ptr<stack<int>>(new stack<int>);
 }
@@ -182,7 +183,9 @@ void Parser::parse_block() {
     this->go_into(BLOCK);
 	report_parse("PARSE_BLOCK", this->parse_depth);
 	this->parse_variable_declaration_part();
+    //this->begin_generate_callable_part(true);
 	this->parse_procedure_and_function_declaration_part();
+    //this->end_generate();
 	this->parse_statement_part();
 	this->return_from();
     this->less_indent();
@@ -294,7 +297,9 @@ void Parser::parse_procedure_declaration() {
 	report_parse("PARSE_PROCEDURE_DECL", this->parse_depth);
 	this->parse_procedure_heading();
 	this->match(MP_SEMI_COLON);
+    //this->begin_generate_callable_1(PROCEDURE, DEFINITION);
 	this->parse_block();
+    //this->end_generate();
 	this->match(MP_SEMI_COLON);
     this->analyzer->get_symtable()->return_from();
     this->return_from();
@@ -307,7 +312,9 @@ void Parser::parse_function_declaration() {
 	report_parse("PARSE_FUNCTION_DECL", this->parse_depth);
 	this->parse_function_heading();
 	this->match(MP_SEMI_COLON);
+    //this->begin_generate_callable_1(FUNCTION, DEFINITION);
 	this->parse_block();
+    //this->end_generate();
 	this->match(MP_SEMI_COLON);
     this->analyzer->get_symtable()->return_from();
     this->return_from();
@@ -1212,6 +1219,24 @@ ConditionalBlockPtr Parser::begin_generate_opt_else() {
     return cond_block;
 }
 
+void Parser::begin_generate_callable_part(bool jump_around) {
+    this->get_analyzer()->append_block(CodeBlockPtr(new FPDeclBlock(jump_around)));
+    this->begin_generate();
+}
+
+void Parser::begin_generate_callable_1(ActivationType activation, ActivityType activity) {
+    SymCallablePtr last_callable = this->get_analyzer()->get_symtable()->get_last_callable();
+    ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, last_callable));
+    this->get_analyzer()->append_block(act_block);
+    this->begin_generate();
+}
+
+void Parser::begin_generate_callable(ActivationType activation, ActivityType activity, SymCallablePtr strecord) {
+    ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, strecord));
+    this->get_analyzer()->append_block(act_block);
+    this->begin_generate();
+}
+
 void Parser::begin_generate() {
     this->gen_collect->push(0);
 }
@@ -1224,7 +1249,6 @@ void Parser::end_generate() {
 void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
     this->sym_collect = false;
     // parse symbols into table
-    // debug: this->print_sym_buffer();
     
     // get the symbol table
     SymTablePtr table = this->get_analyzer()->get_symtable();
