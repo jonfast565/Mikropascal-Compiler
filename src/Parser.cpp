@@ -13,7 +13,6 @@ Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {
     this->error_reported = false;
     this->analyzer = analyzer;
     this->symbols = TokenListPtr(new TokenList());
-    this->symbols->reserve(100);
     this->sym_collect = false;
     this->gen_collect = shared_ptr<stack<int>>(new stack<int>);
 }
@@ -145,6 +144,7 @@ void Parser::parse_system_goal() {
 void Parser::produce_code() {
     // generate code
     if (this->error_reported == false){
+        this->scanner.reset();
         this->analyzer->generate_all();
     } else {
         report_msg_type("Impossible", "Parse failed, code cannot be generated");
@@ -1191,17 +1191,20 @@ VarType Parser::to_var(TokType token_type) {
 }
 
 void Parser::begin_generate_assignment() {
-    this->get_analyzer()->append_block(CodeBlockPtr(new AssignmentBlock(false)));
+    AssignmentBlockPtr assign_block = AssignmentBlockPtr(new AssignmentBlock(false));
+    this->get_analyzer()->append_block(assign_block);
     this->begin_generate();
 }
 
 void Parser::begin_generate_io_action(IOAction action, bool newline) {
-    this->get_analyzer()->append_block(CodeBlockPtr(new IOBlock(action, newline)));
+    IOBlockPtr io_block = IOBlockPtr(new IOBlock(action, newline));
+    this->get_analyzer()->append_block(io_block);
     this->begin_generate();
 }
 
 void Parser::begin_generate_loop(LoopType loop) {
-    this->get_analyzer()->append_block(CodeBlockPtr(new LoopBlock(loop)));
+    LoopBlockPtr loop_block = LoopBlockPtr(new LoopBlock(loop));
+    this->get_analyzer()->append_block(loop_block);
     this->begin_generate();
 }
 

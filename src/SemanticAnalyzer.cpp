@@ -99,7 +99,7 @@ AbstractNode::AbstractNode(AbstractNodePtr parent_node, ParseType parse_type) {
     this->token = nullptr;
 }
 
-AbstractNode::AbstractNode(shared_ptr<Token> token) {
+AbstractNode::AbstractNode(TokenPtr token) {
     this->child_nodes = nullptr;
     this->parse_type = LITERAL;
     this->is_root = false;
@@ -169,7 +169,7 @@ SemanticAnalyzer::SemanticAnalyzer() {
     this->condensedst = CodeBlockPtr(new ProgramBlock());
     this->condensedst->set_analyzer(SemanticAnalyzerPtr(this));
     this->label_count = 0;
-    this->block_stack = shared_ptr<stack<CodeBlockPtr>>(new stack<CodeBlockPtr>);
+    this->block_stack = unique_ptr<stack<CodeBlockPtr>>(new stack<CodeBlockPtr>);
     this->block_stack->push(this->condensedst);
 }
 
@@ -230,7 +230,8 @@ bool SemanticAnalyzer::is_data_scoped(string data_id) {
 
 void SemanticAnalyzer::generate_all() {
     // generate starting at the top
-    generate_one(this->condensedst);
+    CodeBlockPtr top = this->condensedst;
+    generate_one(top);
 }
 
 void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
@@ -461,10 +462,6 @@ void CodeBlock::append(CodeBlockPtr block) {
     this->block_list->push_back(block);
 }
 
-BlockType CodeBlock::get_block_type() {
-    return this->block_type;
-}
-
 bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
     if (filtered->size() > 1
         || filtered->size() == 0) {
@@ -493,10 +490,6 @@ unsigned int CodeBlock::get_nesting_level() {
 
 void CodeBlock::set_analyzer(SemanticAnalyzerPtr analyzer) {
     this->parent_analyzer = analyzer;
-}
-
-SemanticAnalyzerPtr CodeBlock::get_analyzer() {
-    return this->parent_analyzer;
 }
 
 void CodeBlock::generate_pre() {
@@ -529,7 +522,7 @@ void CodeBlock::preprocess() {
 
 void CodeBlock::convert_postfix() {
     // data structs
-    shared_ptr<stack<SymbolPtr>> op_stack = shared_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
+    unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
     SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
     
     // shunting yard
@@ -750,7 +743,7 @@ void ProgramBlock::generate_pre() {
     // generate program entry point
     write_raw("MOV SP D0");
     // push begin symbols
-    for (auto i = temp_symbols->begin(); i != temp_symbols->end(); i++) {
+    for (auto i = get_symbol_list()->begin(); i != get_symbol_list()->end(); i++) {
         if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
             write_raw("PUSH #\"\"");
         } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
@@ -769,7 +762,7 @@ void ProgramBlock::generate_post() {
 
 bool ProgramBlock::validate() {
     // do nothing... it's the program beginning
-    return this->valid;
+    return this->get_valid();
 }
 
 void ProgramBlock::preprocess() {
@@ -777,13 +770,13 @@ void ProgramBlock::preprocess() {
     SymbolListPtr global_vars = this->get_analyzer()->get_symtable()->get_global_vars();
     // copy into local table
     for (auto i = global_vars->begin(); i != global_vars->end(); i++) {
-        this->temp_symbols->push_back(*i);
+        this->get_symbol_list()->push_back(*i);
     }
 }
 
 // Assignment Block stuff
 void AssignmentBlock::generate_pre() {
-    this->expr_type = this->generate_expr(this->temp_symbols);
+    this->expr_type = this->generate_expr(this->get_symbol_list());
 }
 
 void AssignmentBlock::generate_post() {
@@ -795,26 +788,28 @@ void AssignmentBlock::generate_post() {
 }
 
 bool AssignmentBlock::validate() {
-    // do nothing...
-    return this->valid;
+    return this->get_valid();
 }
 
 void AssignmentBlock::preprocess() {
+    assert(this->get_unprocessed()->size());
     bool first_id = true;
     if (this->expr_only) {
         first_id = false;
     }
-    for (auto i = this->unprocessed->begin();
-         i != this->unprocessed->end(); i++) {
+    for (auto i = this->get_unprocessed()->begin();
+         i != this->get_unprocessed()->end(); i++) {
         if (first_id == true
             && (*i)->get_token() == MP_ID) {
-            TokenPtr p = *i;
-            this->assigner = this->translate(p);
+            this->assigner = this->translate(*i);
             first_id = false;
         } else if ((*i)->get_token() == MP_ASSIGNMENT) {
             continue;
         } else {
-            this->temp_symbols->push_back(this->translate(*i));
+            SymbolPtr p = this->translate(*i);
+            if (p != nullptr) {
+                this->get_symbol_list()->push_back(p);
+            }
         }
     }
     // convert to postifx
@@ -831,6 +826,7 @@ VarType AssignmentBlock::get_expr_type() {
 
 // IO Block stuff
 void IOBlock::generate_pre() {
+    assert(this->get_unprocessed()->size());
     for (auto i = this->args->begin(); i !=
          this->args->end(); i++) {
         if ((*i)->get_symbol_type() != SYM_CONSTANT) {
@@ -897,7 +893,7 @@ void IOBlock::generate_post() {
 
 bool IOBlock::validate() {
     // do nothing...
-    return this->valid;
+    return this->get_valid();
 }
 
 void IOBlock::catch_token(TokenPtr token) {
@@ -906,14 +902,16 @@ void IOBlock::catch_token(TokenPtr token) {
         || token->get_token() == MP_INT_LITERAL
         || token->get_token() == MP_STRING_LITERAL
         || token->get_token() == MP_FLOAT_LITERAL) {
-        this->unprocessed->push_back(token);
+        this->get_unprocessed()->push_back(token);
     }
 }
 
 void IOBlock::preprocess() {
-    for (auto i = this->unprocessed->begin();
-         i != this->unprocessed->end(); i++) {
-        this->args->push_back(this->translate(*i));
+    assert(this->get_unprocessed()->size());
+    for (auto i = this->get_unprocessed()->begin();
+         i != this->get_unprocessed()->end(); i++) {
+        SymbolPtr p = this->translate(*i);
+        this->args->push_back(p);
     }
 }
 
@@ -922,7 +920,7 @@ void LoopBlock::generate_pre() {
         write_raw(this->body_label + ":\n");
     } else if (this->type == WHILELOOP) {
         write_raw(this->cond_label + ":\n");
-        VarType result = this->generate_expr(this->temp_symbols);
+        VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
             report_msg_type("Semantic Error",
                             "Conditional expression doesn't evaluate to boolean value.");
@@ -934,9 +932,9 @@ void LoopBlock::generate_pre() {
         // parse the assignment
         // process the assignment
         AssignmentBlockPtr assignment = AssignmentBlockPtr(new AssignmentBlock(false));
-        assignment->set_analyzer(this->parent_analyzer);
+        assignment->set_analyzer(this->get_analyzer());
         for (auto i = 0; i < 3; i++) {
-            assignment->catch_token((*this->unprocessed)[i]);
+            assignment->catch_token((*this->get_unprocessed())[i]);
         }
         // generate its code
         assignment->preprocess();
@@ -946,18 +944,18 @@ void LoopBlock::generate_pre() {
         write_raw(this->cond_label + ":\n");
         // process the ordinal expression
         AssignmentBlockPtr ordinal_expr = AssignmentBlockPtr(new AssignmentBlock(true));
-        ordinal_expr->set_analyzer(this->parent_analyzer);
-        for (auto i = 4; i < this->unprocessed->size(); i++) {
-            ordinal_expr->catch_token((*this->unprocessed)[i]);
+        ordinal_expr->set_analyzer(this->get_analyzer());
+        for (auto i = 4; i < this->get_unprocessed()->size(); i++) {
+            ordinal_expr->catch_token((*this->get_unprocessed())[i]);
         }
         // get the comparison components for the ordinal expr
-        TokenPtr incrementer = (*this->unprocessed)[3];
+        TokenPtr incrementer = (*this->get_unprocessed())[3];
         if (incrementer->get_token() == MP_TO) {
             ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, ">", -1, -1)));
         } else if (incrementer->get_token() == MP_DOWNTO) {
             ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "<", -1, -1)));
         }
-        ordinal_expr->catch_token((*this->unprocessed)[0]);
+        ordinal_expr->catch_token((*this->get_unprocessed())[0]);
         // generate its code
         ordinal_expr->preprocess();
         ordinal_expr->generate_pre();
@@ -970,7 +968,7 @@ void LoopBlock::generate_pre() {
 void LoopBlock::generate_post() {
     if (this->type == RPTUNTLLOOP) {
         write_raw(this->cond_label + ":\n");
-        VarType result = this->generate_expr(this->temp_symbols);
+        VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
             report_msg_type("Semantic Error",
                             "Conditional expression doesn't evaluate to boolean value.");
@@ -983,13 +981,13 @@ void LoopBlock::generate_post() {
         write_raw(this->exit_label + ":\n");
     } else if (this->type == FORLOOP) {
         // get the incrementer token
-        TokenPtr incrementer = (*this->unprocessed)[3];
+        TokenPtr incrementer = (*this->get_unprocessed())[3];
         if (incrementer->get_token() == MP_TO) {
             // generate an incrementer
             AssignmentBlockPtr inc = AssignmentBlockPtr(new AssignmentBlock(false));
-            inc->set_analyzer(this->parent_analyzer);
-            inc->catch_token((*this->unprocessed)[0]);
-            inc->catch_token((*this->unprocessed)[0]);
+            inc->set_analyzer(this->get_analyzer());
+            inc->catch_token((*this->get_unprocessed())[0]);
+            inc->catch_token((*this->get_unprocessed())[0]);
             inc->catch_token(TokenPtr(new Token(MP_PLUS, "+", -1, -1)));
             inc->catch_token(TokenPtr(new Token(MP_INT_LITERAL, "1", -1, -1)));
             inc->preprocess();
@@ -998,9 +996,9 @@ void LoopBlock::generate_post() {
         } else if (incrementer->get_token() == MP_DOWNTO) {
             // generate a decrementer
             AssignmentBlockPtr dec = AssignmentBlockPtr(new AssignmentBlock(false));
-            dec->set_analyzer(this->parent_analyzer);
-            dec->catch_token((*this->unprocessed)[0]);
-            dec->catch_token((*this->unprocessed)[0]);
+            dec->set_analyzer(this->get_analyzer());
+            dec->catch_token((*this->get_unprocessed())[0]);
+            dec->catch_token((*this->get_unprocessed())[0]);
             dec->catch_token(TokenPtr(new Token(MP_MINUS, "-", -1, -1)));
             dec->catch_token(TokenPtr(new Token(MP_INT_LITERAL, "1", -1, -1)));
             dec->preprocess();
@@ -1013,15 +1011,15 @@ void LoopBlock::generate_post() {
 }
 
 void LoopBlock::preprocess() {
-    this->cond_label = this->parent_analyzer->generate_label();
-    this->body_label = this->parent_analyzer->generate_label();
-    this->exit_label = this->parent_analyzer->generate_label();
+    this->cond_label = this->get_analyzer()->generate_label();
+    this->body_label = this->get_analyzer()->generate_label();
+    this->exit_label = this->get_analyzer()->generate_label();
     if (this->type == WHILELOOP
         || this->type == RPTUNTLLOOP) {
         // process the boolean statement
-        for (auto i = this->unprocessed->begin();
-             i != this->unprocessed->end(); i++) {
-            this->temp_symbols->push_back(this->translate(*i));
+        for (auto i = this->get_unprocessed()->begin();
+             i != this->get_unprocessed()->end(); i++) {
+            this->get_symbol_list()->push_back(this->translate(*i));
         }
         this->convert_postfix();
     }
@@ -1036,7 +1034,7 @@ void LoopBlock::catch_token(TokenPtr symbol) {
         && symbol->get_token() != MP_BEGIN
         && symbol->get_token() != MP_END
         && symbol->get_token() != MP_SEMI_COLON) {
-        this->unprocessed->push_back(symbol);
+        this->get_unprocessed()->push_back(symbol);
     }
 }
 
@@ -1052,14 +1050,14 @@ void ConditionalBlock::catch_token(TokenPtr symbol) {
         && symbol->get_token() != MP_BEGIN
         && symbol->get_token() != MP_END
         && symbol->get_token() != MP_SEMI_COLON) {
-        this->unprocessed->push_back(symbol);
+        this->get_unprocessed()->push_back(symbol);
     }
 }
 
 void ConditionalBlock::preprocess() {
     if (this->cond == COND_IF) {
-        this->body_label = this->parent_analyzer->generate_label();
-        this->exit_label = this->parent_analyzer->generate_label();
+        this->body_label = this->get_analyzer()->generate_label();
+        this->exit_label = this->get_analyzer()->generate_label();
         if (this->connected != nullptr) {
             ConditionalBlockPtr else_block = static_pointer_cast<ConditionalBlock>(this->connected);
             if (else_block->get_conditional_type() == COND_ELSE) {
@@ -1068,9 +1066,9 @@ void ConditionalBlock::preprocess() {
             }
         }
     }
-    for (auto i = this->unprocessed->begin();
-         i != this->unprocessed->end(); i++) {
-        this->temp_symbols->push_back(this->translate(*i));
+    for (auto i = this->get_unprocessed()->begin();
+         i != this->get_unprocessed()->end(); i++) {
+        this->get_symbol_list()->push_back(this->translate(*i));
     }
     this->convert_postfix();
 }
@@ -1078,7 +1076,7 @@ void ConditionalBlock::preprocess() {
 void ConditionalBlock::generate_pre() {
     // generate condition if
     if (this->get_conditional_type() == COND_IF) {
-        VarType result = this->generate_expr(this->temp_symbols);
+        VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
             report_msg_type("Semantic Error",
                             "Conditional expression doesn't evaluate to boolean value.");
@@ -1143,7 +1141,7 @@ void ConditionalBlock::set_else_label(string new_else_label) {
 }
 
 void ConditionalBlock::generate_exit_label() {
-    this->exit_label = this->parent_analyzer->generate_label();
+    this->exit_label = this->get_analyzer()->generate_label();
 }
 
 string ConditionalBlock::get_exit_label() {
@@ -1160,16 +1158,16 @@ void FPDeclBlock::generate_post() {
 }
 
 void FPDeclBlock::preprocess() {
-    this->program_section = this->parent_analyzer->generate_label();
+    this->program_section = this->get_analyzer()->generate_label();
 }
 
 bool FPDeclBlock::validate() {
-    if (this->parent_analyzer == nullptr
+    if (this->get_analyzer() == nullptr
         || this->program_section.compare("") == 0) {
-        this->valid = false;
+        this->set_valid(false);
         return false;
     } else {
-        this->valid = true;
+        this->set_valid(true);
         return true;
     }
 }
@@ -1186,16 +1184,16 @@ void ActivationBlock::generate_post() {
 
 void ActivationBlock::preprocess() {
     // get a label if declaration
-    this->begin_label = this->parent_analyzer->generate_label();
+    this->begin_label = this->get_analyzer()->generate_label();
 }
 
 bool ActivationBlock::validate() {
-    if (this->parent_analyzer != nullptr
+    if (this->get_analyzer() != nullptr
         && this->record != nullptr) {
-        this->valid = true;
+        this->set_valid(true);
         return true;
     } else {
-        this->valid = false;
+        this->set_valid(false);
         return false;
     }
 }

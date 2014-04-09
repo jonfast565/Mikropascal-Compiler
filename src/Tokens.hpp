@@ -288,7 +288,11 @@ public:
         this->lexeme = "No Token";
         this->error = "No Error";
     }
-	virtual ~Token() {};
+    
+    Token(const Token& other) : line(other.line), column(other.column), token(other.token),
+    lexeme(other.lexeme), error(other.error){};
+    
+	virtual ~Token() = default;
 	void set_line(unsigned long line) {
 		this->line = line;
 	}

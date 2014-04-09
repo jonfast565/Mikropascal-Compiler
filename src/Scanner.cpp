@@ -17,7 +17,7 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
 	this->consumed = TokenListPtr(new vector<TokenPtr>);
     
     // initialize all FSAs for MP keywords
-	this->fsmachines = shared_ptr<
+	this->fsmachines = unique_ptr<
     vector<FSMachinePtr>>(new vector<FSMachinePtr>);
     
     // create a scan buffer
@@ -288,7 +288,7 @@ TokenPtr Scanner::scan_infinite() {
             // some will accept, since
             // the condition above satisfies it
             // get first high priority accepting machines
-            FSMachinePtr accepting = *(this->accepting()->begin());
+            FSMachinePtr accepting = move(*this->accepting()->begin());
             string token_name = accepting->get_name();
             // create a token
             TokType this_tok = get_token_by_name(token_name);
@@ -365,7 +365,7 @@ TokenPtr Scanner::scan_finite() {
     TokenPtr new_token = TokenPtr(new Token());
     // get first high priority accepting machine
     FSMachineListPtr accepting_list = this->accepting();
-    FSMachinePtr accepting = *(accepting_list->begin());
+    FSMachinePtr accepting = move(*accepting_list->begin());
     string token_name = accepting->get_name();
     // create a token
     TokType this_tok = get_token_by_name(token_name);
@@ -471,7 +471,7 @@ void Scanner::load_keyword_machines() {
          i <= (int) TokType::MP_BOOLEAN; i++) {
 		
         // create new automata for all types
-		FSMachinePtr new_fa = shared_ptr<
+		FSMachinePtr new_fa = unique_ptr<
         FiniteAutomataContainer>(
         new FiniteAutomataContainer(get_token_info((TokType)i).first, true));
 		
@@ -631,7 +631,7 @@ bool Scanner::isalnum(char next) {
 
 bool Scanner::isnum(char next) {
 	// step over a digit
-	FSMachinePtr is_digit = shared_ptr<
+	FSMachinePtr is_digit = unique_ptr<
     FiniteAutomataContainer>(
     new FiniteAutomataContainer("DIGIT", true));
     
@@ -656,7 +656,7 @@ bool Scanner::isnum(char next) {
 
 bool Scanner::isalpha(char next) {
     // step over a letter
-	FSMachinePtr is_letter = shared_ptr<
+	FSMachinePtr is_letter = unique_ptr<
     FiniteAutomataContainer>(
     new FiniteAutomataContainer("LETTER", true));
     

@@ -138,20 +138,23 @@ int symbol_test(string filename) {
 
 int compile_chain(string filename) {
     cout << "[ Compiling... ]" << endl;
-   	shared_ptr<Input> input = Input::open_file(filename);
+   	InputPtr input = Input::open_file(filename);
     if (input != nullptr) {
-        shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
-        shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
-                                                                             new SemanticAnalyzer());
-        shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
+        ScannerPtr scanner = ScannerPtr(new Scanner(input));
+        SemanticAnalyzerPtr analyzer = SemanticAnalyzerPtr(new SemanticAnalyzer());
+        ParserPtr parser = ParserPtr(new Parser(scanner, analyzer));
         parser->parse();
         cout << endl;
-        parser->produce_code();
+        parser->get_analyzer()->generate_all();
         report_msg_type("Success", "Compilation terminated successfully");
     } else {
         return -1;
     }
     cout << "[ End ]" << endl;
+    return 0;
+}
+
+int code_gen_test() {
     return 0;
 }
 

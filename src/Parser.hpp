@@ -16,6 +16,9 @@
 #include "Scanner.hpp"
 #include "SemanticAnalyzer.hpp"
 
+class Parser;
+using ParserPtr = shared_ptr<Parser>;
+
 // Parser Stuff
 class Parser {
 private:

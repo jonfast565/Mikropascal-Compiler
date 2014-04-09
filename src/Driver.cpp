@@ -35,6 +35,8 @@ int main(int argc, char* argv[]) {
                 symbol_test(string(argv[2]));
             } else if (strcmp(argv[1], "-c") == 0) {
                 compile_chain(string(argv[2]));
+            } else if (strcmp(argv[1], "-d")) {
+                code_gen_test();
             } else {
 				report_error("General Error", "Command line args specified are invalid");
             }

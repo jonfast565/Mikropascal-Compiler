@@ -20,6 +20,8 @@ class CodeBlock;
 class AssignmentBlock;
 class ConditionalBlock;
 class ActivationBlock;
+class LoopBlock;
+class IOBlock;
 
 using AbstractNodePtr = shared_ptr<AbstractNode>;
 using AbstractNodeList = vector<AbstractNodePtr>;
@@ -37,6 +39,8 @@ using CodeBlockListPtr = shared_ptr<CodeBlockList>;
 using AssignmentBlockPtr = shared_ptr<AssignmentBlock>;
 using ConditionalBlockPtr = shared_ptr<ConditionalBlock>;
 using ActivationBlockPtr = shared_ptr<ActivationBlock>;
+using LoopBlockPtr = shared_ptr<LoopBlock>;
+using IOBlockPtr = shared_ptr<IOBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -112,7 +116,7 @@ public:
 };
 
 class CodeBlock: public Generator {
-protected:
+private:
     CodeBlockListPtr block_list;
     BlockType block_type;
     TokenListPtr unprocessed;
@@ -130,6 +134,14 @@ public:
         this->valid = true;
     };
     virtual ~CodeBlock() = default;
+    CodeBlockListPtr get_block_list() { return this->block_list; }
+    BlockType get_block_type() { return this->block_type; }
+    TokenListPtr get_unprocessed() { return this->unprocessed; }
+    SymbolListPtr get_symbol_list() { return this->temp_symbols; }
+    CodeBlockPtr get_parent_block() { return this->parent_block; }
+    SemanticAnalyzerPtr get_analyzer() { return this->parent_analyzer; }
+    bool get_valid() { return this->valid; }
+    void set_valid(bool new_valid) { this->valid = new_valid; }
     virtual void generate_pre();
     virtual void generate_post();
     virtual void preprocess();
@@ -150,8 +162,6 @@ public:
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);
-    BlockType get_block_type();
-    SemanticAnalyzerPtr get_analyzer();
     CodeBlockPtr get_parent();
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
@@ -261,8 +271,9 @@ private:
     VarType expr_type;
     bool expr_only;
 public:
-    AssignmentBlock(bool expr_only): CodeBlock(ASSIGNMENT_BLOCK, nullptr),
-    assigner(nullptr), expr_type(VOID), expr_only(expr_only){};
+    AssignmentBlock(bool expr_only): CodeBlock(ASSIGNMENT_BLOCK, nullptr), expr_type(VOID), expr_only(expr_only){
+        this->assigner = SymbolPtr(new SymConstant("", VOID));
+    };
     virtual ~AssignmentBlock() = default;
     void generate_pre();
     void generate_post();
@@ -292,7 +303,7 @@ public:
     jump_around(jump_around) {
         this->program_section = "";
     }
-    virtual ~FPDeclBlock(){}
+    virtual ~FPDeclBlock() = default;
     void generate_pre();
     void generate_post();
     void preprocess();
@@ -311,7 +322,7 @@ public:
         this->record = record;
         this->begin_label = "";
     }
-    virtual ~ActivationBlock(){};
+    virtual ~ActivationBlock() = default;
     void generate_pre();
     void generate_post();
     void preprocess();
