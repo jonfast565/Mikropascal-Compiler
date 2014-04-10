@@ -1,18 +1,18 @@
 --- A Mikropascal Compiler ---
 
-Authors: AJ Shinde, Rishad Bharucha, Jon Fast
+Authors: Jon Fast
 Class: CSCI 481
 Language: C++11
 
-Desription: A compiler for the Mikropascal
-language using C++.
+Desription: A compiler for a Mikropascal dialect using C++.
 
 Notes:
 ------
 - No Makefiles will be synced with the Git server. Use Eclipse to generate these automatically when
   creating an existing project from a Makefile
 - Be aware that MinGW has a problem with the std::to_string() function and may not compile this
-  statement on the latest version. This problem is Windows specific (please use Mac or Linux if possible).
+  statement on the latest version. This problem is Windows/base MinGW specific (please use Mac or Linux if possible).
+  A function 'conv_string(string& s)' has been provided in the helper functions to mitigate this.
 - Remember to add '-std=c++11' without quotes to 'Other Flags' or else this will not compile.
 - Use GCC 4.8.1 or above to compile, or Clang 3.4 or above.
 
@@ -29,12 +29,13 @@ Symbols.hpp/Symbols.cpp - A symbol table implementation for Mikropascal.
 SemanticAnalyzer.hpp/SemanticAnalyzer.cpp - A semantic analyzer for evaluating scoping, and a code generation facility.
 Structures.hpp - Miscellaneous data structures (if necessary, can be removed).
 Helper.hpp - A list of helper functions for displaying output, errors, etc.
-Tests.hpp - Tests of each class.
-Driver.hpp - The file that includes the main() function used to initialize the compiler.
+Tests.hpp - Tests of each class, and the driver for the compile chain.
+Driver.hpp - The file that includes the main() function used to initialize the compiler and the menu +
+options that can be run from the command line.
 
 License (BSD 3 Clause):
 --------------
-Copyright (c) 2014, Jon Fast, A.J. Shinde, Rishad Bharucha
+Copyright (c) 2014, Jon Fast
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
