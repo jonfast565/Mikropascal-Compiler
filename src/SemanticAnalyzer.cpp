@@ -1170,7 +1170,7 @@ void JumpBlock::generate_pre() {
 
 void JumpBlock::generate_post() {
     if (!this->get_block_list()->empty()) {
-        write_raw("" + this->program_section + ":");
+        write_raw("" + this->program_section + ":\n");
     }
 }
 

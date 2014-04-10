@@ -1287,6 +1287,12 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
             // end is return type
             symbol_end = this->symbols->end() - 2;
             return_type = this->to_var((*(this->symbols->end() - 1))->get_token());
+            if (this->symbols->size() == 2) {
+                table->create_callable(callable_name, return_type, argument_list);
+                symbol_names.clear();
+                this->symbols->clear();
+                return;
+            }
         } else {
             // end is just another argument
             symbol_end = this->symbols->end();
