@@ -48,6 +48,8 @@ static string sym_type_to_string(SymType type) {
             return "SYM_DATA";
         case SYM_CONSTANT:
             return "SYM_CONSTANT";
+        default:
+        	return "";
     }
 }
 
@@ -135,6 +137,8 @@ static string var_type_to_string(VarType type) {
             return "GREATER_THAN_EQ";
         case INE:
             return "NOT_EQUAL";
+        default:
+        	return "";
     }
 }
 
@@ -170,6 +174,8 @@ static string pass_type_to_string(PassType type) {
             return "VALUE";
         case REFERENCE:
             return "REFERENCE";
+        default:
+        	return "";
     }
 }
 
@@ -185,6 +191,8 @@ static string scope_to_string(Scope type) {
             return "GLOBAL";
         case LOCAL:
             return "LOCAL";
+        default:
+        	return "";
     }
 }
 
@@ -291,8 +299,8 @@ public:
 
 class SymConstant : public Symbol {
 private:
-    VarType constant_type;
     string raw_data;
+    VarType constant_type;
 public:
     SymConstant(string data, VarType constant_type) :
     Symbol(data, SYM_CONSTANT, GLOBAL, 0), raw_data(data),

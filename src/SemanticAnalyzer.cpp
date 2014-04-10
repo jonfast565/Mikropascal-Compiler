@@ -475,9 +475,15 @@ bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
     }
 }
 
+/* Buggy (will try to figure out why eventually) */
 unsigned int CodeBlock::get_nesting_level() {
-    CodeBlockPtr temp_parent_block = CodeBlockPtr(this);
+	// don't link a shared_ptr to THIS!!!!!!!!!
+    CodeBlockPtr temp_parent_block = this->get_parent();
     unsigned int level_found = 0;
+    // naive code, will have to fix this decl later...
+    if (this->block_type == ACTIVATION_BLOCK) {
+    	level_found++;
+    }
     while(temp_parent_block != nullptr) {
         // if inside a function or procedure body
         if (temp_parent_block->get_block_type() == ACTIVATION_BLOCK) {
@@ -679,12 +685,15 @@ CodeBlockList::iterator CodeBlock::inner_end() {
 
 SymbolPtr CodeBlock::translate(TokenPtr token) {
     if (token->get_token() == MP_ID) {
-        SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at(token->get_lexeme(), this->get_nesting_level());
+    	string search_lexeme = token->get_lexeme();
+    	unsigned int search_level = this->get_nesting_level();
+        SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at(search_lexeme, search_level);
         if (this->check_filter_size(filtered_data)) {
             return *filtered_data->begin();
         } else {
             return nullptr;
         }
+    	//return SymbolPtr(new SymData("None", VOID, GLOBAL, 0, nullptr));
     } else if (token->get_token() == MP_INT_LITERAL) {
         return SymbolPtr(new SymConstant(token->get_lexeme(), INTEGER_LITERAL));
     } else if (token->get_token() == MP_STRING_LITERAL) {
@@ -791,6 +800,10 @@ bool AssignmentBlock::validate() {
     return this->get_valid();
 }
 
+void AssignmentBlock::catch_token(TokenPtr symbol) {
+	this->get_unprocessed()->push_back(symbol);
+}
+
 void AssignmentBlock::preprocess() {
     assert(this->get_unprocessed()->size());
     bool first_id = true;
@@ -801,12 +814,14 @@ void AssignmentBlock::preprocess() {
          i != this->get_unprocessed()->end(); i++) {
         if (first_id == true
             && (*i)->get_token() == MP_ID) {
-            this->assigner = this->translate(*i);
+        	TokenPtr t = *i;
+            this->assigner = this->translate(t);
             first_id = false;
         } else if ((*i)->get_token() == MP_ASSIGNMENT) {
             continue;
         } else {
-            SymbolPtr p = this->translate(*i);
+        	TokenPtr t = *i;
+            SymbolPtr p = this->translate(t);
             if (p != nullptr) {
                 this->get_symbol_list()->push_back(p);
             }
@@ -910,7 +925,8 @@ void IOBlock::preprocess() {
     assert(this->get_unprocessed()->size());
     for (auto i = this->get_unprocessed()->begin();
          i != this->get_unprocessed()->end(); i++) {
-        SymbolPtr p = this->translate(*i);
+    	TokenPtr t = *i;
+        SymbolPtr p = translate(t);
         this->args->push_back(p);
     }
 }
@@ -945,7 +961,7 @@ void LoopBlock::generate_pre() {
         // process the ordinal expression
         AssignmentBlockPtr ordinal_expr = AssignmentBlockPtr(new AssignmentBlock(true));
         ordinal_expr->set_analyzer(this->get_analyzer());
-        for (auto i = 4; i < this->get_unprocessed()->size(); i++) {
+        for (unsigned int i = 4; i < this->get_unprocessed()->size(); i++) {
             ordinal_expr->catch_token((*this->get_unprocessed())[i]);
         }
         // get the comparison components for the ordinal expr
@@ -1161,6 +1177,10 @@ void FPDeclBlock::preprocess() {
     this->program_section = this->get_analyzer()->generate_label();
 }
 
+void FPDeclBlock::catch_token(TokenPtr symbol) {
+	this->get_unprocessed()->push_back(symbol);
+}
+
 bool FPDeclBlock::validate() {
     if (this->get_analyzer() == nullptr
         || this->program_section.compare("") == 0) {
@@ -1185,6 +1205,10 @@ void ActivationBlock::generate_post() {
 void ActivationBlock::preprocess() {
     // get a label if declaration
     this->begin_label = this->get_analyzer()->generate_label();
+}
+
+void ActivationBlock::catch_token(TokenPtr symbol) {
+	this->get_unprocessed()->push_back(symbol);
 }
 
 bool ActivationBlock::validate() {

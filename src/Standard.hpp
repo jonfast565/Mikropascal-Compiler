@@ -25,6 +25,8 @@
 #include <algorithm>
 #include <locale>
 #include <typeinfo>
+#include <limits>
+#include <climits>
 
 // all C derived includes here
 #include <cassert>

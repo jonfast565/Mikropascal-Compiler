@@ -144,7 +144,6 @@ void Parser::parse_system_goal() {
 void Parser::produce_code() {
     // generate code
     if (this->error_reported == false){
-        this->scanner.reset();
         this->analyzer->generate_all();
     } else {
         report_msg_type("Impossible", "Parse failed, code cannot be generated");

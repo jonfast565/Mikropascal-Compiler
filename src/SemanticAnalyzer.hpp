@@ -106,6 +106,7 @@ enum InstructionType {
     HLT
 };
 
+/*
 class Generator {
 public:
     virtual void generate_pre() = 0;
@@ -114,8 +115,9 @@ public:
     virtual void preprocess() = 0;
     virtual ~Generator() = default;
 };
+*/
 
-class CodeBlock: public Generator {
+class CodeBlock /*: public Generator*/ {
 private:
     CodeBlockListPtr block_list;
     BlockType block_type;
@@ -145,7 +147,7 @@ public:
     virtual void generate_pre();
     virtual void generate_post();
     virtual void preprocess();
-    bool validate();
+    virtual bool validate();
     virtual void catch_token(TokenPtr symbol);
     void append(CodeBlockPtr block);
     void set_parent(CodeBlockPtr parent);
@@ -171,11 +173,11 @@ public:
 class ProgramBlock: public CodeBlock {
 public:
     ProgramBlock(): CodeBlock(PROGRAM_BLOCK, nullptr){};
-    virtual ~ProgramBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    bool validate();
+    ~ProgramBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual bool validate();
 };
 
 enum IOAction {
@@ -192,12 +194,12 @@ public:
     IOBlock(IOAction action, bool newline): CodeBlock(IO_BLOCK, nullptr), action(action), line_terminator(newline) {
         this->args = SymbolListPtr(new SymbolList());
     }
-    virtual ~IOBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    void catch_token(TokenPtr symbol);
-    bool validate();
+    ~IOBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
 };
 
 enum LoopType {
@@ -219,12 +221,12 @@ public:
         this->body_label = "";
         this->exit_label = "";
     };
-    virtual ~LoopBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    void catch_token(TokenPtr symbol);
-    bool validate();
+    ~LoopBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
 };
 
 enum CondType {
@@ -252,12 +254,12 @@ public:
         this->else_label = "";
         this->exit_label = "";
     };
-    virtual ~ConditionalBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    void catch_token(TokenPtr symbol);
-    bool validate();
+    ~ConditionalBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
     CondType get_conditional_type();
     void set_else_label(string else_label);
     void generate_exit_label();
@@ -274,11 +276,12 @@ public:
     AssignmentBlock(bool expr_only): CodeBlock(ASSIGNMENT_BLOCK, nullptr), expr_type(VOID), expr_only(expr_only){
         this->assigner = SymbolPtr(new SymConstant("", VOID));
     };
-    virtual ~AssignmentBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    bool validate();
+    ~AssignmentBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
     SymbolPtr get_assigner();
     VarType get_expr_type();
 };
@@ -303,30 +306,32 @@ public:
     jump_around(jump_around) {
         this->program_section = "";
     }
-    virtual ~FPDeclBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    bool validate();
+    ~FPDeclBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
 };
 
 class ActivationBlock: public CodeBlock {
 private:
-    SymCallablePtr record;
     ActivationType activation;
     ActivityType activity;
+    SymCallablePtr record;
     string begin_label;
 public:
     ActivationBlock(ActivationType activation, ActivityType activity, SymCallablePtr record):
-    CodeBlock(ACTIVATION_BLOCK, nullptr), activity(activity), activation(activation) {
+    CodeBlock(ACTIVATION_BLOCK, nullptr), activation(activation), activity(activity) {
         this->record = record;
         this->begin_label = "";
     }
-    virtual ~ActivationBlock() = default;
-    void generate_pre();
-    void generate_post();
-    void preprocess();
-    bool validate();
+    ~ActivationBlock() = default;
+    virtual void generate_pre();
+    virtual void generate_post();
+    virtual void preprocess();
+    virtual void catch_token(TokenPtr symbol);
+    virtual bool validate();
 };
 
 class SemanticAnalyzer {
@@ -338,9 +343,7 @@ private:
     // CondensedST is the tree that generates code
     CodeBlockPtr condensedst;
     // stack of pointer block is effectively the iterator
-    shared_ptr<stack<CodeBlockPtr>> block_stack;
-    // if processed correctly, allow generated code
-    bool processed;
+    unique_ptr<stack<CodeBlockPtr>> block_stack;
     // labels for code generation
     unsigned int label_count;
     // file for writing stuff

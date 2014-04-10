@@ -86,7 +86,7 @@ static inline std::string &trim(std::string &s) {
 }
 
 static inline std::string &to_lower(std::string &s) {
-    for (int i = 0; i < s.size(); ++i)
+    for (unsigned int i = 0; i < s.size(); ++i)
         s[i] = tolower(s[i]);
     return s;
 }

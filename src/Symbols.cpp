@@ -251,7 +251,12 @@ SymbolListPtr SymTable::get_global_vars() {
 }
 
 SymbolListPtr SymTable::data_in_scope_at(string id, unsigned int level) {
-    return SymTable::filter_nest_level(SymTable::filter_data(this->find(id)), level);
+	SymbolListPtr found_ids = this->find(id);
+	if (found_ids->size() > 0) {
+		return SymTable::filter_nest_level(SymTable::filter_data(found_ids), level);
+	} else {
+		return nullptr;
+	}
 }
 
 SymCallablePtr SymTable::get_last_callable() {
