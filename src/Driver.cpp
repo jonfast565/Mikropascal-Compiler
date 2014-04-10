@@ -10,7 +10,7 @@
 
 string get_console_input() {
     string input, first;
-    cout << "> ";
+    cout << ": ";
     cin >> input;
     istringstream stream_s(input);
     stream_s >> first;
@@ -88,9 +88,9 @@ int main(int argc, char* argv[]) {
 		report_msg_type("Warning", "No cmd line args, specified... going to default folder");
 		FILE* fp = NULL;
 #ifdef __APPLE__
-        FILE* fp = fopen("program.pas", "r");
+        fp = fopen("/Users/jonfast/Desktop/program.pas", "r");
 #elif __WIN32__
-        FILE* fp = fopen("program.pas", "r");
+        fp = fopen("C:\\Users\Jon\\Desktop\\program.pas", "r");
 #endif
 		if (fp == NULL) {
 			report_error("General Error", "Could not open the default hardcoded file");

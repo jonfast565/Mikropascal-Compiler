@@ -182,9 +182,9 @@ void Parser::parse_block() {
     this->go_into(BLOCK);
 	report_parse("PARSE_BLOCK", this->parse_depth);
 	this->parse_variable_declaration_part();
-    //this->begin_generate_callable_part(true);
+    this->begin_generate_callable_part(true);
 	this->parse_procedure_and_function_declaration_part();
-    //this->end_generate();
+    this->end_generate();
 	this->parse_statement_part();
 	this->return_from();
     this->less_indent();
@@ -296,9 +296,9 @@ void Parser::parse_procedure_declaration() {
 	report_parse("PARSE_PROCEDURE_DECL", this->parse_depth);
 	this->parse_procedure_heading();
 	this->match(MP_SEMI_COLON);
-    //this->begin_generate_callable_1(PROCEDURE, DEFINITION);
+    this->begin_generate_callable_1(PROCEDURE, DEFINITION);
 	this->parse_block();
-    //this->end_generate();
+    this->end_generate();
 	this->match(MP_SEMI_COLON);
     this->analyzer->get_symtable()->return_from();
     this->return_from();
@@ -311,9 +311,9 @@ void Parser::parse_function_declaration() {
 	report_parse("PARSE_FUNCTION_DECL", this->parse_depth);
 	this->parse_function_heading();
 	this->match(MP_SEMI_COLON);
-    //this->begin_generate_callable_1(FUNCTION, DEFINITION);
+    this->begin_generate_callable_1(FUNCTION, DEFINITION);
 	this->parse_block();
-    //this->end_generate();
+    this->end_generate();
 	this->match(MP_SEMI_COLON);
     this->analyzer->get_symtable()->return_from();
     this->return_from();
@@ -1193,24 +1193,28 @@ void Parser::begin_generate_assignment() {
     AssignmentBlockPtr assign_block = AssignmentBlockPtr(new AssignmentBlock(false));
     this->get_analyzer()->append_block(assign_block);
     this->begin_generate();
+    report_msg("In Assignment Block");
 }
 
 void Parser::begin_generate_io_action(IOAction action, bool newline) {
     IOBlockPtr io_block = IOBlockPtr(new IOBlock(action, newline));
     this->get_analyzer()->append_block(io_block);
     this->begin_generate();
+    report_msg("In IO Block");
 }
 
 void Parser::begin_generate_loop(LoopType loop) {
     LoopBlockPtr loop_block = LoopBlockPtr(new LoopBlock(loop));
     this->get_analyzer()->append_block(loop_block);
     this->begin_generate();
+    report_msg("In Loop Block");
 }
 
 ConditionalBlockPtr Parser::begin_generate_if() {
     ConditionalBlockPtr cond_block = ConditionalBlockPtr(new ConditionalBlock(COND_IF));
     this->get_analyzer()->append_block(cond_block);
     this->begin_generate();
+    report_msg("In If Block");
     return cond_block;
 }
 
@@ -1218,12 +1222,15 @@ ConditionalBlockPtr Parser::begin_generate_opt_else() {
     ConditionalBlockPtr cond_block = ConditionalBlockPtr(new ConditionalBlock(COND_ELSE));
     this->get_analyzer()->append_block(cond_block);
     this->begin_generate();
+    report_msg("In Else Block");
     return cond_block;
 }
 
 void Parser::begin_generate_callable_part(bool jump_around) {
-    this->get_analyzer()->append_block(CodeBlockPtr(new FPDeclBlock(jump_around)));
+    JumpBlockPtr jump = JumpBlockPtr(new JumpBlock(jump_around));
+    this->get_analyzer()->append_block(jump);
     this->begin_generate();
+    report_msg("In Jump Block");
 }
 
 void Parser::begin_generate_callable_1(ActivationType activation, ActivityType activity) {
@@ -1231,12 +1238,14 @@ void Parser::begin_generate_callable_1(ActivationType activation, ActivityType a
     ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, last_callable));
     this->get_analyzer()->append_block(act_block);
     this->begin_generate();
+    report_msg("In Activation Block");
 }
 
 void Parser::begin_generate_callable(ActivationType activation, ActivityType activity, SymCallablePtr strecord) {
     ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, strecord));
     this->get_analyzer()->append_block(act_block);
     this->begin_generate();
+    report_msg("In Activation Block");
 }
 
 void Parser::begin_generate() {
@@ -1246,6 +1255,7 @@ void Parser::begin_generate() {
 void Parser::end_generate() {
     this->gen_collect->pop();
     this->get_analyzer()->rappel_block();
+    report_msg("Out of Block");
 }
 
 void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {

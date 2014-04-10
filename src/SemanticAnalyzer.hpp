@@ -22,6 +22,7 @@ class ConditionalBlock;
 class ActivationBlock;
 class LoopBlock;
 class IOBlock;
+class JumpBlock;
 
 using AbstractNodePtr = shared_ptr<AbstractNode>;
 using AbstractNodeList = vector<AbstractNodePtr>;
@@ -41,6 +42,7 @@ using ConditionalBlockPtr = shared_ptr<ConditionalBlock>;
 using ActivationBlockPtr = shared_ptr<ActivationBlock>;
 using LoopBlockPtr = shared_ptr<LoopBlock>;
 using IOBlockPtr = shared_ptr<IOBlock>;
+using JumpBlockPtr = shared_ptr<JumpBlock>;
 
 // AST Stuff
 class AbstractNode {
@@ -96,7 +98,7 @@ enum BlockType {
     CONDITIONAL_BLOCK,
     ASSIGNMENT_BLOCK,
     ACTIVATION_BLOCK,
-    FP_DECL_BLOCK
+    JUMP_BLOCK
 };
 
 enum InstructionType {
@@ -106,7 +108,6 @@ enum InstructionType {
     HLT
 };
 
-/*
 class Generator {
 public:
     virtual void generate_pre() = 0;
@@ -115,9 +116,8 @@ public:
     virtual void preprocess() = 0;
     virtual ~Generator() = default;
 };
-*/
 
-class CodeBlock /*: public Generator*/ {
+class CodeBlock: public Generator {
 private:
     CodeBlockListPtr block_list;
     BlockType block_type;
@@ -297,16 +297,16 @@ enum ActivityType {
     CALL
 };
 
-class FPDeclBlock: public CodeBlock {
+class JumpBlock: public CodeBlock {
 private:
     string program_section;
     bool jump_around;
 public:
-    FPDeclBlock(bool jump_around): CodeBlock(FP_DECL_BLOCK, nullptr),
+    JumpBlock(bool jump_around): CodeBlock(JUMP_BLOCK, nullptr),
     jump_around(jump_around) {
         this->program_section = "";
     }
-    ~FPDeclBlock() = default;
+    ~JumpBlock() = default;
     virtual void generate_pre();
     virtual void generate_post();
     virtual void preprocess();

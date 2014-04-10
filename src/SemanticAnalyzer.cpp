@@ -466,8 +466,6 @@ bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
     if (filtered->size() > 1
         || filtered->size() == 0) {
         // too many ids found
-        this->valid = false;
-        report_msg_type("Semantic Error", "Invalid filter size");
         return false;
     } else {
         // correct
@@ -475,21 +473,16 @@ bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
     }
 }
 
-/* Buggy (will try to figure out why eventually) */
 unsigned int CodeBlock::get_nesting_level() {
-	// don't link a shared_ptr to THIS!!!!!!!!!
-    CodeBlockPtr temp_parent_block = this->get_parent();
+	// don't link a shared_ptr to this!
+    CodeBlock* temp_parent_block = this;
     unsigned int level_found = 0;
-    // naive code, will have to fix this decl later...
-    if (this->block_type == ACTIVATION_BLOCK) {
-    	level_found++;
-    }
     while(temp_parent_block != nullptr) {
         // if inside a function or procedure body
         if (temp_parent_block->get_block_type() == ACTIVATION_BLOCK) {
             level_found++;
         }
-        temp_parent_block = parent_block->get_parent();
+        temp_parent_block = temp_parent_block->get_parent().get();
     }
     return level_found;
 }
@@ -691,9 +684,13 @@ SymbolPtr CodeBlock::translate(TokenPtr token) {
         if (this->check_filter_size(filtered_data)) {
             return *filtered_data->begin();
         } else {
-            return nullptr;
+            SymbolListPtr global_data = this->get_analyzer()->get_symtable()->get_global_vars();
+            if (this->check_filter_size(global_data)) {
+                return *global_data->begin();
+            } else {
+                return nullptr;
+            }
         }
-    	//return SymbolPtr(new SymData("None", VOID, GLOBAL, 0, nullptr));
     } else if (token->get_token() == MP_INT_LITERAL) {
         return SymbolPtr(new SymConstant(token->get_lexeme(), INTEGER_LITERAL));
     } else if (token->get_token() == MP_STRING_LITERAL) {
@@ -1165,29 +1162,39 @@ string ConditionalBlock::get_exit_label() {
 }
 
 // FP Decl part block
-void FPDeclBlock::generate_pre() {
-    write_raw("BR " + this->program_section + "\n");
+void JumpBlock::generate_pre() {
+    if (!this->get_block_list()->empty()) {
+        write_raw("BR " + this->program_section + "\n");
+    }
 }
 
-void FPDeclBlock::generate_post() {
-    write_raw("" + this->program_section + ":");
+void JumpBlock::generate_post() {
+    if (!this->get_block_list()->empty()) {
+        write_raw("" + this->program_section + ":");
+    }
 }
 
-void FPDeclBlock::preprocess() {
-    this->program_section = this->get_analyzer()->generate_label();
+void JumpBlock::preprocess() {
+    if (!this->get_block_list()->empty()) {
+        this->program_section = this->get_analyzer()->generate_label();
+    }
 }
 
-void FPDeclBlock::catch_token(TokenPtr symbol) {
+void JumpBlock::catch_token(TokenPtr symbol) {
 	this->get_unprocessed()->push_back(symbol);
 }
 
-bool FPDeclBlock::validate() {
-    if (this->get_analyzer() == nullptr
-        || this->program_section.compare("") == 0) {
-        this->set_valid(false);
-        return false;
+bool JumpBlock::validate() {
+    if (!this->get_block_list()->empty()) {
+        if (this->get_analyzer() == nullptr
+            || this->program_section.compare("") == 0) {
+            this->set_valid(false);
+            return false;
+        } else {
+            this->set_valid(true);
+            return true;
+        }
     } else {
-        this->set_valid(true);
         return true;
     }
 }
@@ -1195,11 +1202,11 @@ bool FPDeclBlock::validate() {
 // Activation block types (body and call)
 void ActivationBlock::generate_pre() {
     // do nothing at the moment
-    write_raw(this->begin_label + ":");
+    write_raw(this->begin_label + ":\n");
 }
 
 void ActivationBlock::generate_post() {
-    write_raw("RET");
+    write_raw("RET\n");
 }
 
 void ActivationBlock::preprocess() {
@@ -1208,7 +1215,11 @@ void ActivationBlock::preprocess() {
 }
 
 void ActivationBlock::catch_token(TokenPtr symbol) {
-	this->get_unprocessed()->push_back(symbol);
+    if (symbol->get_token() != MP_BEGIN
+        && symbol->get_token() != MP_END
+        && symbol->get_token() != MP_SEMI_COLON) {
+        this->get_unprocessed()->push_back(symbol);
+    }
 }
 
 bool ActivationBlock::validate() {
