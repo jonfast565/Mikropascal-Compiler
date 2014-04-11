@@ -520,7 +520,9 @@ void Parser::parse_statement() {
         this->end_generate();
     }
 	else if (this->try_match(MP_PROCEDURE)) {
+        this->begin_generate_callable_2(PROCEDURE, CALL);
 		this->parse_procedure_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_BEGIN)) {
 		this->parse_compound_statement();
@@ -1240,6 +1242,13 @@ void Parser::begin_generate_callable_1(ActivationType activation, ActivityType a
     this->get_analyzer()->append_block(act_block);
     this->begin_generate();
     report_msg("In Activation Block");
+}
+
+void Parser::begin_generate_callable_2(ActivationType activation, ActivityType activity) {
+    ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, nullptr));
+    this->get_analyzer()->append_block(act_block);
+    this->begin_generate();
+    report_msg("In Activation Call Block");
 }
 
 void Parser::begin_generate_callable(ActivationType activation, ActivityType activity, SymCallablePtr strecord) {

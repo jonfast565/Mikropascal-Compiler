@@ -138,6 +138,7 @@ public:
     void begin_generate_loop(LoopType loop);
     void begin_generate_callable_part(bool jump_around);
     void begin_generate_callable_1(ActivationType activation, ActivityType activity);
+    void begin_generate_callable_2(ActivationType activation, ActivityType activity);
     void begin_generate_callable(ActivationType activation, ActivityType activity, SymCallablePtr strecord);
     ConditionalBlockPtr begin_generate_if();
     ConditionalBlockPtr begin_generate_opt_else();

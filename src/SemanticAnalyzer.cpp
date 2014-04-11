@@ -1247,15 +1247,31 @@ void ActivationBlock::generate_post() {
 }
 
 void ActivationBlock::preprocess() {
-    // get a label if declaration
-    this->begin_label = this->get_analyzer()->generate_label();
+    if (this->activity == DEFINITION) {
+        // get a label if declaration
+        this->begin_label = this->get_analyzer()->generate_label();
+    } else if (this->activity == CALL) {
+        for (auto i = this->get_unprocessed()->begin();
+             i != this->get_unprocessed()->end(); i++) {
+            this->get_symbol_list()->push_back(this->translate(*i));
+        }
+    }
 }
 
 void ActivationBlock::catch_token(TokenPtr symbol) {
-    if (symbol->get_token() != MP_BEGIN
-        && symbol->get_token() != MP_END
-        && symbol->get_token() != MP_SEMI_COLON) {
-        this->get_unprocessed()->push_back(symbol);
+    if (this->activity == DEFINITION) {
+        if (symbol->get_token() != MP_BEGIN
+            && symbol->get_token() != MP_END
+            && symbol->get_token() != MP_SEMI_COLON) {
+            this->get_unprocessed()->push_back(symbol);
+        }
+    } else if (this->activity == CALL) {
+        if (symbol->get_token() == MP_ID
+            || symbol->get_token() == MP_INT_LITERAL
+            || symbol->get_token() == MP_STRING_LITERAL
+            || symbol->get_token() == MP_FLOAT_LITERAL) {
+            this->get_unprocessed()->push_back(symbol);
+        }
     }
 }
 
