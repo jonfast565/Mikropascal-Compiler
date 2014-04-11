@@ -863,9 +863,6 @@ void Parser::parse_relational_operator() {
 	else if (this->try_match(MP_NOT_EQUAL))
         this->match(MP_NOT_EQUAL);
     else {
-        // no error should happen since we checked
-        // for relational before running
-        // shouldn't happen
         report_msg("Weird...");
     }
     this->return_from();
@@ -1018,7 +1015,6 @@ void Parser::parse_program_identifier() {
     this->more_indent();
     this->go_into(PROGRAM_IDENTIFIER);
 	report_parse("PARSE_PROGRAM_IDENTIFIER", this->parse_depth);
-	// or this->match(MP_ID);
 	this->parse_identifier();
     this->return_from();
     this->less_indent();

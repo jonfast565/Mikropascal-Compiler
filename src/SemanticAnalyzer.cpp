@@ -1266,11 +1266,27 @@ void ActivationBlock::catch_token(TokenPtr symbol) {
             this->get_unprocessed()->push_back(symbol);
         }
     } else if (this->activity == CALL) {
-        if (symbol->get_token() == MP_ID
-            || symbol->get_token() == MP_INT_LITERAL
-            || symbol->get_token() == MP_STRING_LITERAL
-            || symbol->get_token() == MP_FLOAT_LITERAL) {
-            this->get_unprocessed()->push_back(symbol);
+        bool first_id = true;
+        if (first_id == true && symbol->get_token() == MP_ID) {
+            this->caller_name = symbol->get_lexeme();
+            unsigned int level = this->get_nesting_level();
+            // perform lookup
+            SymbolListPtr lookup = this->get_analyzer()->get_symtable()->find(this->caller_name);
+            SymbolListPtr call_lookup = SymTable::filter_nest_level(SymTable::filter_callable(lookup), level);
+            if (this->check_filter_size(call_lookup)) {
+                this->record = static_pointer_cast<SymCallable>(*call_lookup->begin());
+            } else {
+                report_msg_type("Semantic Error", "Caller not declared");
+                this->set_valid(false);
+            }
+            first_id = false;
+        } else {
+            if (symbol->get_token() == MP_ID
+                || symbol->get_token() == MP_INT_LITERAL
+                || symbol->get_token() == MP_STRING_LITERAL
+                || symbol->get_token() == MP_FLOAT_LITERAL) {
+                this->get_unprocessed()->push_back(symbol);
+            }
         }
     }
 }
@@ -1292,4 +1308,8 @@ string ActivationBlock::get_start() {
 
 ActivityType ActivationBlock::get_activity() {
     return this->activity;
+}
+
+void ActivationBlock::set_caller_name(string id) {
+    this->caller_name = id;
 }

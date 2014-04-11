@@ -319,6 +319,7 @@ private:
     ActivationType activation;
     ActivityType activity;
     SymCallablePtr record;
+    string caller_name;
     string begin_label;
 public:
     ActivationBlock(ActivationType activation, ActivityType activity, SymCallablePtr record):
@@ -334,6 +335,7 @@ public:
     virtual bool validate();
     string get_start();
     ActivityType get_activity();
+    void set_caller_name(string id);
 };
 
 class SemanticAnalyzer {
