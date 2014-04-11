@@ -1223,6 +1223,11 @@ void ActivationBlock::generate_pre() {
         }
     } else {
         // call
+        if (this->activation == PROCEDURE) {
+            
+        } else if (this->activation == FUNCTION) {
+            
+        }
     }
 }
 
@@ -1243,6 +1248,11 @@ void ActivationBlock::generate_post() {
         write_raw("RET\n");
     } else {
         // call
+        if (this->activation == PROCEDURE) {
+            
+        } else if (this->activation == FUNCTION) {
+            
+        }
     }
 }
 
@@ -1251,6 +1261,17 @@ void ActivationBlock::preprocess() {
         // get a label if declaration
         this->begin_label = this->get_analyzer()->generate_label();
     } else if (this->activity == CALL) {
+        unsigned int level = this->get_nesting_level();
+        // perform lookup
+        SymbolListPtr lookup = this->get_analyzer()->get_symtable()->find(this->caller_name);
+        SymbolListPtr call_lookup = SymTable::filter_nest_level(SymTable::filter_callable(lookup), level);
+        if (this->check_filter_size(call_lookup)) {
+            this->record = static_pointer_cast<SymCallable>(*call_lookup->begin());
+        } else {
+            report_msg_type("Semantic Error", "Caller not declared");
+            this->set_valid(false);
+        }
+        // process other ids, etc.
         for (auto i = this->get_unprocessed()->begin();
              i != this->get_unprocessed()->end(); i++) {
             this->get_symbol_list()->push_back(this->translate(*i));
@@ -1269,16 +1290,6 @@ void ActivationBlock::catch_token(TokenPtr symbol) {
         bool first_id = true;
         if (first_id == true && symbol->get_token() == MP_ID) {
             this->caller_name = symbol->get_lexeme();
-            unsigned int level = this->get_nesting_level();
-            // perform lookup
-            SymbolListPtr lookup = this->get_analyzer()->get_symtable()->find(this->caller_name);
-            SymbolListPtr call_lookup = SymTable::filter_nest_level(SymTable::filter_callable(lookup), level);
-            if (this->check_filter_size(call_lookup)) {
-                this->record = static_pointer_cast<SymCallable>(*call_lookup->begin());
-            } else {
-                report_msg_type("Semantic Error", "Caller not declared");
-                this->set_valid(false);
-            }
             first_id = false;
         } else {
             if (symbol->get_token() == MP_ID
