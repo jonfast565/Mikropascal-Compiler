@@ -1161,7 +1161,7 @@ string ConditionalBlock::get_exit_label() {
     return this->exit_label;
 }
 
-// FP Decl part block
+// JumpBlock part block
 void JumpBlock::generate_pre() {
     if (!this->get_block_list()->empty()) {
         write_raw("BR " + this->program_section + "\n");
@@ -1202,11 +1202,44 @@ bool JumpBlock::validate() {
 // Activation block types (body and call)
 void ActivationBlock::generate_pre() {
     // do nothing at the moment
-    write_raw(this->begin_label + ":\n");
+    if (this->activity == DEFINITION) {
+        // write begin label
+        write_raw(this->begin_label + ":\n");
+        // get locals
+        string name = this->record->get_symbol_name();
+        SymbolListPtr named_items = this->get_analyzer()->get_symtable()->find(name);
+        SymbolListPtr locals = SymTable::filter_nest_level(SymTable::filter_data(named_items), this->get_nesting_level());
+        // generate code to push them
+        for (auto i = locals->begin(); i != locals->end(); i++) {
+            if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
+                write_raw("PUSH #\"\"");
+            } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
+                write_raw("PUSH #0.0");
+            } else {
+                write_raw("PUSH #0");
+            }
+        }
+    } else {
+        // call
+    }
 }
 
 void ActivationBlock::generate_post() {
-    write_raw("RET\n");
+    if (this->activity == DEFINITION) {
+        // get locals
+        string name = this->record->get_symbol_name();
+        SymbolListPtr named_items = this->get_analyzer()->get_symtable()->find(name);
+        SymbolListPtr locals = SymTable::filter_nest_level(SymTable::filter_data(named_items), this->get_nesting_level());
+        unsigned long locals_size = locals->size();
+        write_raw("PUSH SP");
+        write_raw("PUSH #" + conv_string(locals_size));
+        write_raw("SUBS ");
+        write_raw("POP SP");
+        // move stack ptr minus local variables
+        write_raw("RET\n");
+    } else {
+        // call
+    }
 }
 
 void ActivationBlock::preprocess() {
@@ -1231,4 +1264,12 @@ bool ActivationBlock::validate() {
         this->set_valid(false);
         return false;
     }
+}
+
+string ActivationBlock::get_start() {
+    return this->begin_label;
+}
+
+ActivityType ActivationBlock::get_activity() {
+    return this->activity;
 }

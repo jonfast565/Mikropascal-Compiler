@@ -322,6 +322,10 @@ shared_ptr<vector<VarType>> SymCallable::get_argument_types() {
     return argument_types;
 }
 
+void SymCallable::set_callable_definition(ActivationBlockPtr activator) {
+    this->callable_body = activator;
+}
+
 PassType SymArgument::get_pass_type() {
     return this->pass_type;
 }

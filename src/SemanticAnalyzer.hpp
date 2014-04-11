@@ -332,6 +332,8 @@ public:
     virtual void preprocess();
     virtual void catch_token(TokenPtr symbol);
     virtual bool validate();
+    string get_start();
+    ActivityType get_activity();
 };
 
 class SemanticAnalyzer {

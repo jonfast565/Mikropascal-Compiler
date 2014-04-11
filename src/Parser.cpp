@@ -1236,6 +1236,7 @@ void Parser::begin_generate_callable_part(bool jump_around) {
 void Parser::begin_generate_callable_1(ActivationType activation, ActivityType activity) {
     SymCallablePtr last_callable = this->get_analyzer()->get_symtable()->get_last_callable();
     ActivationBlockPtr act_block = ActivationBlockPtr(new ActivationBlock(activation, activity, last_callable));
+    last_callable->set_callable_definition(act_block);
     this->get_analyzer()->append_block(act_block);
     this->begin_generate();
     report_msg("In Activation Block");

@@ -18,6 +18,7 @@ class SymData;
 class SymArgument;
 class SymTable;
 class SymConstant;
+class ActivationBlock;
 
 // type predecls
 using ArgumentPtr = shared_ptr<SymArgument>;
@@ -32,6 +33,7 @@ using SymDataPtr = shared_ptr<SymData>;
 using SymConstantPtr = shared_ptr<SymConstant>;
 using SymArgumentPtr = shared_ptr<SymArgument>;
 using SymTablePtr = shared_ptr<SymTable>;
+using ActivationBlockPtr = shared_ptr<ActivationBlock>;
 
 // symbol types
 enum SymType {
@@ -259,15 +261,18 @@ private:
     SymbolListPtr child;
     SymbolListPtr parent;
     ArgumentListPtr argument_list;
+    ActivationBlockPtr callable_body;
 public:
 	SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent):
 		Symbol(name, SYM_CALLABLE, scope, nesting_level), return_type(return_type), parent(parent) {
-		this->argument_list = ArgumentListPtr(new ArgumentList());
-        this->child = SymbolListPtr(new SymbolList());
+            this->argument_list = ArgumentListPtr(new ArgumentList());
+            this->child = SymbolListPtr(new SymbolList());
+            this->callable_body = nullptr;
 	}
     SymCallable(string name, Scope scope, unsigned int nesting_level, VarType return_type, SymbolListPtr parent, ArgumentListPtr argument_list):
     	Symbol(name, SYM_CALLABLE, scope, nesting_level), return_type(return_type), parent(parent), argument_list(argument_list) {
-        this->child = SymbolListPtr(new SymbolList());
+            this->child = SymbolListPtr(new SymbolList());
+            this->callable_body = nullptr;
 	}
 	virtual ~SymCallable() = default;
     SymbolIterator return_sub_iterator();
@@ -278,6 +283,7 @@ public:
     ArgumentListPtr get_argument_list();
     unsigned int get_number_arguments();
     shared_ptr<vector<VarType>> get_argument_types();
+    void set_callable_definition(ActivationBlockPtr activator);
     void dyn(){};
 };
 
@@ -313,9 +319,13 @@ public:
 class SymArgument : public SymData {
 private:
 	PassType pass_type;
+    unsigned int argument_size;
 public:
 	SymArgument(string name, VarType type, Scope scope, unsigned int nesting_level, PassType pass_type, SymCallablePtr parent_callable):
-    SymData(name, type, scope, nesting_level, parent_callable), pass_type(pass_type){};
+    SymData(name, type, scope, nesting_level, parent_callable), pass_type(pass_type) {
+        // default size
+        this->argument_size = 1;
+    };
 	virtual ~SymArgument() = default;
     PassType get_pass_type();
     void dyn(){};
