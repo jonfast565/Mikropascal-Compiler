@@ -1210,13 +1210,15 @@ void ActivationBlock::generate_pre() {
         SymbolListPtr named_items = this->get_analyzer()->get_symtable()->find(name);
         SymbolListPtr locals = SymTable::filter_nest_level(SymTable::filter_data(named_items), this->get_nesting_level());
         // generate code to push them
-        for (auto i = locals->begin(); i != locals->end(); i++) {
-            if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
-                write_raw("PUSH #\"\"");
-            } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
-                write_raw("PUSH #0.0");
-            } else {
-                write_raw("PUSH #0");
+        if (locals->size() > 0) {
+            for (auto i = locals->begin(); i != locals->end(); i++) {
+                if (static_pointer_cast<SymData>(*i)->get_var_type() == STRING) {
+                    write_raw("PUSH #\"\"");
+                } else if (static_pointer_cast<SymData>(*i)->get_var_type() == FLOATING) {
+                    write_raw("PUSH #0.0");
+                } else {
+                    write_raw("PUSH #0");
+                }
             }
         }
     } else {
@@ -1231,11 +1233,13 @@ void ActivationBlock::generate_post() {
         SymbolListPtr named_items = this->get_analyzer()->get_symtable()->find(name);
         SymbolListPtr locals = SymTable::filter_nest_level(SymTable::filter_data(named_items), this->get_nesting_level());
         unsigned long locals_size = locals->size();
-        write_raw("PUSH SP");
-        write_raw("PUSH #" + conv_string(locals_size));
-        write_raw("SUBS ");
-        write_raw("POP SP");
         // move stack ptr minus local variables
+        if (locals_size > 0) {
+            write_raw("PUSH SP");
+            write_raw("PUSH #" + conv_string(locals_size));
+            write_raw("SUBS ");
+            write_raw("POP SP");
+        }
         write_raw("RET\n");
     } else {
         // call

@@ -26,7 +26,6 @@
 #include <locale>
 #include <typeinfo>
 #include <limits>
-#include <climits>
 
 // all C derived includes here
 #include <cassert>
@@ -35,6 +34,7 @@
 #include <cmath>
 #include <cstring>
 #include <cctype>
+#include <climits>
 
 // use the standard namespace
 using namespace std;
