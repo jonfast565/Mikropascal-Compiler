@@ -266,6 +266,10 @@ void Scanner::run_chain() {
 TokenPtr Scanner::scan_infinite() {
     // a token pointer to see what we can get
     TokenPtr new_token = TokenPtr(new Token());
+    unsigned long start_line = this->line_number;
+    unsigned long start_column = this->col_number;
+    new_token->set_line(start_line);
+    new_token->set_column(--start_column);
     // moves to the end of the buffer
     unsigned int moves = 0;
     // scan until the null character
@@ -296,9 +300,6 @@ TokenPtr Scanner::scan_infinite() {
             string contents = this->contents();
             contents = to_lower(contents);
             new_token->set_lexeme(contents);
-            unsigned long lex_start = this->col_number;
-            new_token->set_column(lex_start);
-            new_token->set_line(this->line_number);
             // clear buffer
             this->clear_buffer();
             // return new token
@@ -336,12 +337,9 @@ TokenPtr Scanner::scan_infinite() {
     string contents = this->contents();
     contents = to_lower(contents);
     new_token->set_lexeme(contents);
-    unsigned long lex_start = this->col_number;
-    new_token->set_column(lex_start);
-    new_token->set_line(this->line_number);
     // hidden error message here? (might be good)
     report_error_lc("Scan Error", new_token->get_error() + contents,
-                    this->line_number, this->col_number);
+                    start_line, start_column);
     // clear buffer
     this->clear_buffer();
     // return error token
@@ -350,6 +348,11 @@ TokenPtr Scanner::scan_infinite() {
 }
 
 TokenPtr Scanner::scan_finite() {
+    // token to build
+    TokenPtr new_token = TokenPtr(new Token());
+    new_token->set_line(this->line_number);
+    unsigned long cur_col = this->col_number;
+    new_token->set_column(--cur_col);
     // wait until no state machine accepts
     while (!this->none_accept() || this->not_dead()->size() > 0) {
         // check for the null pointed item
@@ -361,8 +364,6 @@ TokenPtr Scanner::scan_finite() {
     }
     // shave off the end of the buffer
     this->shave_chain();
-    // token to build
-    TokenPtr new_token = TokenPtr(new Token());
     // get first high priority accepting machine
     FSMachineListPtr accepting_list = this->accepting();
     FSMachinePtr accepting = move(*accepting_list->begin());
@@ -373,9 +374,6 @@ TokenPtr Scanner::scan_finite() {
     string contents = this->contents();
     contents = to_lower(contents);
     new_token->set_lexeme(contents);
-    unsigned long lex_start = this->col_number;
-    new_token->set_column(lex_start);
-    new_token->set_line(this->line_number);
     // clear buffer
     this->clear_buffer();
     // return new token
@@ -409,13 +407,14 @@ bool Scanner::forward() {
 	// move the file pointer to the right by one
 	if (this->file_ptr != this->file_buf_ptr->end()) {
 		// deal with line and column numbers
-		if (*this->file_ptr == '\n') {
+		if (this->get_char() == '\n') {
 			this->line_number++;
 			this->col_number = 1;
 		} else {
 			this->col_number++;
 		}
-		this->file_ptr++;
+        // move forward
+        this->file_ptr++;
 		return true;
 	} else {
 		return false;
@@ -425,36 +424,38 @@ bool Scanner::forward() {
 bool Scanner::rewind() {
 	// move the file pointer to the left by one
 	if (this->file_ptr != this->file_buf_ptr->begin()) {
-        if (*(this->file_ptr) == '\n') {
+        // decreased the file ptr
+        this->file_ptr--;
+        if (this->get_char() == '\n') {
             // deal with the remaining column size
             this->line_number--;
-            //this->col_number = this->last_newline();
+            // save the file pointer
+            string::iterator saved = this->file_ptr;
+            unsigned int col_size = 0;
+            char current = '\0';
+            // rewind until we reach the beginning
+            // of file or beginning of line
+            do {
+                this->file_ptr--;
+                col_size++;
+                current = this->get_char();
+            } while (current != '\0' && current != '\n');
+            // if we're at the beginning of the file
+            // then we increment the line number by 1
+            if (current == '\0') {
+                this->line_number++;
+            }
+            // restore the saved file pointer
+            this->file_ptr = saved;
+            // restore the saved line number
+            this->col_number = col_size;
         } else {
             this->col_number--;
         }
-        this->file_ptr--;
 		return true;
 	} else {
 		return false;
     }
-}
-
-unsigned long Scanner::last_newline() {
-    // go to the back until hitting a newline
-    unsigned int num_columns = 1;
-    do {
-        this->rewind();
-        num_columns++;
-    // until we hit the last new line, or file beginning
-    } while (this->get_char() != '\n' &&
-             this->file_ptr != this->file_buf_ptr->begin());
-    
-    // go back to the starting position
-    for (unsigned int i = 1; i < num_columns; i++) {
-        this->forward();
-    }
-    // number of columns back at ya!
-    return num_columns;
 }
 
 void Scanner::goto_next(char c) {
@@ -588,6 +589,7 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_symbols("1", "1");
     comment_machine->add_digits("1", "1");
     comment_machine->add_transition("1", ' ', "1");
+    comment_machine->add_transition("1", '\n', "1");
     comment_machine->remove_transition("1", '{');
     comment_machine->remove_transition("1", '}');
     comment_machine->add_transition("1", '}', "2");
@@ -720,8 +722,7 @@ void Scanner::write_tokens_tof(string filename) {
 void Scanner::display_tokens() {
 	for (vector<TokenPtr>::iterator i = this->consumed->begin();
          i != consumed->end(); i++) {
-		report_error_lc("Token found", "'"
-                        + (*i)->get_lexeme()
+		report_error_lc("Found", "'" + (*i)->get_lexeme()
                         + "'", (*i)->get_line(), (*i)->get_column());
 	}
 }
