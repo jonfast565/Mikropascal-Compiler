@@ -17,7 +17,7 @@ Input::Input(string filename) {
     // open file
 	ifstream file_to_compile(filename, ios::binary);
     if (file_to_compile.is_open()) {
-        while (std::getline(file_to_compile, line) && file_to_compile.good()) {
+        while (std::getline(file_to_compile, line)) {
             for (string::iterator i = line.begin(); i != line.end(); i++)
                 if (*i == '\0')
                     line.erase(i, i);
@@ -30,7 +30,6 @@ Input::Input(string filename) {
          i != this->lines->end(); i++) {
         *this->entire_input += (*i);
     }
-    
 }
 
 InputPtr Input::open_file(string filename) {
