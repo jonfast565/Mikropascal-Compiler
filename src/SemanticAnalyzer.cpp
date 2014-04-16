@@ -61,7 +61,7 @@ void AbstractTree::display_tree() {
     while (!loop->empty()) {
         AbstractNodePtr current = loop->top();
         loop->pop();
-        if (current->get_is_rule() && !current->get_is_rule()) {
+        if (current->get_is_rule()) {
             report_msg_type("AST Rule",
                             get_rule_info(current->get_parse_type()));
             this->push_children(current, loop);
