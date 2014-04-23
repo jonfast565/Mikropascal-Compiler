@@ -200,6 +200,12 @@ bool SemanticAnalyzer::is_scoped_any(string id) {
     }
 }
 
+void SemanticAnalyzer::write_raw(string raw) {
+    if (this->file_writer->is_open() && this->file_writer->good()) {
+        (*this->file_writer) << raw << endl;
+    }
+}
+
 bool SemanticAnalyzer::is_callable_scoped(string callable_id) {
     // resolve and filter
     SymbolListPtr resolved_sym = this->get_symtable()->find(callable_id);
@@ -249,7 +255,7 @@ void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
         current->generate_post();
     } else {
         // terminate the program
-        report_msg_type("Semantic Error", "Block validation failed.");
+        report_msg_type("Semantic Error", "Compilation failed (block validation failed).");
         exit(0);
     }
 }
@@ -318,7 +324,7 @@ bool SemanticAnalyzer::is_data_in_callable(string data_id, string callable_id) {
         return false;
     } else if (matching_callable->size() > 1) {
         // nesting level scope check needed? (error is primitive)
-        report_msg_type("Semantic Error", "Redefinition of " + callable_id + " in multiple places");
+        report_msg_type("Semantic Error", "Redefinition of '" + callable_id + "' in multiple places");
         // isn't scoped because we don't know what it is
         return false;
     } else {
@@ -340,7 +346,7 @@ bool SemanticAnalyzer::is_data_in_callable(string data_id, string callable_id) {
         }
     }
     // no definition found
-    report_msg_type("Semantic Error", "No definition of " + data_id + " in " + callable_id);
+    report_msg_type("Semantic Error", "No definition of '" + data_id + "' in " + callable_id);
     return false;
 }
 
@@ -788,7 +794,7 @@ void AssignmentBlock::generate_pre() {
 void AssignmentBlock::generate_post() {
     // pop into assigner
     SymDataPtr post_assigner = static_pointer_cast<SymData>(this->assigner);
-    make_cast(this->expr_type, post_assigner->get_var_type());
+    make_cast(post_assigner->get_var_type(), this->expr_type);
     write_raw("POP " + post_assigner->get_address());
     write_raw("");
 }
@@ -802,7 +808,7 @@ void AssignmentBlock::catch_token(TokenPtr symbol) {
 }
 
 void AssignmentBlock::preprocess() {
-    assert(this->get_unprocessed()->size());
+    //assert(this->get_unprocessed()->size());
     bool first_id = true;
     if (this->expr_only) {
         first_id = false;
@@ -849,7 +855,9 @@ void IOBlock::generate_pre() {
                 VarType data_type = static_pointer_cast<SymData>(*i)->get_var_type();
                 // can't read a boolean
                 if (data_type == BOOLEAN) {
-                    report_msg_type("Semantic Error", "Boolean cannot be read by VM.");
+                    report_msg_type("Semantic Warning", "Boolean could fail if not 1 or 0.");
+                    write_raw("RD " + addr);
+                // can read other types in though
                 } else if (data_type == INTEGER) {
                     write_raw("RD " + addr);
                 } else if (data_type == FLOATING) {

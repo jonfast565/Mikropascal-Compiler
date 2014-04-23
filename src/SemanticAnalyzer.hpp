@@ -351,6 +351,7 @@ private:
     // labels for code generation
     unsigned int label_count;
     // file for writing stuff
+    unique_ptr<ofstream> file_writer;
 public:
     SemanticAnalyzer();
     virtual ~SemanticAnalyzer() = default;
@@ -366,6 +367,7 @@ public:
     void feed_token(TokenPtr token);
     void append_block(CodeBlockPtr new_block);
     void rappel_block();
+    void write_raw(string raw);
     CodeBlockPtr get_top_block();
     string generate_label();
 };
