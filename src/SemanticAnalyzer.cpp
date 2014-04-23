@@ -447,8 +447,11 @@ VarType CodeBlock::make_cast(VarType v1, VarType v2) {
             return FLOATING;
         } else if ((v1 == STRING && (v2 == INTEGER || v2 == FLOATING))
                    || ((v1 == INTEGER || v1 == FLOATING) && v2 == STRING)
-                   || (v1 == VOID || v2 == VOID)) {
-            this->valid = false;
+                   || (v1 == VOID || v2 == VOID)
+                   || (v1 == BOOLEAN && v2 != BOOLEAN)
+                   || (v1 != BOOLEAN && v2 == BOOLEAN)) {
+                       // need to catch boolean casting issues here...
+                       this->valid = false;
             report_msg_type("Semantic Error", "Unable to cast "
                             + var_type_to_string(v1)
                             + " to " + var_type_to_string(v2));
