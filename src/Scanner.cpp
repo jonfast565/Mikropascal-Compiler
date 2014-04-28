@@ -27,7 +27,7 @@ Scanner::Scanner(shared_ptr<Input> input_ptr) {
 	this->load_keyword_machines();
 	this->load_id_machine();
 	this->load_num_machines();
-    this->load_strand_machines(100);
+    this->load_strand_machines(4);
     
     // set the line and column numbers to default
 	this->col_number = 1L;
@@ -582,9 +582,9 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_state("0", true, false);
     comment_machine->add_state("1", false, false);
     comment_machine->add_state("2", false, true);
+    comment_machine->add_state("3", false, false);
     
-    // add transitions
-    comment_machine->add_transition("0", '{', "1");
+    // for state 1
     comment_machine->add_alphabet("1", "1");
     comment_machine->add_symbols("1", "1");
     comment_machine->add_digits("1", "1");
@@ -592,7 +592,38 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_transition("1", '\n', "1");
     comment_machine->remove_transition("1", '{');
     comment_machine->remove_transition("1", '}');
+    comment_machine->add_transition("0", '{', "1");
     comment_machine->add_transition("1", '}', "2");
+    
+    // for state 3
+    comment_machine->add_alphabet("3", "3");
+    comment_machine->add_symbols("3", "3");
+    comment_machine->add_digits("3", "3");
+    comment_machine->add_transition("3", ' ', "3");
+    comment_machine->add_transition("3", '\n', "3");
+    comment_machine->remove_transition("3", '{');
+    comment_machine->remove_transition("3", '}');
+    comment_machine->add_transition("1", '{', "3");
+    comment_machine->add_transition("3", '}', "1");
+    
+    /*
+    // create the inner machine
+    for (unsigned int i = 4; i < within + 4; i++) {
+        string state_name = to_string(i);
+        comment_machine->add_state(state_name, false, false);
+        unsigned int old_state = i - 1;
+        string state_minus_name = to_string(old_state);
+        comment_machine->add_alphabet(state_name, state_name);
+        comment_machine->add_symbols(state_name, state_name);
+        comment_machine->add_digits(state_name, state_name);
+        comment_machine->add_transition(state_name, ' ', state_name);
+        comment_machine->add_transition(state_name, '\n', state_name);
+        comment_machine->remove_transition(state_name, '{');
+        comment_machine->remove_transition(state_name, '}');
+        comment_machine->add_transition(state_minus_name, '{', state_name);
+        comment_machine->add_transition(state_name, '}', state_minus_name);
+    }
+     */
     
     // new machine
     auto string_machine = FSMachinePtr(

@@ -464,8 +464,7 @@ public:
 		// invalid state of the iterator
 		if (this->run_ptr == this->states->end()) {
 			return false;
-        }
-		else {
+        } else {
 			// else we need to determine if
             // the iterator is on a final state
 			if ((*this->run_ptr)->get_is_final() == true)
