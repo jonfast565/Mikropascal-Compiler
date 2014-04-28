@@ -926,7 +926,9 @@ bool AssignmentBlock::validate() {
 }
 
 void AssignmentBlock::catch_token(TokenPtr symbol) {
-	this->get_unprocessed()->push_back(symbol);
+    if (symbol->get_token() != MP_COMMENT) {
+        this->get_unprocessed()->push_back(symbol);
+    }
 }
 
 void AssignmentBlock::preprocess() {

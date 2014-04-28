@@ -120,11 +120,8 @@ void Parser::parse_system_goal() {
     this->more_indent();
     this->go_into(SYSTEM_GOAL);
 	report_parse("PARSE_SYSTEM_GOAL", this->parse_depth);
-	
-    // parse system goal
-    if (this->try_match(MP_PROGRAM)) {
-        this->parse_program();
-    }
+    // parse program and then reach end of file
+    this->parse_program();
     this->parse_eof();
     this->return_from();
     this->less_indent();
@@ -889,11 +886,13 @@ void Parser::parse_optional_sign() {
     this->more_indent();
     this->go_into(OPTIONAL_SIGN);
 	report_parse("PARSE_OPT_SIGN", this->parse_depth);
-	if (this->try_match(MP_PLUS))
+	if (this->try_match(MP_PLUS))  {
+        this->get_analyzer()->feed_token(TokenPtr(new Token(MP_INT_LITERAL, "0", -1, -1)));
 		this->match(MP_PLUS);
-	else if (this->try_match(MP_MINUS))
+	} else if (this->try_match(MP_MINUS)) {
+        this->get_analyzer()->feed_token(TokenPtr(new Token(MP_INT_LITERAL, "0", -1, -1)));
 		this->match(MP_MINUS);
-	else {
+	} else {
 		// no optional sign, epsilon
         report_parse("EPSILON_REACHED", this->parse_depth);
         this->go_into(EPSILON);

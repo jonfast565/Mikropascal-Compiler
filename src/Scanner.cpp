@@ -595,36 +595,6 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_transition("0", '{', "1");
     comment_machine->add_transition("1", '}', "2");
     
-    // for state 3
-    comment_machine->add_alphabet("3", "3");
-    comment_machine->add_symbols("3", "3");
-    comment_machine->add_digits("3", "3");
-    comment_machine->add_transition("3", ' ', "3");
-    comment_machine->add_transition("3", '\n', "3");
-    comment_machine->remove_transition("3", '{');
-    comment_machine->remove_transition("3", '}');
-    comment_machine->add_transition("1", '{', "3");
-    comment_machine->add_transition("3", '}', "1");
-    
-    /*
-    // create the inner machine
-    for (unsigned int i = 4; i < within + 4; i++) {
-        string state_name = to_string(i);
-        comment_machine->add_state(state_name, false, false);
-        unsigned int old_state = i - 1;
-        string state_minus_name = to_string(old_state);
-        comment_machine->add_alphabet(state_name, state_name);
-        comment_machine->add_symbols(state_name, state_name);
-        comment_machine->add_digits(state_name, state_name);
-        comment_machine->add_transition(state_name, ' ', state_name);
-        comment_machine->add_transition(state_name, '\n', state_name);
-        comment_machine->remove_transition(state_name, '{');
-        comment_machine->remove_transition(state_name, '}');
-        comment_machine->add_transition(state_minus_name, '{', state_name);
-        comment_machine->add_transition(state_name, '}', state_minus_name);
-    }
-     */
-    
     // new machine
     auto string_machine = FSMachinePtr(
     new FiniteAutomataContainer(get_token_info(TokType::MP_STRING_LITERAL).first, true));
