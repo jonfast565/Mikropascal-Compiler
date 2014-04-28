@@ -569,6 +569,7 @@ void Parser::parse_read_parameter_tail() {
     this->go_into(READ_PARAMETER_TAIL);
 	report_parse("PARSE_READ_PARAM_TAIL", this->parse_depth);
 	if (this->try_match(MP_COMMA)) {
+        this->match(MP_COMMA);
 		this->parse_read_parameter();
 		this->parse_read_parameter_tail();
 	} else {

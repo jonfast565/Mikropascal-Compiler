@@ -1088,9 +1088,9 @@ void LoopBlock::generate_pre() {
         // get the comparison components for the ordinal expr
         TokenPtr incrementer = (*this->get_unprocessed())[3];
         if (incrementer->get_token() == MP_TO) {
-            ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, ">", -1, -1)));
+            ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "=", -1, -1)));
         } else if (incrementer->get_token() == MP_DOWNTO) {
-            ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "<", -1, -1)));
+            ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "=", -1, -1)));
         }
         ordinal_expr->catch_token((*this->get_unprocessed())[0]);
         // generate its code
