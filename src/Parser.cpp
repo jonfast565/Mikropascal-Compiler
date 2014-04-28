@@ -1003,7 +1003,11 @@ void Parser::parse_factor() {
 		this->match(MP_FLOAT_LITERAL);
 	} else if (this->try_match(MP_STRING_LITERAL)) {
 		this->match(MP_STRING_LITERAL);
-	} else if (this->try_match(MP_NOT)) {
+	} else if (this->try_match(MP_TRUE)) {
+        this->match(MP_TRUE);
+    } else if (this->try_match(MP_FALSE)) {
+        this->match(MP_FALSE);
+    } else if (this->try_match(MP_NOT)) {
 		this->match(MP_NOT);
 		this->parse_factor();
 	} else {
