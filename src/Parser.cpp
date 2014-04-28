@@ -197,7 +197,9 @@ void Parser::parse_program_heading() {
     this->go_into(PROGRAM_HEADING);
 	report_parse("PARSE_PROGRAM_HEADING", this->parse_depth);
 	this->match(MP_PROGRAM);
+    this->begin_generate_program();
 	this->parse_program_identifier();
+    this->soft_end_generate();
 	this->return_from();
     this->less_indent();
 }
@@ -1265,8 +1267,16 @@ void Parser::begin_generate_callable(ActivationType activation, ActivityType act
     report_msg("In Activation Block");
 }
 
+void Parser::begin_generate_program() {
+    this->begin_generate();
+}
+
 void Parser::begin_generate() {
     this->gen_collect->push(0);
+}
+
+void Parser::soft_end_generate() {
+    this->gen_collect->pop();
 }
 
 void Parser::end_generate() {

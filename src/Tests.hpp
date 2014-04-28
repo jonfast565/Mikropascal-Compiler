@@ -112,7 +112,7 @@ int parser_test(string filename) {
     if (input != nullptr) {
         shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
         shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
-                                                                         new SemanticAnalyzer());
+                                                                         new SemanticAnalyzer(filename));
         shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
         parser->parse();
         parser->get_analyzer()->get_ast()->display_tree();
@@ -127,7 +127,7 @@ int symbol_test(string filename) {
     if (input != nullptr) {
         shared_ptr<Scanner> scanner = shared_ptr<Scanner>(new Scanner(input));
         shared_ptr<SemanticAnalyzer> analyzer = shared_ptr<SemanticAnalyzer>(
-                                                                         new SemanticAnalyzer());
+                                                                         new SemanticAnalyzer(filename));
         shared_ptr<Parser> parser = shared_ptr<Parser>(new Parser(scanner, analyzer));
         parser->parse();
         parser->get_analyzer()->print_symbols();
@@ -141,10 +141,9 @@ int compile_chain(string filename) {
    	InputPtr input = Input::open_file(filename);
     if (input != nullptr) {
         ScannerPtr scanner = ScannerPtr(new Scanner(input));
-        SemanticAnalyzerPtr analyzer = SemanticAnalyzerPtr(new SemanticAnalyzer());
+        SemanticAnalyzerPtr analyzer = SemanticAnalyzerPtr(new SemanticAnalyzer(filename));
         ParserPtr parser = ParserPtr(new Parser(scanner, analyzer));
         parser->parse();
-        cout << endl;
         parser->get_analyzer()->generate_all();
         report_msg_type("Success", "Compilation terminated successfully");
     } else {

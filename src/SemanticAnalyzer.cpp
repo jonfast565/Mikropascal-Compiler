@@ -163,7 +163,7 @@ AbstractNodeList::iterator AbstractNode::get_child_end() {
 }
 
 // Semantic analyzer stuff
-SemanticAnalyzer::SemanticAnalyzer() {
+SemanticAnalyzer::SemanticAnalyzer(string filedir) {
     this->ast = AbstractTreePtr(new AbstractTree());
     this->symbols = SymTablePtr(new SymTable());
     this->condensedst = CodeBlockPtr(new ProgramBlock());
@@ -171,6 +171,7 @@ SemanticAnalyzer::SemanticAnalyzer() {
     this->label_count = 0;
     this->block_stack = unique_ptr<stack<CodeBlockPtr>>(new stack<CodeBlockPtr>);
     this->block_stack->push(this->condensedst);
+    this->filedir = filedir;
 }
 
 AbstractTreePtr SemanticAnalyzer::get_ast() {
@@ -200,9 +201,11 @@ bool SemanticAnalyzer::is_scoped_any(string id) {
     }
 }
 
-void SemanticAnalyzer::write_raw(string raw) {
-    if (this->file_writer->is_open() && this->file_writer->good()) {
-        (*this->file_writer) << raw << endl;
+void SemanticAnalyzer::write_tof(string raw) {
+    if (this->file_writer != nullptr) {
+        if (this->file_writer->is_open() && this->file_writer->good()) {
+            (*this->file_writer) << raw << endl;
+        }
     }
 }
 
@@ -255,6 +258,7 @@ void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
         current->generate_post();
     } else {
         // terminate the program
+        this->close_file();
         report_msg_type("Compilation Failed", "Validation failure.");
         exit(0);
     }
@@ -352,6 +356,19 @@ bool SemanticAnalyzer::is_data_in_callable(string data_id, string callable_id) {
 
 void SemanticAnalyzer::print_symbols() {
     this->symbols->print();
+}
+
+void SemanticAnalyzer::open_file(string program_name) {
+    size_t npos = this->filedir.find_last_of('/');
+    string directory = filedir.substr(0, npos + 1);
+    string new_path = directory + program_name + ".il";
+    this->file_writer = shared_ptr<ofstream>(new ofstream(new_path));
+}
+
+void SemanticAnalyzer::close_file() {
+    if (this->file_writer != nullptr) {
+        this->file_writer->close();
+    }
 }
 
 bool CodeBlock::is_operator(SymbolPtr character) {
@@ -470,6 +487,10 @@ VarType CodeBlock::make_cast(SymbolPtr p, VarType v1, VarType v2) {
 // Code Block Stuff
 void CodeBlock::append(CodeBlockPtr block) {
     this->block_list->push_back(block);
+}
+
+void CodeBlock::write_raw(string raw) {
+    this->get_analyzer()->write_tof(raw);
 }
 
 bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
@@ -843,6 +864,10 @@ void CodeBlock::emit(InstructionType ins, vector<string> operands) {
 
 // Program Block stuff
 void ProgramBlock::generate_pre() {
+    // get the program id and set it as the open file
+    TokenPtr p = *this->get_unprocessed()->begin();
+    // open a file to write to
+    this->get_analyzer()->open_file(p->get_lexeme());
     // generate program entry point
     write_raw("MOV SP D0");
     // push begin symbols
@@ -861,6 +886,8 @@ void ProgramBlock::generate_pre() {
 void ProgramBlock::generate_post() {
     // generate program exit point
     write_raw("HLT\n");
+    // close the file
+    this->get_analyzer()->close_file();
 }
 
 bool ProgramBlock::validate() {

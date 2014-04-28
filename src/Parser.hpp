@@ -134,6 +134,7 @@ public:
     void print_sym_buffer();
     void begin_generate();
     void begin_generate_assignment();
+    void begin_generate_program();
     void begin_generate_io_action(IOAction action, bool newline);
     void begin_generate_loop(LoopType loop);
     void begin_generate_callable_part(bool jump_around);
@@ -143,6 +144,7 @@ public:
     ConditionalBlockPtr begin_generate_if();
     ConditionalBlockPtr begin_generate_opt_else();
     void end_generate();
+    void soft_end_generate();
     void produce_code();
     VarType to_var(TokType token_type);
 };

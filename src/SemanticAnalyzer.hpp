@@ -168,6 +168,7 @@ public:
     CodeBlockList::iterator inner_begin();
     CodeBlockList::iterator inner_end();
     SymbolPtr translate(TokenPtr token);
+    void write_raw(string raw);
 };
 
 class ProgramBlock: public CodeBlock {
@@ -351,9 +352,10 @@ private:
     // labels for code generation
     unsigned int label_count;
     // file for writing stuff
-    unique_ptr<ofstream> file_writer;
+    shared_ptr<ofstream> file_writer;
+    string filedir;
 public:
-    SemanticAnalyzer();
+    SemanticAnalyzer(string filedir);
     virtual ~SemanticAnalyzer() = default;
     AbstractTreePtr get_ast();
     SymTablePtr get_symtable();
@@ -367,9 +369,11 @@ public:
     void feed_token(TokenPtr token);
     void append_block(CodeBlockPtr new_block);
     void rappel_block();
-    void write_raw(string raw);
+    void write_tof(string raw);
     CodeBlockPtr get_top_block();
     string generate_label();
+    void open_file(string program_name);
+    void close_file();
 };
 
 #endif
