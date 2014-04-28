@@ -1093,6 +1093,13 @@ void LoopBlock::generate_pre() {
             ordinal_expr->catch_token(TokenPtr(new Token(MP_EQUALS, "=", -1, -1)));
         }
         ordinal_expr->catch_token((*this->get_unprocessed())[0]);
+        if (incrementer->get_token() == MP_TO) {
+            ordinal_expr->catch_token(TokenPtr(new Token (MP_MINUS, "-", -1, -1)));
+            ordinal_expr->catch_token(TokenPtr(new Token (MP_INT_LITERAL, "1", -1, -1)));
+        } else if (incrementer->get_token() == MP_DOWNTO) {
+            ordinal_expr->catch_token(TokenPtr(new Token (MP_PLUS, "+", -1, -1)));
+            ordinal_expr->catch_token(TokenPtr(new Token (MP_INT_LITERAL, "1", -1, -1)));
+        }
         // generate its code
         ordinal_expr->preprocess();
         ordinal_expr->generate_pre();
