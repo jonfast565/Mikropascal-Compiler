@@ -205,6 +205,8 @@ private:
 	string symbol_name;
 	Scope symbol_scope;
     unsigned int nesting_level;
+    unsigned long row = 0;
+    unsigned long col = 0;
 public:
 	Symbol(string name, SymType type, Scope scope, unsigned int nesting_level):
 		symbol_type(type), symbol_name(name), symbol_scope(scope), nesting_level(nesting_level){};
@@ -213,6 +215,10 @@ public:
     string get_symbol_name();
     Scope get_symbol_scope();
     unsigned int get_nesting_level();
+    void set_col(unsigned long col) { this->col = col; }
+    void set_row(unsigned long row) { this->row = row; }
+    unsigned long get_row() { return this->row; }
+    unsigned long get_col() { return this->col; }
     virtual void dyn() = 0;
 };
 

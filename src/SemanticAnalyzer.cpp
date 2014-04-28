@@ -435,7 +435,7 @@ int CodeBlock::op_precendence(SymbolPtr c1) {
     }
 }
 
-VarType CodeBlock::make_cast(VarType v1, VarType v2) {
+VarType CodeBlock::make_cast(SymbolPtr p, VarType v1, VarType v2) {
     if (v1 != v2) {
         if (v1 == INTEGER && v2 == FLOATING) {
             // cast back to integer
@@ -445,16 +445,17 @@ VarType CodeBlock::make_cast(VarType v1, VarType v2) {
             // cast back to floating
             write_raw("CASTSF");
             return FLOATING;
-        } else if ((v1 == STRING && (v2 == INTEGER || v2 == FLOATING))
-                   || ((v1 == INTEGER || v1 == FLOATING) && v2 == STRING)
+        } else if ((v1 == STRING && v2 != STRING)
+                   || (v1 != STRING && v2 == STRING)
                    || (v1 == VOID || v2 == VOID)
                    || (v1 == BOOLEAN && v2 != BOOLEAN)
                    || (v1 != BOOLEAN && v2 == BOOLEAN)) {
                        // need to catch boolean casting issues here...
                        this->valid = false;
-            report_msg_type("Semantic Error", "Unable to cast "
+            report_error_lc("Semantic Error", "Unable to cast "
                             + var_type_to_string(v1)
-                            + " to " + var_type_to_string(v2));
+                            + " to " + var_type_to_string(v2),
+                            p->get_row(), p->get_col());
             return VOID;
         } else {
             // fine
@@ -583,7 +584,7 @@ VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
         if ((*i)->get_symbol_type() == SYM_DATA) {
             SymDataPtr d = static_pointer_cast<SymData>(*i);
             write_raw("PUSH " + d->get_address());
-            expr_type = make_cast(expr_type, d->get_var_type());
+            expr_type = make_cast(d, expr_type, d->get_var_type());
         } else {
             SymConstantPtr c = static_pointer_cast<SymConstant>(*i);
             if (i == this->temp_symbols->begin()) {
@@ -597,16 +598,16 @@ VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
                 write_raw("PUSH #0");
             } else if (c->get_constant_type() == FLOATING_LITERAL) {
                 write_raw("PUSH #" + c->get_data());
-                expr_type = make_cast(expr_type, FLOATING);
+                expr_type = make_cast(c, expr_type, FLOATING);
             } else if (c->get_constant_type() == INTEGER_LITERAL) {
                 write_raw("PUSH #" + c->get_data());
-                expr_type = make_cast(expr_type, INTEGER);
+                expr_type = make_cast(c, expr_type, INTEGER);
             } else if (c->get_constant_type() == STRING_LITERAL) {
                 // remove single quotes, and replace with double
                 string string_const = c->get_data();
                 replace(string_const.begin(), string_const.end(), '\'', '"');
                 write_raw("PUSH #" + string_const);
-                expr_type = make_cast(expr_type, STRING);
+                expr_type = make_cast(c, expr_type, STRING);
             } else if (c->get_constant_type() == ADD) {
                 if (expr_type == INTEGER)
                     write_raw("ADDS");
@@ -691,59 +692,131 @@ SymbolPtr CodeBlock::translate(TokenPtr token) {
     	unsigned int search_level = this->get_nesting_level();
         SymbolListPtr filtered_data = this->get_analyzer()->get_symtable()->data_in_scope_at(search_lexeme, search_level);
         if (this->check_filter_size(filtered_data)) {
-            return *filtered_data->begin();
+            SymbolPtr found = *filtered_data->begin();
+            found->set_col(token->get_column());
+            found->set_row(token->get_line());
+            return found;
         } else {
             SymbolListPtr global_data = this->get_analyzer()->get_symtable()->get_global_vars();
             if (this->check_filter_size(global_data)) {
-                return *global_data->begin();
+                SymbolPtr found = *global_data->begin();
+                found->set_col(token->get_column());
+                found->set_row(token->get_line());
+                return found;
             } else {
                 return nullptr;
             }
         }
     } else if (token->get_token() == MP_INT_LITERAL) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), INTEGER_LITERAL));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), INTEGER_LITERAL));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_STRING_LITERAL) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), STRING_LITERAL));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), STRING_LITERAL));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_FLOAT_LITERAL) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), FLOATING_LITERAL));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), FLOATING_LITERAL));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_TRUE) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_T));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_T));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_FALSE) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_F));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), BOOLEAN_LITERAL_F));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_LEFT_PAREN) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), LPAREN));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), LPAREN));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_RIGHT_PAREN) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), RPAREN));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), RPAREN));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_PLUS) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), ADD));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), ADD));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_MINUS) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), SUB));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), SUB));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_MULT) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), MUL));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), MUL));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_DIV) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_DIV_KW) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), DIV));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_MOD_KW) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), MOD));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), MOD));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_AND) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), AND));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), AND));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_OR) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), OR));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), OR));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_NOT) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), NOT));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), NOT));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_LESSTHAN) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), ILT));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), ILT));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_EQUALS) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), IEQ));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), IEQ));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_LESSTHAN_EQUALTO) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), ILE));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), ILE));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_GREATERTHAN) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), IGT));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), IGT));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_GREATERTHAN_EQUALTO) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), IGE));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), IGE));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else if (token->get_token() == MP_NOT_EQUAL) {
-        return SymbolPtr(new SymConstant(token->get_lexeme(), INE));
+        SymbolPtr s = SymbolPtr(new SymConstant(token->get_lexeme(), INE));
+        s->set_row(token->get_line());
+        s->set_col(token->get_column());
+        return s;
     } else {
         return nullptr;
     }
@@ -797,7 +870,7 @@ void AssignmentBlock::generate_pre() {
 void AssignmentBlock::generate_post() {
     // pop into assigner
     SymDataPtr post_assigner = static_pointer_cast<SymData>(this->assigner);
-    make_cast(post_assigner->get_var_type(), this->expr_type);
+    make_cast(post_assigner, post_assigner->get_var_type(), this->expr_type);
     write_raw("POP " + post_assigner->get_address());
     write_raw("");
 }
@@ -811,7 +884,6 @@ void AssignmentBlock::catch_token(TokenPtr symbol) {
 }
 
 void AssignmentBlock::preprocess() {
-    //assert(this->get_unprocessed()->size());
     bool first_id = true;
     if (this->expr_only) {
         first_id = false;
@@ -847,7 +919,6 @@ VarType AssignmentBlock::get_expr_type() {
 
 // IO Block stuff
 void IOBlock::generate_pre() {
-    assert(this->get_unprocessed()->size());
     for (auto i = this->args->begin(); i !=
          this->args->end(); i++) {
         if ((*i)->get_symbol_type() != SYM_CONSTANT) {
@@ -858,7 +929,8 @@ void IOBlock::generate_pre() {
                 VarType data_type = static_pointer_cast<SymData>(*i)->get_var_type();
                 // can't read a boolean
                 if (data_type == BOOLEAN) {
-                    report_msg_type("Semantic Warning", "Boolean could fail if not 1 or 0.");
+                    report_error_lc("Semantic Warning", "Boolean could fail if not 1 or 0.",
+                                    (*i)->get_row(), (*i)->get_col());
                     write_raw("RD " + addr);
                 // can read other types in though
                 } else if (data_type == INTEGER) {
@@ -882,7 +954,8 @@ void IOBlock::generate_pre() {
         } else {
             // is a constant
             if (this->action == IO_READ) {
-                report_msg_type("Semantic Error", "Constant value cannot be read to variable?");
+                report_error_lc("Semantic Error", "Constant value cannot be read to variable",
+                                (*i)->get_row(), (*i)->get_col());
             } else {
                 SymConstantPtr constant = static_pointer_cast<SymConstant>(*i);
                 if (constant->get_constant_type() == STRING_LITERAL) {
@@ -946,8 +1019,10 @@ void LoopBlock::generate_pre() {
         write_raw(this->cond_label + ":\n");
         VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
-            report_msg_type("Semantic Error",
-                            "Conditional expression doesn't evaluate to boolean value.");
+            report_error_lc("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.",
+                            (*this->get_symbol_list()->begin())->get_row(),
+                            (*this->get_symbol_list()->begin())->get_col());
         }
         write_raw("\nBRTS " + this->body_label);
         write_raw("BR " + this->exit_label);
@@ -994,8 +1069,10 @@ void LoopBlock::generate_post() {
         write_raw(this->cond_label + ":\n");
         VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
-            report_msg_type("Semantic Error",
-                            "Conditional expression doesn't evaluate to boolean value.");
+            report_error_lc("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.",
+                            (*this->get_symbol_list()->begin())->get_row(),
+                            (*this->get_symbol_list()->begin())->get_col());
         }
         write_raw("\nBRFS " + this->body_label);
         write_raw("BR " + this->exit_label + "\n");
@@ -1102,8 +1179,10 @@ void ConditionalBlock::generate_pre() {
     if (this->get_conditional_type() == COND_IF) {
         VarType result = this->generate_expr(this->get_symbol_list());
         if (result != BOOLEAN) {
-            report_msg_type("Semantic Error",
-                            "Conditional expression doesn't evaluate to boolean value.");
+            report_error_lc("Semantic Error",
+                            "Conditional expression doesn't evaluate to boolean value.",
+                            (*this->get_symbol_list()->begin())->get_row(),
+                            (*this->get_symbol_list()->begin())->get_col());
         }
         // true, jump to the body
         write_raw("\nBRTS " + this->body_label);

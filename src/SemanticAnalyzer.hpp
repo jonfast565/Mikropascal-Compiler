@@ -162,7 +162,7 @@ public:
     static int op_precendence(SymbolPtr c1);
     void convert_postfix();
     void emit(InstructionType ins, vector<string> operands);
-    VarType make_cast(VarType v1, VarType v2);
+    VarType make_cast(SymbolPtr p, VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);
     CodeBlockPtr get_parent();
     CodeBlockList::iterator inner_begin();
