@@ -1295,6 +1295,8 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
         
         // get the callable info and return type
         string callable_name = (*this->symbols->begin())->get_lexeme();
+        unsigned long row = (*this->symbols->begin())->get_line();
+        unsigned long col = (*this->symbols->begin())->get_column();
         VarType return_type = VOID;
         
         // argument list pointer for addition to callable
@@ -1306,7 +1308,7 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
             symbol_end = this->symbols->end() - 2;
             return_type = this->to_var((*(this->symbols->end() - 1))->get_token());
             if (this->symbols->size() == 2) {
-                table->create_callable(callable_name, return_type, argument_list);
+                table->create_callable(callable_name, return_type, argument_list, row, col);
                 symbol_names.clear();
                 this->symbols->clear();
                 return;
@@ -1316,7 +1318,7 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
             symbol_end = this->symbols->end();
             if (this->symbols->size() == 1) {
                 // create function or procedure call
-                table->create_callable(callable_name, return_type, argument_list);
+                table->create_callable(callable_name, return_type, argument_list, row, col);
                 // reset
                 symbol_names.clear();
                 this->symbols->clear();
@@ -1340,7 +1342,7 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
                     argument_list->push_back(table->create_argument(*it, var_type, VALUE));
                 }
                 // create function or procedure call
-                table->create_callable(callable_name, return_type, argument_list);
+                table->create_callable(callable_name, return_type, argument_list, row, col);
                 // reset
                 symbol_names.clear();
             }
@@ -1361,8 +1363,15 @@ void Parser::end_symbol(SymType symbol_type, ActivationType call_type) {
                 VarType var_type = this->to_var((*symbol_iter)->get_token());
                 // turn all symbol names into arguments
                 for (auto it = symbol_names.begin(); it != symbol_names.end(); it++) {
+                    unsigned long row = 0, col = 0;
+                    for (auto it2 = this->symbols->begin(); it2 != this->symbols->end(); it2++) {
+                        if ((*it2)->get_lexeme() == (*it)) {
+                            row = (*it2)->get_line();
+                            col = (*it2)->get_column();
+                        }
+                    }
                     // push back data
-                    table->create_data(*it, var_type);
+                    table->create_data(*it, var_type, row, col);
                 }
             }
         }

@@ -115,7 +115,7 @@ shared_ptr<vector<SymbolPtr>> SymTable::find(string id) {
     return sym_ptrs;
 }
 
-void SymTable::create_data(string name, VarType type) {
+void SymTable::create_data(string name, VarType type, unsigned long row, unsigned long col) {
     Scope current_scope;
     if (nesting_level == 0) {
         current_scope = GLOBAL;
@@ -125,12 +125,15 @@ void SymTable::create_data(string name, VarType type) {
     SymDataPtr p = SymDataPtr(
     new SymData(name, type, current_scope, this->get_level(), last_callable));
     p->set_address(this->get_level(), this->get_offset());
+    p->set_col(col);
+    p->set_row(row);
     this->symbol_list->push_back(p);
     this->max_offset++;
     this->to_latest();
 }
 
-void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr args) {
+void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr args,
+                               unsigned long row, unsigned long col) {
     Scope current_scope;
     if (nesting_level == 0) {
         current_scope = GLOBAL;
@@ -140,6 +143,8 @@ void SymTable::create_callable(string name, VarType return_type, ArgumentListPtr
     SymCallablePtr c = SymCallablePtr(new SymCallable(
     name, current_scope, this->nesting_level, return_type,
     this->symbol_list, args));
+    c->set_col(col);
+    c->set_row(row);
     this->symbol_list->push_back(c);
     this->to_latest();
 }

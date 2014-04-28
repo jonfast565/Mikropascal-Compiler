@@ -240,8 +240,8 @@ public:
     }
     virtual ~SymTable() = default;
     void add_symbol(SymbolPtr new_symbol);
-    void create_callable(string name, VarType return_type, ArgumentListPtr args);
-    void create_data(string name, VarType type);
+    void create_callable(string name, VarType return_type, ArgumentListPtr args, unsigned long row, unsigned long col);
+    void create_data(string name, VarType type, unsigned long row, unsigned long col);
     ArgumentPtr create_argument(string name, VarType type, PassType pass);
     void go_into();
     void return_from();

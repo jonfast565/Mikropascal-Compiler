@@ -255,7 +255,7 @@ void SemanticAnalyzer::generate_one(CodeBlockPtr current) {
         current->generate_post();
     } else {
         // terminate the program
-        report_msg_type("Semantic Error", "Compilation failed (block validation failed).");
+        report_msg_type("Compilation Failed", "Validation failure.");
         exit(0);
     }
 }
@@ -473,7 +473,10 @@ void CodeBlock::append(CodeBlockPtr block) {
 }
 
 bool CodeBlock::check_filter_size(SymbolListPtr filtered) {
-    if (filtered->size() > 1
+    if (filtered == nullptr) {
+        // too few ids
+        return false;
+    } else if (filtered->size() > 1
         || filtered->size() == 0) {
         // too many ids found
         return false;
@@ -581,6 +584,7 @@ VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
             this->valid = false;
             break;
         }
+        // if its data, then push an address
         if ((*i)->get_symbol_type() == SYM_DATA) {
             SymDataPtr d = static_pointer_cast<SymData>(*i);
             write_raw("PUSH " + d->get_address());
@@ -697,13 +701,24 @@ SymbolPtr CodeBlock::translate(TokenPtr token) {
             found->set_row(token->get_line());
             return found;
         } else {
-            SymbolListPtr global_data = this->get_analyzer()->get_symtable()->get_global_vars();
+            SymbolListPtr global_data = this->get_analyzer()->get_symtable()->data_in_scope_at(search_lexeme, 0);
             if (this->check_filter_size(global_data)) {
                 SymbolPtr found = *global_data->begin();
                 found->set_col(token->get_column());
                 found->set_row(token->get_line());
                 return found;
             } else {
+                if (global_data == nullptr) {
+                    report_error_lc("Semantic Error", "ID '" + search_lexeme + "' not found",
+                                    token->get_line(), token->get_column());
+                } else {
+                    report_error("Semantic Error", "ID '" + search_lexeme + "' redefined as...");
+                    for (auto it = global_data->begin(); it != global_data->end(); it++) {
+                        SymDataPtr dptr = static_pointer_cast<SymData>(*it);
+                        report_error_lc("Definition @", (*it)->get_symbol_name() + " as " + var_type_to_string(dptr->get_var_type()), (*it)->get_row(), (*it)->get_col());
+                    }
+                }
+                this->valid = false;
                 return nullptr;
             }
         }
@@ -906,7 +921,8 @@ void AssignmentBlock::preprocess() {
         }
     }
     // convert to postifx
-    convert_postfix();
+    if (this->get_valid() == true)
+        convert_postfix();
 }
 
 SymbolPtr AssignmentBlock::get_assigner() {
@@ -1122,7 +1138,8 @@ void LoopBlock::preprocess() {
              i != this->get_unprocessed()->end(); i++) {
             this->get_symbol_list()->push_back(this->translate(*i));
         }
-        this->convert_postfix();
+        if (this->get_valid() == true)
+            this->convert_postfix();
     }
 }
 
@@ -1140,7 +1157,7 @@ void LoopBlock::catch_token(TokenPtr symbol) {
 }
 
 bool LoopBlock::validate() {
-    return true;
+    return this->get_valid();
 }
 
 // Conditionals
@@ -1171,7 +1188,8 @@ void ConditionalBlock::preprocess() {
          i != this->get_unprocessed()->end(); i++) {
         this->get_symbol_list()->push_back(this->translate(*i));
     }
-    this->convert_postfix();
+    if (this->get_valid())
+        this->convert_postfix();
 }
 
 void ConditionalBlock::generate_pre() {
@@ -1232,7 +1250,7 @@ void ConditionalBlock::set_connected(ConditionalBlockPtr new_connected) {
 }
 
 bool ConditionalBlock::validate() {
-    return true;
+    return this->get_valid();
 }
 
 CondType ConditionalBlock::get_conditional_type() {
