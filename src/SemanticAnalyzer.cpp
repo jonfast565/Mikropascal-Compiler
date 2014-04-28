@@ -464,9 +464,7 @@ VarType CodeBlock::make_cast(SymbolPtr p, VarType v1, VarType v2) {
             return FLOATING;
         } else if ((v1 == STRING && v2 != STRING)
                    || (v1 != STRING && v2 == STRING)
-                   || (v1 == VOID || v2 == VOID)
-                   || (v1 == BOOLEAN && v2 != BOOLEAN)
-                   || (v1 != BOOLEAN && v2 == BOOLEAN)) {
+                   || (v1 == VOID || v2 == VOID)){
                        // need to catch boolean casting issues here...
                        this->valid = false;
             report_error_lc("Semantic Error", "Unable to cast "
@@ -474,6 +472,9 @@ VarType CodeBlock::make_cast(SymbolPtr p, VarType v1, VarType v2) {
                             + " to " + var_type_to_string(v2),
                             p->get_row(), p->get_col());
             return VOID;
+        } else if ((v1 == BOOLEAN && v2 != BOOLEAN)
+                   || (v1 != BOOLEAN && v2 == BOOLEAN)) {
+            return v2;
         } else {
             // fine
             return v2;
