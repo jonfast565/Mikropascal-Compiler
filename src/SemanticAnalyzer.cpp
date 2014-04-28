@@ -464,9 +464,12 @@ VarType CodeBlock::make_cast(SymbolPtr p, VarType v1, VarType v2) {
             return FLOATING;
         } else if ((v1 == STRING && v2 != STRING)
                    || (v1 != STRING && v2 == STRING)
-                   || (v1 == VOID || v2 == VOID)){
-                       // need to catch boolean casting issues here...
-                       this->valid = false;
+                   || (v1 == VOID || v2 == VOID)) {
+            if ((v1 == STRING_LITERAL && v2 == STRING) || (v1 == STRING && v2 == STRING_LITERAL)) {
+                return STRING;
+            }
+            // need to catch boolean casting issues here...
+            this->valid = false;
             report_error_lc("Semantic Error", "Unable to cast "
                             + var_type_to_string(v1)
                             + " to " + var_type_to_string(v2),
@@ -988,17 +991,12 @@ void IOBlock::generate_pre() {
             } else {
                 // no type necessary, just push and write
                 write_raw("PUSH " + addr);
-                // line terminator determines write call
-                if (this->line_terminator) {
-                    write_raw("WRTLNS");
-                } else {
-                    write_raw("WRTS");
-                }
+                write_raw("WRTS");
             }
         } else {
             // is a constant
             if (this->action == IO_READ) {
-                report_error_lc("Semantic Error", "Constant value cannot be read to variable",
+                report_error_lc("Semantic Error", "Constant value cannot be read",
                                 (*i)->get_row(), (*i)->get_col());
             } else {
                 SymConstantPtr constant = static_pointer_cast<SymConstant>(*i);
@@ -1007,22 +1005,18 @@ void IOBlock::generate_pre() {
                     string string_const = constant->get_data();
                     replace(string_const.begin(), string_const.end(), '\'', '"');
                     write_raw("PUSH #" + string_const);
-                    if (this->line_terminator) {
-                        write_raw("WRTLNS");
-                    } else {
-                        write_raw("WRTS");
-                    }
+                    write_raw("WRTS");
                 } else {
                     // generate numeric stuff
                     write_raw("PUSH #" + constant->get_data());
-                    if (this->line_terminator) {
-                        write_raw("WRTLNS");
-                    } else {
-                        write_raw("WRTS");
-                    }
+                    write_raw("WRTS");
                 }
             }
         }
+    }
+    if (this->line_terminator) {
+        write_raw("PUSH #\"\"");
+        write_raw("WRTLNS");
     }
 }
 
