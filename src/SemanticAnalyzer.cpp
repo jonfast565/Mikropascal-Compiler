@@ -566,6 +566,62 @@ void CodeBlock::preprocess() {
     // do nothing
 }
 
+void CodeBlock::convert_postfix() {
+    // data structs
+    unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
+    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
+    
+    // shunting yard (modified for unary operators!)
+    for (auto i = this->temp_symbols->begin(); i !=
+         this->temp_symbols->end(); i++) {
+        if (is_operand(*i)) {
+            unpostfix_symbols->push_back(*i);
+            if (!op_stack->empty()) {
+                if (is_unary(op_stack->top())) {
+                    unpostfix_symbols->push_back(op_stack->top());
+                    op_stack->pop();
+                }
+            }
+        } else if (is_operator(*i)) {
+            if (is_unary((*i))) {
+                op_stack->push(*i);
+            } else {
+                while (!op_stack->empty()
+                       && !is_lparen(op_stack->top())
+                       && compare_ops(*i, op_stack->top()) <= 0) {
+                    unpostfix_symbols->push_back(op_stack->top());
+                    op_stack->pop();
+                }
+                op_stack->push(*i);
+            }
+        } else if (is_lparen(*i)) {
+            op_stack->push(*i);
+        } else if (is_rparen(*i)) {
+            while (!op_stack->empty()) {
+                if (is_lparen(op_stack->top())) {
+                    op_stack->pop();
+                    if (!op_stack->empty()) {
+                        if (is_unary(op_stack->top())) {
+                            unpostfix_symbols->push_back(op_stack->top());
+                            op_stack->pop();
+                        }
+                    }
+                    break;
+                }
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+        }
+    }
+    while(!op_stack->empty()) {
+        unpostfix_symbols->push_back(op_stack->top());
+        op_stack->pop();
+    }
+    
+    // set the temp symbols as the postfix stuff
+    this->temp_symbols = unpostfix_symbols;
+}
+
 SymbolListPtr CodeBlock::convert_postfix(SymbolListPtr p) {
     // data structs
     unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
@@ -976,7 +1032,7 @@ void AssignmentBlock::preprocess() {
     }
     // convert to postifx
     if (this->get_valid() == true)
-        this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
+        this->convert_postfix();
 }
 
 SymbolPtr AssignmentBlock::get_assigner() {
@@ -1033,10 +1089,17 @@ bool IOBlock::validate() {
 void IOBlock::catch_token(TokenPtr token) {
     // no filtering, since the capture is for
     // comma separated expressions
+    if (token->get_token() != MP_WRITE
+        && token->get_token() != MP_WRITELN
+        && token->get_token() != MP_READ
+        && token->get_token() != MP_READLN)
     this->get_unprocessed()->push_back(token);
 }
 
 void IOBlock::preprocess() {
+    // get rid of the beginning and end parens
+    this->get_unprocessed()->erase(this->get_unprocessed()->begin());
+    this->get_unprocessed()->erase(this->get_unprocessed()->end() - 1);
     if (this->action == IO_WRITE) {
         SymbolListPtr pre = SymbolListPtr(new SymbolList());
         for (auto i = this->get_unprocessed()->begin();
@@ -1182,7 +1245,7 @@ void LoopBlock::preprocess() {
             this->get_symbol_list()->push_back(this->translate(*i));
         }
         if (this->get_valid() == true)
-            this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
+            this->convert_postfix();
     }
 }
 
@@ -1232,7 +1295,7 @@ void ConditionalBlock::preprocess() {
         this->get_symbol_list()->push_back(this->translate(*i));
     }
     if (this->get_valid())
-        this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
+        this->convert_postfix();
 }
 
 void ConditionalBlock::generate_pre() {

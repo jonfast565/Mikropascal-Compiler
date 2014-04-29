@@ -163,6 +163,7 @@ public:
     static int compare_ops(SymbolPtr c1, SymbolPtr c2);
     static int op_precendence(SymbolPtr c1);
     SymbolListPtr convert_postfix(SymbolListPtr p);
+    void convert_postfix();
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(SymbolPtr p, VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);

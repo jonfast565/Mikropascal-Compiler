@@ -478,16 +478,24 @@ void Parser::parse_statement() {
 	report_parse("PARSE_STATEMENT", this->parse_depth);
     // try matching to all statement types
 	if (this->try_match(MP_READ)) {
+        this->begin_generate_io_action(IO_READ, false);
 		this->parse_read_statement();
+        this->end_generate();
     }
     else if (this->try_match(MP_READLN)) {
+        this->begin_generate_io_action(IO_WRITE, true);
         this->parse_read_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_WRITE)) {
+        this->begin_generate_io_action(IO_WRITE, false);
 		this->parse_write_statement();
+        this->end_generate();
     }
     else if (this->try_match(MP_WRITELN)) {
+        this->begin_generate_io_action(IO_WRITE, true);
         this->parse_write_statement();
+        this->end_generate();
     }
 	else if (this->try_match(MP_ID)) {
         this->begin_generate_assignment();
@@ -536,22 +544,18 @@ void Parser::parse_empty_statement() {
 }
 
 void Parser::parse_read_statement() {
-    bool terminator = true;
     this->more_indent();
     this->go_into(READ_STATEMENT);
 	report_parse("PARSE_READ_STATEMENT", this->parse_depth);
     if (this->try_match(MP_READ)) {
         this->match(MP_READ);
-        terminator = false;
     }
     else if (this->try_match(MP_READLN)) {
         this->match(MP_READLN);
     }
 	this->match(MP_LEFT_PAREN);
-    this->begin_generate_io_action(IO_READ, terminator);
 	this->parse_read_parameter();
 	this->parse_read_parameter_tail();
-    this->end_generate();
 	this->match(MP_RIGHT_PAREN);
     this->return_from();
     this->less_indent();
@@ -585,7 +589,6 @@ void Parser::parse_read_parameter() {
 }
 
 void Parser::parse_write_statement() {
-    bool terminator = true;
     this->more_indent();
     this->go_into(WRITE_STATEMENT);
 	report_parse("PARSE_WRITE_STATEMENT", this->parse_depth);
@@ -593,13 +596,10 @@ void Parser::parse_write_statement() {
 		this->match(MP_WRITELN);
 	} else if (this->try_match(MP_WRITE)) {
 		this->match(MP_WRITE);
-        terminator = false;
 	}
 	this->match(MP_LEFT_PAREN);
-    this->begin_generate_io_action(IO_WRITE, terminator);
 	this->parse_write_parameter();
 	this->parse_write_parameter_tail();
-    this->end_generate();
 	this->match(MP_RIGHT_PAREN);
     this->return_from();
     this->less_indent();

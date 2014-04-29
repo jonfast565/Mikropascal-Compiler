@@ -537,7 +537,6 @@ void Scanner::load_num_machines() {
 	float_machine->add_state("4", false, false);
 	float_machine->add_state("5", false, true);
     float_machine->add_digits("0", "1");
-    float_machine->add_transition("0", '-', "1");
 	float_machine->add_digits("1", "1");
 	float_machine->add_transition("1", '.', "2");
 	float_machine->add_digits("2", "2");
@@ -555,7 +554,6 @@ void Scanner::load_num_machines() {
     // add states to this DFA
 	integer_machine->add_state("0", true, false);
 	integer_machine->add_state("1", false, true);
-    integer_machine->add_transition("0", '-', "1");
 	integer_machine->add_digits("0", "1");
 	integer_machine->add_digits("1", "1");
     
