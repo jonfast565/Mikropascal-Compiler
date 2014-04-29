@@ -161,6 +161,7 @@ public:
     static int compare_ops(SymbolPtr c1, SymbolPtr c2);
     static int op_precendence(SymbolPtr c1);
     void convert_postfix();
+    SymbolListPtr convert_postfix(SymbolListPtr p);
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(SymbolPtr p, VarType v1, VarType v2);
     VarType generate_expr(SymbolListPtr expr_list);
@@ -188,12 +189,12 @@ enum IOAction {
 
 class IOBlock: public CodeBlock {
 private:
-    SymbolListPtr args;
+    shared_ptr<vector<SymbolListPtr>> expressions;
     IOAction action;
     bool line_terminator;
 public:
     IOBlock(IOAction action, bool newline): CodeBlock(IO_BLOCK, nullptr), action(action), line_terminator(newline) {
-        this->args = SymbolListPtr(new SymbolList());
+        this->expressions = shared_ptr<vector<SymbolListPtr>>(new vector<SymbolListPtr>);
     }
     ~IOBlock() = default;
     virtual void generate_pre();

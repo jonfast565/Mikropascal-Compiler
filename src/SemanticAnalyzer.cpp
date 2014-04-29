@@ -597,6 +597,46 @@ void CodeBlock::convert_postfix() {
     this->temp_symbols = unpostfix_symbols;
 }
 
+SymbolListPtr CodeBlock::convert_postfix(SymbolListPtr p) {
+    // data structs
+    unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
+    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
+    
+    // shunting yard
+    for (auto i = p->begin(); i !=
+         p->end(); i++) {
+        if (is_operand(*i)) {
+            unpostfix_symbols->push_back(*i);
+        } else if (is_operator(*i)) {
+            while (!op_stack->empty()
+                   && !is_lparen(op_stack->top())
+                   && compare_ops(*i, op_stack->top()) <= 0) {
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+            op_stack->push(*i);
+        } else if (is_lparen(*i)) {
+            op_stack->push(*i);
+        } else if (is_rparen(*i)) {
+            while (!op_stack->empty()) {
+                if (is_lparen(op_stack->top())) {
+                    op_stack->pop();
+                    break;
+                }
+                unpostfix_symbols->push_back(op_stack->top());
+                op_stack->pop();
+            }
+        }
+    }
+    while(!op_stack->empty()) {
+        unpostfix_symbols->push_back(op_stack->top());
+        op_stack->pop();
+    }
+    
+    // set the temp symbols as the postfix stuff
+    return unpostfix_symbols;
+}
+
 // generates an expression
 // returns its last type
 VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
@@ -636,7 +676,7 @@ VarType CodeBlock::generate_expr(SymbolListPtr expr_list) {
                 string string_const = c->get_data();
                 replace(string_const.begin(), string_const.end(), '\'', '"');
                 write_raw("PUSH #" + string_const);
-                expr_type = make_cast(c, expr_type, STRING);
+                expr_type = STRING;
             } else if (c->get_constant_type() == ADD) {
                 if (expr_type == INTEGER)
                     write_raw("ADDS");
@@ -968,51 +1008,28 @@ VarType AssignmentBlock::get_expr_type() {
 
 // IO Block stuff
 void IOBlock::generate_pre() {
-    for (auto i = this->args->begin(); i !=
-         this->args->end(); i++) {
-        if ((*i)->get_symbol_type() != SYM_CONSTANT) {
-            // get the address of the data to be read/written
-            string addr = static_pointer_cast<SymData>(*i)->get_address();
-            // for a read action we will need to know the type
-            if (this->action == IO_READ) {
-                VarType data_type = static_pointer_cast<SymData>(*i)->get_var_type();
-                // can't read a boolean
-                if (data_type == BOOLEAN) {
-                    report_error_lc("Semantic Warning", "Boolean could fail if not 1 or 0.",
-                                    (*i)->get_row(), (*i)->get_col());
-                    write_raw("RD " + addr);
-                // can read other types in though
-                } else if (data_type == INTEGER) {
-                    write_raw("RD " + addr);
-                } else if (data_type == FLOATING) {
-                    write_raw("RDF " + addr);
-                } else {
-                    // assume string
-                    write_raw("RDS " + addr);
+    if (this->action == IO_WRITE) {
+        for (auto i = this->expressions->begin();
+             i != this->expressions->end(); i++) {
+            SymbolListPtr postfixes = this->convert_postfix(*i);
+            this->generate_expr(postfixes);
+            write_raw("WRTS");
+        }
+    } else if (this->action == IO_READ) {
+        for (auto i = this->get_symbol_list()->begin();
+             i != this->get_symbol_list()->end(); i++) {
+            if ((*i)->get_symbol_type() == SYM_DATA) {
+                SymDataPtr p = static_pointer_cast<SymData>(*i);
+                if (p->get_var_type() == INTEGER || p->get_var_type() == BOOLEAN) {
+                    write_raw("RD " + p->get_address());
+                } else if (p->get_var_type() == FLOATING) {
+                    write_raw("RDF " + p->get_address());
+                } else if (p->get_var_type() == STRING) {
+                    write_raw("RDS " + p->get_address());
                 }
-            } else {
-                // no type necessary, just push and write
-                write_raw("PUSH " + addr);
-                write_raw("WRTS");
-            }
-        } else {
-            // is a constant
-            if (this->action == IO_READ) {
-                report_error_lc("Semantic Error", "Constant value cannot be read",
+            } else if ((*i)->get_symbol_type() == SYM_CONSTANT) {
+                report_error_lc("Semantic Error", "Cannot read to a constant.",
                                 (*i)->get_row(), (*i)->get_col());
-            } else {
-                SymConstantPtr constant = static_pointer_cast<SymConstant>(*i);
-                if (constant->get_constant_type() == STRING_LITERAL) {
-                    // remove single quotes, and replace with double
-                    string string_const = constant->get_data();
-                    replace(string_const.begin(), string_const.end(), '\'', '"');
-                    write_raw("PUSH #" + string_const);
-                    write_raw("WRTS");
-                } else {
-                    // generate numeric stuff
-                    write_raw("PUSH #" + constant->get_data());
-                    write_raw("WRTS");
-                }
             }
         }
     }
@@ -1033,22 +1050,36 @@ bool IOBlock::validate() {
 }
 
 void IOBlock::catch_token(TokenPtr token) {
-    // filter by printable items
-    if (token->get_token() == MP_ID
-        || token->get_token() == MP_INT_LITERAL
-        || token->get_token() == MP_STRING_LITERAL
-        || token->get_token() == MP_FLOAT_LITERAL) {
-        this->get_unprocessed()->push_back(token);
-    }
+    // no filtering, since the capture is for
+    // comma separated expressions
+    this->get_unprocessed()->push_back(token);
 }
 
 void IOBlock::preprocess() {
-    assert(this->get_unprocessed()->size());
-    for (auto i = this->get_unprocessed()->begin();
-         i != this->get_unprocessed()->end(); i++) {
-    	TokenPtr t = *i;
-        SymbolPtr p = translate(t);
-        this->args->push_back(p);
+    if (this->action == IO_WRITE) {
+        SymbolListPtr pre = SymbolListPtr(new SymbolList());
+        for (auto i = this->get_unprocessed()->begin();
+             i != this->get_unprocessed()->end(); i++) {
+            TokenPtr t = *i;
+            if (t->get_token() != MP_COMMA) {
+                SymbolPtr p = translate(t);
+                pre->push_back(p);
+            } else {
+                // reset
+                this->expressions->push_back(pre);
+                pre = SymbolListPtr(new SymbolList());
+            }
+        }
+        this->expressions->push_back(pre);
+    } else if (this->action == IO_READ) {
+        for (auto i = this->get_unprocessed()->begin();
+             i != this->get_unprocessed()->end(); i++) {
+            TokenPtr t = *i;
+            if (t->get_token() != MP_COMMA) {
+                SymbolPtr p = translate(t);
+                this->get_symbol_list()->push_back(p);
+            }
+        }
     }
 }
 

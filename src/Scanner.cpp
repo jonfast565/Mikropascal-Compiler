@@ -582,7 +582,6 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_state("0", true, false);
     comment_machine->add_state("1", false, false);
     comment_machine->add_state("2", false, true);
-    comment_machine->add_state("3", false, false);
     
     // for state 1
     comment_machine->add_alphabet("1", "1");
@@ -724,7 +723,7 @@ void Scanner::display_tokens() {
 	for (vector<TokenPtr>::iterator i = this->consumed->begin();
          i != consumed->end(); i++) {
 		report_error_lc("Found", "'" + (*i)->get_lexeme()
-                        + "'", (*i)->get_line(), (*i)->get_column());
+                        + "' : " + get_token_info((*i)->get_token()).first, (*i)->get_line(), (*i)->get_column());
 	}
 }
 
