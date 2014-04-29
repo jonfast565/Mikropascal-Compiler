@@ -140,6 +140,7 @@ public:
     BlockType get_block_type() { return this->block_type; }
     TokenListPtr get_unprocessed() { return this->unprocessed; }
     SymbolListPtr get_symbol_list() { return this->temp_symbols; }
+    void set_symbol_list(SymbolListPtr p) { this->temp_symbols = p; }
     CodeBlockPtr get_parent_block() { return this->parent_block; }
     SemanticAnalyzerPtr get_analyzer() { return this->parent_analyzer; }
     bool get_valid() { return this->valid; }
@@ -158,9 +159,9 @@ public:
     static bool is_operand(SymbolPtr character);
     static bool is_lparen(SymbolPtr character);
     static bool is_rparen(SymbolPtr character);
+    static bool is_unary(SymbolPtr character);
     static int compare_ops(SymbolPtr c1, SymbolPtr c2);
     static int op_precendence(SymbolPtr c1);
-    void convert_postfix();
     SymbolListPtr convert_postfix(SymbolListPtr p);
     void emit(InstructionType ins, vector<string> operands);
     VarType make_cast(SymbolPtr p, VarType v1, VarType v2);

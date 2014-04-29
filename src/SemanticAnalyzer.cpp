@@ -416,6 +416,15 @@ bool CodeBlock::is_rparen(SymbolPtr character) {
     }
 }
 
+bool CodeBlock::is_unary(SymbolPtr character) {
+    VarType op = static_pointer_cast<SymConstant>(character)->get_constant_type();
+    if (op == NOT) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 int CodeBlock::compare_ops(SymbolPtr c1, SymbolPtr c2) {
     if (op_precendence(c1) > op_precendence(c2)) {
         return 1;
@@ -557,70 +566,46 @@ void CodeBlock::preprocess() {
     // do nothing
 }
 
-void CodeBlock::convert_postfix() {
-    // data structs
-    unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
-    SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
-    
-    // shunting yard
-    for (auto i = this->temp_symbols->begin(); i !=
-         this->temp_symbols->end(); i++) {
-        if (is_operand(*i)) {
-            unpostfix_symbols->push_back(*i);
-        } else if (is_operator(*i)) {
-            while (!op_stack->empty()
-                   && !is_lparen(op_stack->top())
-                   && compare_ops(*i, op_stack->top()) <= 0) {
-                unpostfix_symbols->push_back(op_stack->top());
-                op_stack->pop();
-            }
-            op_stack->push(*i);
-        } else if (is_lparen(*i)) {
-            op_stack->push(*i);
-        } else if (is_rparen(*i)) {
-            while (!op_stack->empty()) {
-                if (is_lparen(op_stack->top())) {
-                    op_stack->pop();
-                    break;
-                }
-                unpostfix_symbols->push_back(op_stack->top());
-                op_stack->pop();
-            }
-        }
-    }
-    while(!op_stack->empty()) {
-        unpostfix_symbols->push_back(op_stack->top());
-        op_stack->pop();
-    }
-    
-    // set the temp symbols as the postfix stuff
-    this->temp_symbols = unpostfix_symbols;
-}
-
 SymbolListPtr CodeBlock::convert_postfix(SymbolListPtr p) {
     // data structs
     unique_ptr<stack<SymbolPtr>> op_stack = unique_ptr<stack<SymbolPtr>>(new stack<SymbolPtr>);
     SymbolListPtr unpostfix_symbols = SymbolListPtr(new SymbolList());
     
-    // shunting yard
+    // shunting yard (modified for unary operators!)
     for (auto i = p->begin(); i !=
          p->end(); i++) {
         if (is_operand(*i)) {
             unpostfix_symbols->push_back(*i);
-        } else if (is_operator(*i)) {
-            while (!op_stack->empty()
-                   && !is_lparen(op_stack->top())
-                   && compare_ops(*i, op_stack->top()) <= 0) {
-                unpostfix_symbols->push_back(op_stack->top());
-                op_stack->pop();
+            if (!op_stack->empty()) {
+                if (is_unary(op_stack->top())) {
+                    unpostfix_symbols->push_back(op_stack->top());
+                    op_stack->pop();
+                }
             }
-            op_stack->push(*i);
+        } else if (is_operator(*i)) {
+            if (is_unary((*i))) {
+                op_stack->push(*i);
+            } else {
+                while (!op_stack->empty()
+                       && !is_lparen(op_stack->top())
+                       && compare_ops(*i, op_stack->top()) <= 0) {
+                    unpostfix_symbols->push_back(op_stack->top());
+                    op_stack->pop();
+                }
+                op_stack->push(*i);
+            }
         } else if (is_lparen(*i)) {
             op_stack->push(*i);
         } else if (is_rparen(*i)) {
             while (!op_stack->empty()) {
                 if (is_lparen(op_stack->top())) {
                     op_stack->pop();
+                    if (!op_stack->empty()) {
+                        if (is_unary(op_stack->top())) {
+                            unpostfix_symbols->push_back(op_stack->top());
+                            op_stack->pop();
+                        }
+                    }
                     break;
                 }
                 unpostfix_symbols->push_back(op_stack->top());
@@ -902,10 +887,6 @@ SymbolPtr CodeBlock::translate(TokenPtr token) {
     }
 }
 
-void CodeBlock::emit(InstructionType ins, vector<string> operands) {
-    // does nothing yet
-}
-
 // Program Block stuff
 void ProgramBlock::generate_pre() {
     // get the program id and set it as the open file
@@ -995,7 +976,7 @@ void AssignmentBlock::preprocess() {
     }
     // convert to postifx
     if (this->get_valid() == true)
-        convert_postfix();
+        this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
 }
 
 SymbolPtr AssignmentBlock::get_assigner() {
@@ -1201,7 +1182,7 @@ void LoopBlock::preprocess() {
             this->get_symbol_list()->push_back(this->translate(*i));
         }
         if (this->get_valid() == true)
-            this->convert_postfix();
+            this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
     }
 }
 
@@ -1251,7 +1232,7 @@ void ConditionalBlock::preprocess() {
         this->get_symbol_list()->push_back(this->translate(*i));
     }
     if (this->get_valid())
-        this->convert_postfix();
+        this->set_symbol_list(this->convert_postfix(this->get_symbol_list()));
 }
 
 void ConditionalBlock::generate_pre() {

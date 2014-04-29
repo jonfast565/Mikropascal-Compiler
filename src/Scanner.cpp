@@ -589,6 +589,10 @@ void Scanner::load_strand_machines(unsigned int within) {
     comment_machine->add_digits("1", "1");
     comment_machine->add_transition("1", ' ', "1");
     comment_machine->add_transition("1", '\n', "1");
+    comment_machine->add_transition("1", '\t', "1");
+    comment_machine->add_transition("1", '\v', "1");
+    comment_machine->add_transition("1", '\r', "1");
+    comment_machine->add_transition("1", '\f', "1");
     comment_machine->remove_transition("1", '{');
     comment_machine->remove_transition("1", '}');
     comment_machine->add_transition("0", '{', "1");
