@@ -546,6 +546,7 @@ void Scanner::load_num_machines() {
 	float_machine->add_transition("3", '-', "4");
 	float_machine->add_digits("3", "5");
 	float_machine->add_digits("4", "5");
+    float_machine->add_digits("5", "5");
     
 	// create integer automata
 	auto integer_machine = FSMachinePtr(
