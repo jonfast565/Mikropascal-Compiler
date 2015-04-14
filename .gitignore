@@ -1,40 +1,6 @@
-*.pydevproject
-.metadata
-.gradle
-bin/
-tmp/
-*.tmp
-*.bak
-*.swp
-*~.nib
-local.properties
-.settings/
-.loadpath
-
-# External tool builders
-.externalToolBuilders/
-
-# Locally stored "Eclipse launch configurations"
-*.launch
-
-# CDT-specific
-.cproject
-.project
-
-# PDT-specific
-.buildpath
-
-# sbteclipse plugin 
-.target
-
-# TeXlipse plugin
-.texlipse
-
-# Default build folder ignore
-/Default
-/Debug
-/Release
-
-# XCode ignore UI and breakpoints…
-.xcuserstate
-.xcbkptlist
+﻿# Default build folder ignore
+/Debug/
+/Release/
+/Mikropascal-Compiler/Debug/
+/Mikropascal-Compiler/Release/
+*.il
