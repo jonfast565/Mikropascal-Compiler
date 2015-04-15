@@ -1,10 +1,3 @@
-/*
- * Scanner.hpp
- *
- *  Created on: Jan 21, 2014
- *      Author: jonfast
- */
-
 #ifndef scanner_h
 #define scanner_h
 

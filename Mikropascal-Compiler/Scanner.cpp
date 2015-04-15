@@ -1,10 +1,3 @@
-/*
- * Scanner.cpp
- *
- *  Created on: Jan 21, 2014
- *      Author: jonfast
- */
-
 #include "Scanner.hpp"
 
 Scanner::Scanner(shared_ptr<Input> input_ptr) {

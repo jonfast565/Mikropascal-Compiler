@@ -1,14 +1,3 @@
-/*
- * Automata.hpp
- *
- *  Created on: Jan 19, 2014
- *  Last modified: 4/14/2014
- *  Author: Jon
- *  NOTE: If you value your life,
- *  this file will remain untouched by project
- *  partners. Thanks!
- */
-
 #ifndef automata_h
 #define automata_h
 

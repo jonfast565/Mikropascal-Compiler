@@ -1,11 +1,3 @@
-//
-//  Input.hpp
-//  Compiler
-//
-//  Created by Jonathan Fast on 1/17/14.
-//  Copyright (c) 2014 JonFast. All rights reserved.
-//
-
 #ifndef input_h
 #define input_h
 

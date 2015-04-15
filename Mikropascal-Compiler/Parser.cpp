@@ -1,10 +1,3 @@
-/*
- * Parser.cpp
- *
- *  Created on: Feb 7, 2014
- *      Author: jonfast
- */
-
 #include "Parser.hpp"
 
 Parser::Parser(ScannerPtr scanner, SemanticAnalyzerPtr analyzer) {

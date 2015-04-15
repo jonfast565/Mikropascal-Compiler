@@ -1,10 +1,3 @@
-/*
- * Parser.hpp
- *
- *  Created on: Feb 7, 2014
- *      Author: jonfast
- */
-
 #ifndef PARSER_HPP_
 #define PARSER_HPP_
 

@@ -1,11 +1,3 @@
-//
-//  Standard.hpp
-//  Compiler
-//
-//  Created by Jonathan Fast on 1/17/14.
-//  Copyright (c) 2014 JonFast. All rights reserved.
-//
-
 #ifndef standard_h
 #define standard_h
 

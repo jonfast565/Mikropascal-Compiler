@@ -70,6 +70,7 @@
     <ClCompile Include="Scanner.cpp" />
     <ClCompile Include="SemanticAnalyzer.cpp" />
     <ClCompile Include="Symbols.cpp" />
+    <ClCompile Include="SyntaxTree.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FiniteAutomata.hpp" />
@@ -82,6 +83,7 @@
     <ClInclude Include="Standard.hpp" />
     <ClInclude Include="Structures.hpp" />
     <ClInclude Include="Symbols.hpp" />
+    <ClInclude Include="SyntaxTree.hpp" />
     <ClInclude Include="Tests.hpp" />
     <ClInclude Include="Tokens.hpp" />
   </ItemGroup>

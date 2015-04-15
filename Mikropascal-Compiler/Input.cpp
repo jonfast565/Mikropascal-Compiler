@@ -1,12 +1,3 @@
-//
-//  Input.cpp
-//  Compiler
-//
-//  Created by Jonathan Fast on 1/17/14.
-//  Copyright (c) 2014 JonFast. All rights reserved.
-//
-
-// includes
 #include "Input.hpp"
 
 Input::Input(string filename) {

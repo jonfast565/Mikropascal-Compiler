@@ -1,16 +1,8 @@
-/*
- * Tokens.hpp
- *
- *  Created on: Feb 7, 2014
- *      Author: jonfast
- */
-
 #ifndef TOKENS_HPP_
 #define TOKENS_HPP_
 
 #include "Standard.hpp"
 
-// Mikropascal Token Types
 enum TokType {
 
 	// primitive tokens

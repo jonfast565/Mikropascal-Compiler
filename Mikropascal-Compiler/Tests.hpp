@@ -1,10 +1,3 @@
-/*
- * Tests.hpp
- *
- *  Created on: Jan 21, 2014
- *      Author: jonfast
- */
-
 #ifndef tests
 #define tests
 
